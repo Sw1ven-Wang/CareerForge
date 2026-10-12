@@ -31,7 +31,9 @@ from careerforge.schemas.planning import (
     ObjectiveInput,
     ObjectiveRevision,
     PlanAdoption,
+    PlanObjectiveRevision,
     PlanRevision,
+    UserConstraints,
 )
 
 VERSION = "alignment-offline-v1"
@@ -549,3 +551,65 @@ def alignment_report(db: Session, owner: UUID, identifier: UUID) -> AlignmentRep
     row = owned(db, AlignmentReport, owner, identifier)
     validate_alignment(db, owner, row.payload["input_manifest"])
     return row
+
+
+def edit_plan_objective(
+    db: Session,
+    owner: UUID,
+    identifier: UUID,
+    objective_id: UUID,
+    body: "PlanObjectiveRevision",
+    key: str | None,
+) -> dict[str, Any]:
+    """Save the objective revision and replace its plan membership in one transaction."""
+    from uuid import NAMESPACE_URL, uuid5
+
+    record = idempotency(
+        db,
+        owner,
+        f"plans.{identifier}.objective.{objective_id}",
+        key,
+        body.model_dump(mode="json"),
+    )
+    source = owned(db, LearningPlanVersion, owner, body.base_plan_version_id)
+    target = owned(db, CareerGoalVersion, owner, source.goal_version_id)
+    get_goal(db, owner, target.goal_id, lock=True)
+    root = owned(db, LearningPlan, owner, identifier, lock=True)
+    if source.plan_id != identifier or body.objective.goal_version_id != target.id:
+        raise BusinessError(422, "PLAN_GOAL_MISMATCH", "目标和计划必须属于同一职业目标版本。")
+    if record.response_summary:
+        fixed = owned(
+            db, LearningPlanVersion, owner, UUID(record.response_summary["plan_version_id"])
+        )
+        return plan_result(db, owner, fixed)
+    check_revision(root.revision, body.expected_plan_version)
+    current_ids = members(db, source)
+    replaced_ids = [
+        i for i in current_ids if objective_version(db, owner, i).objective_id == objective_id
+    ]
+    if len(replaced_ids) != 1:
+        raise BusinessError(422, "OBJECTIVE_NOT_IN_PLAN", "请编辑当前计划内的目标。")
+    # Independent operation keys retain safe retries without exceeding the key length limit.
+    objective_key = str(uuid5(NAMESPACE_URL, f"{identifier}:{objective_id}:{key}:objective"))
+    plan_key = str(uuid5(NAMESPACE_URL, f"{identifier}:{objective_id}:{key}:plan"))
+    revised = save_objective(db, owner, body.objective, objective_key, objective_id)
+    new_id = UUID(revised["objective_version_id"])
+    ids = [new_id if i == replaced_ids[0] else i for i in current_ids]
+    result = edit_plan(
+        db,
+        owner,
+        identifier,
+        PlanRevision(
+            expected_version=body.expected_plan_version,
+            base_plan_version_id=source.id,
+            objective_version_ids=ids,
+            adjustment_reason=body.objective.change_reason,
+            deferred=source.payload.get("deferred", []),
+            user_constraints=UserConstraints.model_validate(
+                source.payload.get("user_constraints", {})
+            ),
+        ),
+        plan_key,
+    )
+    record.response_summary = result
+    return result

@@ -22,6 +22,7 @@ from careerforge.schemas.planning import (
     ObjectiveInput,
     ObjectiveRevision,
     PlanAdoption,
+    PlanObjectiveRevision,
     PlanRevision,
 )
 from careerforge.schemas.resources import Envelope, VersionInput
@@ -307,3 +308,22 @@ def plan_adopt(
     key: IdempotencyKey,
 ) -> dict[str, Any]:
     return wrap(request, service.adopt(db, user.id, identifier, body, key))
+
+
+@router.post(
+    "/plans/{identifier}/objectives/{objective_id}/versions",
+    status_code=201,
+    response_model=Envelope,
+)
+def plan_objective_edit(
+    identifier: UUID,
+    objective_id: UUID,
+    body: PlanObjectiveRevision,
+    request: Request,
+    db: Database,
+    user: Authenticated,
+    key: IdempotencyKey,
+) -> dict[str, Any]:
+    return wrap(
+        request, service.edit_plan_objective(db, user.id, identifier, objective_id, body, key)
+    )

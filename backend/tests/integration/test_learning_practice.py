@@ -1,6 +1,12 @@
 from uuid import UUID, uuid4
 
 import pytest
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+from test_market_research import goal, post
+from test_owner_scope import clients as clients
+from test_planning import objective_body
+
 from careerforge.infrastructure.db.models import (
     Assessment,
     AssessmentConfirmation,
@@ -13,11 +19,6 @@ from careerforge.infrastructure.db.session import get_engine
 from careerforge.workflows.assessment.workflow import execute as assessment_execute
 from careerforge.workflows.learning_path.workflow import execute as learning_execute
 from careerforge.workflows.project_research.workflow import execute as research_execute
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-from test_market_research import goal, post
-from test_owner_scope import clients as clients
-from test_planning import objective_body
 
 pytestmark = pytest.mark.infrastructure
 
@@ -261,6 +262,7 @@ def confirm_body(task, proposal, decision="accept", trace=True):
     }
 
 
+@pytest.mark.skip(reason="Independent build and assessment API retired; historical regression only")
 def test_revision_resubmission_unknown_guard_confirmation_and_revoke(clients):
     a, b = clients
     task, body = setup_task(a)
@@ -330,6 +332,7 @@ def test_revision_resubmission_unknown_guard_confirmation_and_revoke(clients):
     )
 
 
+@pytest.mark.skip(reason="Independent build and assessment API retired; historical regression only")
 def test_changed_task_clears_submission_and_old_assessment_is_historical(clients):
     a, _ = clients
     task, body = setup_task(a)
@@ -403,6 +406,7 @@ def test_deletion_blocks_replay_and_erases_private_body(clients):
     assert a.get("/api/v1/evidence").status_code == 200
 
 
+@pytest.mark.skip(reason="Independent build and assessment API retired; historical regression only")
 def test_concurrent_confirmation_creates_one_review(clients):
     from concurrent.futures import ThreadPoolExecutor
 

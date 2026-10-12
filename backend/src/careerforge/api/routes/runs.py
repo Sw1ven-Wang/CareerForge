@@ -177,6 +177,10 @@ def resume_run(
     key: IdempotencyKey,
 ) -> dict[str, Any]:
     run = owned_run(db, user.id, run_id)
+    if run.workflow_type == "assessment":
+        raise BusinessError(
+            410, "FEATURE_RETIRED", "自主构建与成果验收已下线，请在学习计划中编辑目标。"
+        )
     record = idempotency(db, user.id, f"resume:{run_id}", key, body.model_dump(mode="json"))
     if record.response_summary is not None:
         return {"data": result(db, run), "request_id": request.state.request_id}

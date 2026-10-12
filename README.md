@@ -1,8 +1,8 @@
 # CareerForge · V1 离线预览
 
-个人 Agent 开发学习与实践工作台：岗位正文 → 要求与引用 → 个人材料与目标 → 固定版本参考代码 → 学习单元 → 本人任务、提交、分项自验与计划调整。
+个人 Agent 开发学习与实践工作台：岗位正文 → 要求与引用 → 个人材料与目标 → 固定版本参考代码 → 学习单元 → 在已有学习计划中编辑目标、交付物、工时和验收条件。
 
-六模块已实现，可在本机完整操作。工作流采用 **Python 显式阶段函数 + PostgreSQL 阶段产物 + Celery/Redis**；不安装或运行 LangGraph。保存的 LangGraph 源码仅是 S00 固定版本的只读学习材料，许可证和文件哈希随包保留。
+当前提供岗位来源、岗位分析、证据与学习计划、项目代码学习及运行记录，另有个人模拟调研汇总页。自主构建模块已按用户要求下线。工作流采用 **Python 显式阶段函数 + PostgreSQL 阶段产物 + Celery/Redis**；不安装或运行 LangGraph。保存的 LangGraph 源码仅是 S00 固定版本的只读学习材料，许可证和文件哈希随包保留。
 
 **当前交付是离线工程版本。** 岗位提取使用规则与 FakeModel 契约；后续规划、代码学习和材料审阅采用保守规则，缺少证据保持 unknown。真实模型质量、独立校准/留出评测及作者本人真实迁移任务尚未验证，不宣称正式 R4 效果门槛通过。完整状态见 [V1 交付记录](docs/progress/V1_DELIVERY.md)。
 
@@ -37,16 +37,17 @@ docker compose -f compose.yaml -f compose.offline.yaml --profile app up -d --no-
 | `/sources`、`/market` | 正文/附件导入、要求引用、去重、人工更正与报告 |
 | `/planning` | 个人材料改版与撤销、未知对齐、目标与完整条件、计划草稿和子集采纳 |
 | `/projects` | 固定 commit 候选、代码引用、明确选择、学习单元、追问纠错、独立阅读进度 |
-| `/build` | 本人项目、任务改版、材料提交、完整条件审阅、分项自验、返修补交与撤销 |
+| `/mock-research` | 完整模拟调研、技能统计、个人材料与六周计划 |
+| `/build` | 旧地址自动转到 `/planning`，不再提供独立构建功能 |
 | `/runs` | 后台状态、持久化事件、等待决定与取消 |
 
-## 可复现演示
+## 模拟调研与计划
 
-```powershell
-uv run --project backend python scripts/run_offline_demo.py --email your-synthetic-demo@example.test --create-synthetic-account --queue --joblearn E:CodingProject_Datajava_datajoblearn
-```
+现有演示账号已导入五份虚构 JD、个人材料分析及六周计划草稿，打开 `/mock-research` 查看完整报告，打开 `/planning` 编辑已有计划。每周 12 小时仅为模拟假设。
 
-命令只创建专用合成账号和演示数据，不执行任何提交命令。先缺材料提交、返修，再补交合成材料、自验确认、重新规划和采纳；实际运行链见 [演示记录](docs/demo/V1_QUEUE_TRACE.json)。不带 `--queue` 时直接执行同一注册工作流，适合新库复现。
+计划内的“编辑目标”会在一个事务中保存目标新版本并更新计划草稿引用；失败时整体回滚。可调整目标选择、顺序、交付物、工时、前置依赖和完整条件。已采纳计划的修改保存为新草稿，原采纳版本仍保留。
+
+旧六模块演示工具 `scripts/run_offline_demo.py` 已停用；本地 mock 原始文件与导入收据位于 Git 忽略的 `private/mock_research/`，可用 `scripts/import_mock_research.py` 在现有演示账号续传导入。历史流程记录仍保留，但不代表当前功能入口。变更见 [计划编辑调整记录](docs/progress/PLAN_EDITING_CHANGE.md)。
 
 ## 验证与运维
 

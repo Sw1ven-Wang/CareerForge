@@ -2,6 +2,11 @@ from concurrent.futures import ThreadPoolExecutor
 from uuid import UUID, uuid4
 
 import pytest
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+from test_market_research import A, goal, post, run_report, source
+from test_owner_scope import clients as clients
+
 from careerforge.infrastructure.db.models import (
     AlignmentReport,
     LearningPlanVersion,
@@ -9,10 +14,6 @@ from careerforge.infrastructure.db.models import (
 )
 from careerforge.infrastructure.db.session import get_engine
 from careerforge.workflows.alignment.workflow import execute
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-from test_market_research import A, goal, post, run_report, source
-from test_owner_scope import clients as clients
 
 pytestmark = pytest.mark.infrastructure
 
@@ -250,3 +251,60 @@ def test_concurrent_adoptions_conflict_without_overwriting(clients):
             pool.map(lambda _: post(a, f"/plans/{pid}/adopt", body).status_code, range(2))
         )
     assert sorted(results) == [201, 409]
+
+
+def test_plan_objective_edit_is_atomic_and_build_api_retired(clients):
+    a, b = clients
+    target = goal(a)
+    _, report = run_report(a, target, [source(a, A)])
+    alignment = create_alignment(a, target, report)
+    plan_id = alignment["plan_id"]
+    before = a.get(f"/api/v1/plans/{plan_id}").json()["data"]
+    obj = before["objectives"][0]
+    endpoint = f"/plans/{plan_id}/objectives/{obj['objective_id']}/versions"
+    body = {
+        "expected_plan_version": before["version"],
+        "base_plan_version_id": before["plan_version_id"],
+        "objective": {
+            **objective_body(target),
+            "title": "在计划中编辑目标内容",
+            "expected_version": obj["version"],
+            "change_reason": "计划内编辑",
+        },
+    }
+    assert post(b, endpoint, body).status_code == 404
+    key = str(uuid4())
+    response = post(a, endpoint, body, key)
+    assert response.status_code == 201, response.text
+    saved = response.json()["data"]
+    assert saved["kind"] == "draft"
+    changed = next(o for o in saved["objectives"] if o["objective_id"] == obj["objective_id"])
+    assert changed["title"] == "在计划中编辑目标内容"
+    assert changed["objective_version_id"] != obj["objective_version_id"]
+    assert changed["objective_version_id"] in saved["objective_version_ids"]
+    assert obj["objective_version_id"] not in saved["objective_version_ids"]
+    assert post(a, endpoint, body, key).json()["data"] == saved
+    old = a.get(f"/api/v1/plans/{plan_id}/versions/{before['plan_version_id']}").json()["data"]
+    assert old["objectives"][0]["title"] == obj["title"]
+    assert post(a, endpoint, body).status_code == 409
+
+    outside = post(a, "/learning-objectives", objective_body(target)).json()["data"]
+    invalid = {
+        "expected_plan_version": saved["version"],
+        "base_plan_version_id": saved["plan_version_id"],
+        "objective": {
+            **objective_body(target, [outside["objective_id"]]),
+            "expected_version": changed["version"],
+            "change_reason": "缺失计划先修应整体回滚",
+        },
+    }
+    assert post(a, endpoint, invalid).status_code == 422
+    latest_obj = a.get(f"/api/v1/learning-objectives/{obj['objective_id']}").json()["data"]
+    latest_plan = a.get(f"/api/v1/plans/{plan_id}").json()["data"]
+    assert latest_obj["objective_version_id"] == changed["objective_version_id"]
+    assert latest_plan["plan_version_id"] == saved["plan_version_id"]
+    assert a.get("/api/v1/build-projects").status_code == 404
+    assert (
+        post(a, "/build-projects", {"title": "retired", "problem_statement": "retired"}).status_code
+        == 404
+    )

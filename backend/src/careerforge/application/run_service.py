@@ -65,8 +65,7 @@ def create_run(
     goal_version_id: UUID | None = None,
 ) -> AgentRun:
     if (
-        workflow_type
-        not in {"market_research", "alignment", "project_research", "learning_path", "assessment"}
+        workflow_type not in {"market_research", "alignment", "project_research", "learning_path"}
         or call_budget < 0
     ):
         raise ValueError("Invalid workflow or budget")

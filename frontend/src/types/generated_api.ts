@@ -826,6 +826,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/plans/{identifier}/objectives/{objective_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Plan Objective Edit */
+        post: operations["plan_objective_edit_api_v1_plans__identifier__objectives__objective_id__versions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/repository-catalog": {
         parameters: {
             query?: never;
@@ -1135,263 +1152,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/build-projects": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Projects */
-        get: operations["projects_api_v1_build_projects_get"];
-        put?: never;
-        /** Create Project */
-        post: operations["create_project_api_v1_build_projects_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/build-projects/{identifier}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Project */
-        get: operations["project_api_v1_build_projects__identifier__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/build-projects/{identifier}/tasks": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Create Task */
-        post: operations["create_task_api_v1_build_projects__identifier__tasks_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/build-tasks": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Tasks */
-        get: operations["tasks_api_v1_build_tasks_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/build-tasks/{identifier}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Task */
-        get: operations["task_api_v1_build_tasks__identifier__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/build-tasks/{identifier}/versions/{version_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Version */
-        get: operations["version_api_v1_build_tasks__identifier__versions__version_id__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/build-tasks/{identifier}/versions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Revise */
-        post: operations["revise_api_v1_build_tasks__identifier__versions_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/build-tasks/{identifier}/transition": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Transition */
-        post: operations["transition_api_v1_build_tasks__identifier__transition_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/build-tasks/{identifier}/submissions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Submissions */
-        get: operations["submissions_api_v1_build_tasks__identifier__submissions_get"];
-        put?: never;
-        /** Submit */
-        post: operations["submit_api_v1_build_tasks__identifier__submissions_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/submissions/{identifier}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Submission */
-        get: operations["submission_api_v1_submissions__identifier__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/submissions/{identifier}/assessment-runs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Assess */
-        post: operations["assess_api_v1_submissions__identifier__assessment_runs_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/assessments/{identifier}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Assessment */
-        get: operations["assessment_api_v1_assessments__identifier__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/assessments/{identifier}/confirm": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Confirm */
-        post: operations["confirm_api_v1_assessments__identifier__confirm_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/assessments/{identifier}/revoke": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Revoke */
-        post: operations["revoke_api_v1_assessments__identifier__revoke_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/plan-deltas/{identifier}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Delta */
-        get: operations["delta_api_v1_plan_deltas__identifier__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1415,22 +1175,6 @@ export interface components {
             /** Assessment Ids */
             assessment_ids?: string[];
             user_constraints?: components["schemas"]["UserConstraints"];
-            /**
-             * Budget Profile
-             * @default development_small
-             * @constant
-             */
-            budget_profile: "development_small";
-        };
-        /** AssessmentInput */
-        AssessmentInput: {
-            /** Criterion Version Ids */
-            criterion_version_ids: string[];
-            /**
-             * Review Scope
-             * @default 完整条件；材料不足保持未知
-             */
-            review_scope: string;
             /**
              * Budget Profile
              * @default development_small
@@ -1469,59 +1213,12 @@ export interface components {
             /** Text Hash */
             text_hash: string;
         };
-        /** ConfirmationInput */
-        ConfirmationInput: {
-            /** Expected Version */
-            expected_version: number;
-            /** Expected Task Version */
-            expected_task_version: number;
-            /**
-             * Decision
-             * @enum {string}
-             */
-            decision: "accept" | "request_revision";
-            /** Criterion Decisions */
-            criterion_decisions: components["schemas"]["CriterionDecision"][];
-            /** Supplementary Evidence Ids */
-            supplementary_evidence_ids?: string[];
-            /**
-             * Scope Acknowledged
-             * @constant
-             */
-            scope_acknowledged: true;
-        };
         /** Credentials */
         Credentials: {
             /** Email */
             email: string;
             /** Password */
             password: string;
-        };
-        /** CriterionDecision */
-        CriterionDecision: {
-            /**
-             * Criterion Version Id
-             * Format: uuid
-             */
-            criterion_version_id: string;
-            /**
-             * Verdict
-             * @enum {string}
-             */
-            verdict: "pass" | "fail" | "unknown";
-            /**
-             * Method
-             * @enum {string}
-             */
-            method: "model_review" | "user_reported" | "human_review";
-            /** Evidence Refs */
-            evidence_refs?: string[];
-            /** Reason */
-            reason: string;
-            /** Self Review Record */
-            self_review_record?: {
-                [key: string]: string;
-            } | null;
         };
         /** CriterionInput */
         CriterionInput: {
@@ -1651,37 +1348,6 @@ export interface components {
             expected_version: number;
             /** Change Reason */
             change_reason: string;
-        };
-        /** ExecutionRecord */
-        ExecutionRecord: {
-            /** Command Text */
-            command_text: string;
-            /** Reported Exit Code */
-            reported_exit_code?: number | null;
-            /**
-             * Output Attachment Id
-             * Format: uuid
-             */
-            output_attachment_id: string;
-            /** Environment Refs */
-            environment_refs: string[];
-            /** Reported At */
-            reported_at: string;
-            /**
-             * Execution Provenance
-             * @default user_reported
-             * @constant
-             */
-            execution_provenance: "user_reported";
-        };
-        /** ExplanationAnswer */
-        ExplanationAnswer: {
-            /** Question */
-            question: string;
-            /** Answer */
-            answer: string;
-            /** Criterion Version Ids */
-            criterion_version_ids: string[];
         };
         /** GoalInput */
         GoalInput: {
@@ -1893,6 +1559,17 @@ export interface components {
             /** Selected Objective Version Ids */
             selected_objective_version_ids: string[];
         };
+        /** PlanObjectiveRevision */
+        PlanObjectiveRevision: {
+            /** Expected Plan Version */
+            expected_plan_version: number;
+            /**
+             * Base Plan Version Id
+             * Format: uuid
+             */
+            base_plan_version_id: string;
+            objective: components["schemas"]["ObjectiveRevision"];
+        };
         /** PlanRevision */
         PlanRevision: {
             /** Expected Version */
@@ -1923,19 +1600,6 @@ export interface components {
              * @default
              */
             note: string;
-        };
-        /** ProjectInput */
-        ProjectInput: {
-            /** Title */
-            title: string;
-            /** Problem Statement */
-            problem_statement: string;
-            /** Constraints */
-            constraints?: string[];
-            /** Evidence Refs */
-            evidence_refs?: string[];
-            /** Public Repository Url */
-            public_repository_url?: string | null;
         };
         /** ProjectResearchInput */
         ProjectResearchInput: {
@@ -2030,15 +1694,6 @@ export interface components {
                 [key: string]: unknown;
             };
         };
-        /** RevocationInput */
-        RevocationInput: {
-            /** Expected Version */
-            expected_version: number;
-            /** Expected Task Version */
-            expected_task_version: number;
-            /** Reason */
-            reason: string;
-        };
         /** SelectionInput */
         SelectionInput: {
             /**
@@ -2100,84 +1755,6 @@ export interface components {
             /** Declared Provenance */
             declared_provenance?: string | null;
         };
-        /** SubmissionInput */
-        SubmissionInput: {
-            /** Expected Version */
-            expected_version: number;
-            /**
-             * Task Version Id
-             * Format: uuid
-             */
-            task_version_id: string;
-            /** Criterion Version Ids */
-            criterion_version_ids: string[];
-            /** Summary */
-            summary: string;
-            /** Code Commit */
-            code_commit?: string | null;
-            /** Attachment Ids */
-            attachment_ids?: string[];
-            /** Environment */
-            environment?: {
-                [key: string]: string;
-            };
-            /** Execution Records */
-            execution_records?: components["schemas"]["ExecutionRecord"][];
-            /** Explanation Answers */
-            explanation_answers?: components["schemas"]["ExplanationAnswer"][];
-            /** Transfer Notes */
-            transfer_notes?: string[];
-            /** Actual Minutes */
-            actual_minutes?: number | null;
-        };
-        /** TaskInput */
-        TaskInput: {
-            /**
-             * Objective Version Id
-             * Format: uuid
-             */
-            objective_version_id: string;
-            /** Criterion Version Ids */
-            criterion_version_ids: string[];
-            /** Title */
-            title: string;
-            /** Description */
-            description: string;
-            /** Deliverables */
-            deliverables: string[];
-            /** Prerequisite Task Ids */
-            prerequisite_task_ids?: string[];
-            /** Learning Unit Id */
-            learning_unit_id?: string | null;
-            /** Task Draft Id */
-            task_draft_id?: string | null;
-        };
-        /** TaskRevision */
-        TaskRevision: {
-            /**
-             * Objective Version Id
-             * Format: uuid
-             */
-            objective_version_id: string;
-            /** Criterion Version Ids */
-            criterion_version_ids: string[];
-            /** Title */
-            title: string;
-            /** Description */
-            description: string;
-            /** Deliverables */
-            deliverables: string[];
-            /** Prerequisite Task Ids */
-            prerequisite_task_ids?: string[];
-            /** Learning Unit Id */
-            learning_unit_id?: string | null;
-            /** Task Draft Id */
-            task_draft_id?: string | null;
-            /** Expected Version */
-            expected_version: number;
-            /** Change Reason */
-            change_reason: string;
-        };
         /** TimeBudget */
         TimeBudget: {
             /** Weekly Hours */
@@ -2189,18 +1766,6 @@ export interface components {
              * @default 0.2
              */
             reserved_fraction: number;
-        };
-        /** TransitionInput */
-        TransitionInput: {
-            /** Expected Version */
-            expected_version: number;
-            /**
-             * Target Status
-             * @enum {string}
-             */
-            target_status: "in_progress" | "cancelled";
-            /** Reason */
-            reason: string;
         };
         /** UserConstraints */
         UserConstraints: {
@@ -4012,6 +3577,44 @@ export interface operations {
             };
         };
     };
+    plan_objective_edit_api_v1_plans__identifier__objectives__objective_id__versions_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string | null;
+            };
+            path: {
+                identifier: string;
+                objective_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlanObjectiveRevision"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     curated_api_v1_repository_catalog_get: {
         parameters: {
             query?: never;
@@ -4701,588 +4304,6 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Envelope"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    projects_api_v1_build_projects_get: {
-        parameters: {
-            query?: {
-                cursor?: string | null;
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Envelope"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    create_project_api_v1_build_projects_post: {
-        parameters: {
-            query?: never;
-            header: {
-                "Idempotency-Key": string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ProjectInput"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Envelope"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    project_api_v1_build_projects__identifier__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                identifier: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Envelope"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    create_task_api_v1_build_projects__identifier__tasks_post: {
-        parameters: {
-            query?: never;
-            header: {
-                "Idempotency-Key": string | null;
-            };
-            path: {
-                identifier: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TaskInput"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Envelope"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    tasks_api_v1_build_tasks_get: {
-        parameters: {
-            query?: {
-                project_id?: string | null;
-                status?: string | null;
-                objective_id?: string | null;
-                cursor?: string | null;
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Envelope"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    task_api_v1_build_tasks__identifier__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                identifier: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Envelope"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    version_api_v1_build_tasks__identifier__versions__version_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                identifier: string;
-                version_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Envelope"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    revise_api_v1_build_tasks__identifier__versions_post: {
-        parameters: {
-            query?: never;
-            header: {
-                "Idempotency-Key": string | null;
-            };
-            path: {
-                identifier: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TaskRevision"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Envelope"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    transition_api_v1_build_tasks__identifier__transition_post: {
-        parameters: {
-            query?: never;
-            header: {
-                "Idempotency-Key": string | null;
-            };
-            path: {
-                identifier: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TransitionInput"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Envelope"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    submissions_api_v1_build_tasks__identifier__submissions_get: {
-        parameters: {
-            query?: {
-                cursor?: string | null;
-                limit?: number;
-            };
-            header?: never;
-            path: {
-                identifier: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Envelope"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    submit_api_v1_build_tasks__identifier__submissions_post: {
-        parameters: {
-            query?: never;
-            header: {
-                "Idempotency-Key": string | null;
-            };
-            path: {
-                identifier: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SubmissionInput"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Envelope"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    submission_api_v1_submissions__identifier__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                identifier: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Envelope"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    assess_api_v1_submissions__identifier__assessment_runs_post: {
-        parameters: {
-            query?: never;
-            header: {
-                "Idempotency-Key": string | null;
-            };
-            path: {
-                identifier: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AssessmentInput"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Envelope"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    assessment_api_v1_assessments__identifier__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                identifier: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Envelope"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    confirm_api_v1_assessments__identifier__confirm_post: {
-        parameters: {
-            query?: never;
-            header: {
-                "Idempotency-Key": string | null;
-            };
-            path: {
-                identifier: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ConfirmationInput"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Envelope"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    revoke_api_v1_assessments__identifier__revoke_post: {
-        parameters: {
-            query?: never;
-            header: {
-                "Idempotency-Key": string | null;
-            };
-            path: {
-                identifier: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RevocationInput"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Envelope"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    delta_api_v1_plan_deltas__identifier__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                identifier: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
                 headers: {
                     [name: string]: unknown;
                 };

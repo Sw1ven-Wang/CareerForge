@@ -96,3 +96,9 @@ class PlanAdoption(InputModel):
     plan_version_id: UUID
     expected_goal_version_id: UUID
     selected_objective_version_ids: list[UUID] = Field(min_length=1, max_length=30)
+
+
+class PlanObjectiveRevision(InputModel):
+    expected_plan_version: int = Field(ge=1, strict=True)
+    base_plan_version_id: UUID
+    objective: ObjectiveRevision

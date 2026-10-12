@@ -19,7 +19,7 @@ onMounted(() => { void reload() })
   <el-alert v-if="error" :title="error" type="error" :closable="false" />
   <el-empty v-if="!runs.items.length && !error" description="暂无运行记录，开始研究后可在这里查看。" />
   <el-table v-else :data="runs.items" @row-click="selectRun" style="cursor:pointer;margin-bottom:24px">
-    <el-table-column label="研究类型"><template #default="{row}">{{ ({market_research:'岗位分析',alignment:'目标对齐',project_research:'项目研究',learning_path:'代码学习',assessment:'成果验收'} as Record<string,string>)[row.run_type] ?? '研究任务' }}</template></el-table-column>
+    <el-table-column label="研究类型"><template #default="{row}">{{ ({market_research:'岗位分析',alignment:'目标对齐',project_research:'项目研究',learning_path:'代码学习',assessment:'历史成果验收（已下线）'} as Record<string,string>)[row.run_type] ?? '研究任务' }}</template></el-table-column>
     <el-table-column label="状态"><template #default="{row}">{{ ({queued:'排队中',running:'执行中',waiting_user:'待你确认',succeeded:'已完成',partially_succeeded:'部分完成',failed:'失败',budget_stopped:'预算已用尽',cancelled:'已取消'} as Record<string,string>)[row.status] ?? '待更新' }}</template></el-table-column>
     <el-table-column label="创建时间"><template #default="{row}">{{new Date(row.created_at).toLocaleString()}}</template></el-table-column>
   </el-table>
