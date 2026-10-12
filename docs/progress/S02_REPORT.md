@@ -20,10 +20,10 @@ S02 演示版本 v2 在问题中展示合成草稿；v1 已有问题保持兼容
 - 过期心跳、旧 epoch 写入、取消后的写入拒绝；两个 reaper 只有一次撤销；持锁续租不会被恢复扫描抢占。
 - 调用预留跨接管累计，未知结果不退款；超时最多一次短暂重试；结构化失败不发布草稿或成功；取消后允许已有收据结算。
 - API：跨用户 404、恢复幂等、不同决定冲突、schema 错误、JSON/SSE 一致、补读游标、历史过期 410。
-- 浏览器：测试账号的合成运行，读取已保存事件、提交接受决定、后台完成后显示已完成。截图位于本机 Codex visualization 目录。该账号与数据不代表用户真实职业评估。
+- 浏览器：测试账号的合成运行，读取已保存事件、提交接受决定、后台完成后显示已完成。截图位于本机 Codex visualization 目录。新版 v2 还展示了草稿正文；持续 dispatcher 自动接收浏览器决定并完成后台恢复，无需手工投递。该账号与数据不代表用户真实职业评估。
 - Ruff 通过；mypy 检查 40 文件通过；Alembic check 无差异；新数据库 `careerforge_s02_verify` 从空库完整升级成功；Vue/TypeScript/Vite 构建通过。
 
-迁移 head：`f4e95ad00102`。官方 uv GHCR Python 镜像按 digest 固定，解决先前 Docker Hub 认证端点超时；实际构建并启动了 migrate/worker。前端与 API 容器完整组合仍未验收。
+迁移 head：`f4e95ad00102`。官方 uv GHCR Python 镜像按 digest 固定，解决先前 Docker Hub 认证端点超时；实际构建并启动了 migrate/worker/dispatcher。前端与 API 容器完整组合仍未验收。
 
 ## 故障映射与适用范围
 
