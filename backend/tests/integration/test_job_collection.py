@@ -129,3 +129,44 @@ def test_collection_raw_evidence_owner_scope_and_duplicate_delivery(clients, mon
         assert capture.payload["provider"] == "tencent"
         assert capture.payload["capture_method"] == "anonymous_public_fetch"
         assert capture.payload["provider_metadata"]["original_updated_at"] == "2026-10-12 09:00:00"
+
+
+@pytest.mark.asyncio
+async def test_nowcoder_query_uses_public_form_and_honors_bounds(monkeypatch):
+    from careerforge.infrastructure.collection.network import CollectionError
+    from careerforge.infrastructure.collection.tools import search_jobs
+
+    reserved = []
+
+    def transport(request):
+        if request.url.path == "/robots.txt":
+            return httpx.Response(200, text="User-agent: *\nAllow: /")
+        assert request.method == "POST"
+        assert request.url.path == "/np-api/u/job/search"
+        assert b"query=Agent" in request.content and b"recruitType=1" in request.content
+        return httpx.Response(
+            200,
+            json={
+                "code": 0,
+                "data": {
+                    "totalCount": 2,
+                    "datas": [
+                        {"id": 469430, "jobName": "AI agent开发工程师"},
+                        {"id": 463573, "jobName": "Agent开发工程师"},
+                    ],
+                },
+            },
+        )
+
+    async def validate(self, url):
+        return None
+
+    monkeypatch.setattr(PublicWeb, "_validate", validate)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(transport)) as client:
+        web = PublicWeb(lambda url, method: reserved.append((url, method)), client)
+        result = await search_jobs(web, "nowcoder", "Agent", 1)
+        assert result["scope"] == "campus" and len(result["candidates"]) == 1
+        assert result["candidates"][0]["url"].endswith("/469430")
+        assert [method for _, method in reserved] == ["GET", "POST"]
+        with pytest.raises(CollectionError, match="只允许"):
+            await web.fetch("https://www.nowcoder.com/account", form={"x": "y"})

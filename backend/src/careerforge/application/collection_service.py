@@ -51,7 +51,17 @@ def start(db, owner, body, key):
         raise BusinessError(
             409,
             "SEARCH_API_UNCONFIGURED",
-            "跨站搜索服务未配置；可采集已有详情链接，或查询腾讯官网。",
+            "跨站搜索服务未配置；可采集已有详情链接，或查询腾讯官网、牛客校招。",
+        )
+    if (
+        not body.urls
+        and not body.allow_search_api
+        and not ({"tencent", "nowcoder"} & set(body.channels))
+    ):
+        raise BusinessError(
+            409,
+            "QUERY_UNAVAILABLE",
+            "所选渠道暂不支持直接查询。请粘贴详情链接，或选择腾讯 / 牛客校招。",
         )
     manifest = {
         **body.model_dump(mode="json"),

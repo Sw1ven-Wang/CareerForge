@@ -22,7 +22,7 @@ Channel = Literal[
 class CollectionInput(InputModel):
     query: str = Field(default="Agent 开发", min_length=1, max_length=200)
     channels: list[Channel] = Field(
-        default_factory=lambda: ["nowcoder", "liepin", "tencent", "baidu"],
+        default_factory=lambda: ["nowcoder", "tencent"],
         min_length=1,
         max_length=11,
     )

@@ -8,14 +8,14 @@
 
 Agent 使用本地模型配置，low、每次最多 2048 输出 token，每轮最多 3 次；默认不开启，页面要求本轮明确勾选。网络请求默认 30 次（最多 50），岗位最多 12，计数跨恢复持久化。模型不自动重试，网络超时不自动重试。Token/次数限制不是金额限额。
 
-跨站关键词发现需要 CAREERFORGE_TAVILY_API_KEY 和本轮搜索开关；当前没有配置，未做真实付费搜索。搜索摘要仅用于发现链接，不进入 JD 正文或统计分母。没有搜索服务时，腾讯可直接查关键词，其他渠道给出浏览器入口，用户查询后粘贴详情链接。Agent 能力受已实现的工具和当前访问条件约束，不能凭 Skill 自动拥有登录或动态浏览器能力。
+跨站关键词发现需要 CAREERFORGE_TAVILY_API_KEY 和本轮搜索开关；当前没有配置，未做真实付费搜索。搜索摘要仅用于发现链接，不进入 JD 正文或统计分母。没有搜索服务时，腾讯与牛客校招可直接查关键词，其他渠道给出浏览器入口，用户查询后粘贴详情链接。Agent 能力受已实现的工具和当前访问条件约束，不能凭 Skill 自动拥有登录或动态浏览器能力。
 
 ## 已观察并复用的路径
 
 | 渠道 | 路径 / 解析方法 | 当前边界 |
 | --- | --- | --- |
 | BOSS直聘 | /web/geek/job?query=…；正常浏览器入口 | robots 禁止自动查询路径；未绕过验证，未取得正文 |
-| 牛客 | /jobs/detail/{id}；window.__INITIAL_STATE__ 的 store.jobDetail.detail，ext.infos/requirements | 已实采 3 份；关键词列表是动态页，未声称有通用公开查询 API |
+| 牛客 | /jobs/detail/{id}；window.__INITIAL_STATE__ 的 store.jobDetail.detail，ext.infos/requirements | 已实采 3 份；新增 POST /np-api/u/job/search（query/page/pageSize/recruitType=1），校招查询可用 |
 | 猎聘 | /job/{id}.shtml；JobPosting JSON-LD | 已实采 1 份；另一链接无有效 JSON-LD，返回浏览器协助；查询参数路径受 robots 限制 |
 | 腾讯 | /tencentcareer/api/post/Query?keyword=… → jobdesc.html?postId=… → /tencentcareer/api/post/ByPostId | 已实采 2 份；支持公开关键词查询 |
 | 百度 | /jobs/detail/{类型}/{UUID}；SSR 工作职责 / 职责要求 | 已实采 2 份；不执行页面脚本，不猜测隐藏接口 |
@@ -29,7 +29,7 @@ Agent 使用本地模型配置，low、每次最多 2048 输出 token，每轮�
 - infrastructure/collection/portals.py：明确登记渠道、HTTPS 域名与浏览器入口。新增域名先核对官方归属。
 - network.py：匿名请求、robots、公开地址检查、同源重定向检查、1MB 响应限制、每主机间隔、401/403/429 停止及持久化请求预留。
 - extractors.py：各站结构解析，未获得正文就返回限制；绝不执行网页脚本。
-- tools.py：手动与 Agent 共用 search_jobs/read_job。腾讯直接查询，其他渠道可选 Tavily 域名限定发现。
+- tools.py：手动与 Agent 共用 search_jobs/read_job。腾讯与牛客校招直接查询，其他渠道可选 Tavily 域名限定发现。
 - workflows/job_collection.py：Python 显式工具循环、模型调用收据、阶段产物、取消/租约及重复投递防护；只读取用户给出或工具发现的链接。
 - application/collection_service.py：原始响应与标准化数据同事务保存，按岗位 → 来源 → 具体岗位归档。已有 URL 可选择复用（明确标记本轮未重新获取）或新版本采集。
 - data/skills/official-recruitment/SKILL.md：官网域名、路径发现、方向辨别和停止条件；应用运行时实际加载并冻结 Skill 哈希。
@@ -45,3 +45,13 @@ Agent 使用本地模型配置，low、每次最多 2048 输出 token，每轮�
 ## 必要验证
 
 新增离线采集测试 3 项和既有标准化契约 2 项均通过；真实模型使用 MockTransport 替代，真实付费模型/跨站搜索均未再次调用。前端类型检查和构建通过，Skill 格式校验通过。已通过 Linux Celery 实际执行上述匿名公开采集。本轮未进行全量回归。
+
+## 查询能力修正（2026-10-12）
+
+用户反馈属实：初版仅腾讯有直接关键词查询，其他详情链接采集不等于查询。现已从牛客页面实际公开脚本确认 /np-api 前缀和表单格式，匿名 POST /np-api/u/job/search 的 query=Agent、recruitType=1 已返回真实岗位列表（观察总数 107，非固定数据）。查询摘要仍不作为正文，详情由已有适配器独立采集。当前只覆盖牛客校招，不宣称覆盖实习和社招。
+
+页面默认选中腾讯、牛客，对所有渠道标注“自动查询 / 仅详情链接采集 / 需浏览器协助”。没有详情链接或跨站搜索时，若全部所选渠道都无法直接查询，创建任务即提示原因，避免创建必然失败的运行或消耗模型额度。
+
+百度公开页面实际使用 /httservice/getPostListNew，本次匿名查询返回 no-auth / illegal-visit，未接为可用查询；BOSS、猎聘受 robots 的查询路径限制，未绕过。其他官网直接查询仍待适配。
+
+部署后实测运行 e4f3f6c9-cc88-457c-8a7d-3a5e77705fe8：牛客 Agent 校招查询返回总数 107，按上限 2 实际保存 /jobs/detail/469430 和 /jobs/detail/461199，4 次 HTTP、0 次模型调用，状态 succeeded。仅选择猎聘且不提供详情链接时返回 409 QUERY_UNAVAILABLE。采集相关 4 项离线验证与前端构建通过。

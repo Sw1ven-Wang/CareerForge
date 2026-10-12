@@ -13,7 +13,7 @@ PORTALS = {
         "牛客",
         "https://www.nowcoder.com/jobs/recommend/campus",
         ["www.nowcoder.com", "mnowpick.nowcoder.com"],
-        "https://www.nowcoder.com/jobs/fulltime/center",
+        "https://www.nowcoder.com/jobs/fulltime/center?search={query}",
     ),
     "liepin": (
         "猎聘",
@@ -94,7 +94,8 @@ def catalog(query="Agent"):
             "name": p[0],
             "home": p[1],
             "search_url": p[3].format(query=quote(query)),
-            "keyword_query": key == "tencent",
+            "keyword_query": key in {"tencent", "nowcoder"},
+            "query_scope": "校招" if key == "nowcoder" else "",
             "detail_adapter": key in {"nowcoder", "liepin", "tencent", "baidu"},
         }
         for key, p in PORTALS.items()

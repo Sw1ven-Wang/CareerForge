@@ -98,7 +98,7 @@ class PublicWeb:
         ):
             raise CollectionError("unsafe_address", "招聘域名解析到非公网地址。", url)
 
-    async def _request(self, url, maximum=MAX_BYTES):
+    async def _request(self, url, maximum=MAX_BYTES, method="GET", form=None):
         for _ in range(4):
             await self._validate(url)
             host = urlparse(url).hostname
@@ -106,20 +106,27 @@ class PublicWeb:
             wait = 0.8 - (now - self.last_access.get(host, 0))
             if wait > 0:
                 await asyncio.sleep(wait)
-            self.reserve(url, "GET")
+            self.reserve(url, method)
             self.last_access[host] = asyncio.get_running_loop().time()
             try:
                 async with self.client.stream(
-                    "GET",
+                    method,
                     url,
+                    data=form,
                     headers={
                         "User-Agent": USER_AGENT,
                         "Accept": "text/html,application/json",
                         "Cookie": "",
                     },
                 ) as response:
-                    self.trace.append({"url": url, "status": response.status_code})
+                    self.trace.append(
+                        {"url": url, "method": method, "status": response.status_code}
+                    )
                     if response.status_code in {301, 302, 303, 307, 308}:
+                        if method != "GET":
+                            raise CollectionError(
+                                "search_redirect", "查询接口发生重定向，停止请求。", url
+                            )
                         target = urljoin(url, response.headers.get("location", ""))
                         # Never fetch a redirected path before checking its robots.
                         if urlparse(target).netloc != urlparse(url).netloc:
@@ -164,7 +171,9 @@ class PublicWeb:
                 raise CollectionError("network_error", "公开页面暂时无法访问。", url) from None
         raise CollectionError("redirect_limit", "站点重定向次数超限。", url)
 
-    async def fetch(self, url):
+    async def fetch(self, url, *, form=None):
+        if form is not None and url != "https://www.nowcoder.com/np-api/u/job/search":
+            raise CollectionError("invalid_search_path", "只允许已核实的公开只读查询路径。", url)
         await self._validate(url)
         origin = "https://" + urlparse(url).netloc
         if origin not in self.robots:
@@ -183,7 +192,7 @@ class PublicWeb:
             raise CollectionError(
                 "robots_denied", "robots 不允许自动读取该路径，请在浏览器查看后手动导入。", url
             )
-        page = await self._request(url)
+        page = await self._request(url, method="POST" if form is not None else "GET", form=form)
         if page.status >= 400:
             raise CollectionError("http_error", "岗位页面返回错误状态。", url)
         return page

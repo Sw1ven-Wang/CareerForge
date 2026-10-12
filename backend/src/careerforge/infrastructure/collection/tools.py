@@ -44,6 +44,58 @@ async def search_jobs(web, channel, query, limit, allow_search_api=False):
             "candidates": candidates,
             "browser_url": browser_url,
         }
+    if channel == "nowcoder":
+        url = "https://www.nowcoder.com/np-api/u/job/search"
+        page = await web.fetch(
+            url,
+            form={
+                "query": query,
+                "page": "1",
+                "pageSize": str(limit),
+                "recruitType": "1",
+                "requestFrom": "1",
+                "pageSource": "5001",
+                "recommend": "false",
+                "random": "false",
+                "order": "0",
+                "salaryType": "2",
+            },
+        )
+        try:
+            payload = json.loads(page.text)
+            if payload.get("code") != 0 or not isinstance(payload.get("data"), dict):
+                raise ValueError()
+            data = payload["data"]
+            posts = data.get("datas")
+            if not isinstance(posts, list):
+                raise ValueError()
+            candidates = []
+            for item in posts[:limit]:
+                identifier = str(item["id"])
+                if not identifier.isdigit() or not isinstance(item["jobName"], str):
+                    raise ValueError()
+                candidates.append(
+                    {
+                        "title": item["jobName"],
+                        "url": "https://www.nowcoder.com/jobs/detail/" + identifier,
+                    }
+                )
+        except (ValueError, KeyError, TypeError):
+            raise CollectionError(
+                "schema_changed", "牛客公开查询未返回有效岗位列表。", url
+            ) from None
+        return {
+            "status": "searched",
+            "channel": channel,
+            "query": query,
+            "candidates": candidates,
+            "browser_url": browser_url,
+            "scope": "campus",
+            "total_count": data.get("totalCount"),
+            "message": "牛客校招查询完成；候选需读取详情，在招状态以原页为准。",
+            "request_trace": list(web.trace),
+            "snippet_is_evidence": False,
+        }
     if allow_search_api:
         settings = get_settings()
         key = settings.tavily_api_key.get_secret_value()
