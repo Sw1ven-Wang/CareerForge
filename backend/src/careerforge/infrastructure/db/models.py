@@ -749,3 +749,39 @@ class MaintenanceCursor(Base):
     __tablename__ = "maintenance_cursors"
     name: Mapped[str] = mapped_column(String(100), primary_key=True)
     last_id: Mapped[UUID | None]
+
+
+class JobContractArtifact(Timestamped, Base):
+    """Append-only, typed protocol objects; raw bytes are erased only by authorized maintenance."""
+
+    __tablename__ = "job_contract_artifacts"
+    __table_args__ = (
+        UniqueConstraint("id", "owner_id"),
+        UniqueConstraint("owner_id", "kind", "identity_key"),
+        UniqueConstraint("run_id", "kind"),
+        UniqueConstraint("supersedes_id"),
+        ForeignKeyConstraint(
+            ["parent_id", "owner_id"],
+            ["job_contract_artifacts.id", "job_contract_artifacts.owner_id"],
+        ),
+        ForeignKeyConstraint(
+            ["supersedes_id", "owner_id"],
+            ["job_contract_artifacts.id", "job_contract_artifacts.owner_id"],
+        ),
+        ForeignKeyConstraint(["source_id", "owner_id"], ["sources.id", "sources.owner_id"]),
+        ForeignKeyConstraint(
+            ["source_snapshot_id", "owner_id"], ["source_snapshots.id", "source_snapshots.owner_id"]
+        ),
+        CheckConstraint("kind IN ('capture','snapshot','fact','report','context')"),
+    )
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(20), index=True)
+    identity_key: Mapped[str] = mapped_column(String(128))
+    parent_id: Mapped[UUID | None]
+    supersedes_id: Mapped[UUID | None]
+    source_id: Mapped[UUID | None]
+    source_snapshot_id: Mapped[UUID | None]
+    run_id: Mapped[UUID | None] = mapped_column(ForeignKey("agent_runs.id"))
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    raw_bytes: Mapped[bytes | None] = mapped_column(LargeBinary)

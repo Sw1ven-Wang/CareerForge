@@ -1,0 +1,26 @@
+{
+  "schema_version": "careerforge.requirement.v1",
+  "requirement_id": "r_elig_demo_001",
+  "job_snapshot_id": "j1",
+  "requirement_kind": "eligibility",
+  "importance": "required",
+  "origin": "explicit",
+  "expression": {
+    "type": "constraint",
+    "field": "availability.days_per_week",
+    "comparator": "gte",
+    "value": 4,
+    "unit": "days_per_week"
+  },
+  "evidence": {
+    "raw_snapshot_id": "raw1",
+    "job_snapshot_id": "j1",
+    "section_id": "sec2",
+    "start": 46,
+    "end": 56,
+    "quote": "每周至少出勤 4 天"
+  },
+  "review_status": "confirmed",
+  "extractor_version": "extract-v1",
+  "taxonomy_version": "tax-v1"
+}

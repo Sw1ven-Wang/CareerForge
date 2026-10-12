@@ -580,3 +580,7 @@ app.include_router(projects_router)
 from careerforge.api.routes.learning import router as learning_router  # noqa: E402
 
 app.include_router(learning_router)
+
+from careerforge.api.routes.job_data import router as job_data_router  # noqa: E402
+
+app.include_router(job_data_router)

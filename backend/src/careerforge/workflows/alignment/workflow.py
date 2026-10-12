@@ -1,6 +1,9 @@
 from typing import Any, Literal, cast
 from uuid import UUID
 
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from careerforge.application.goal_service import get_goal
 from careerforge.application.market_report_service import read_report
 from careerforge.application.ownership import owned
@@ -21,8 +24,6 @@ from careerforge.infrastructure.db.models import (
 )
 from careerforge.schemas.planning import CriterionInput, ObjectiveInput
 from careerforge.workflows.shared.pure import execute_pure
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 
 def validate(db: Session, run: AgentRun) -> dict[str, Any]:
@@ -31,6 +32,9 @@ def validate(db: Session, run: AgentRun) -> dict[str, Any]:
 
 
 def produce(db: Session, run: AgentRun) -> dict[str, Any]:
+    if run.input_manifest.get("planning_context_id"):
+        from careerforge.workflows.contract_alignment import produce as contract_produce
+        return contract_produce(db, run)
     data, owner = run.input_manifest, run.owner_id
     target = owned(db, CareerGoalVersion, owner, UUID(data["goal_version_id"]))
     get_goal(db, owner, target.goal_id, lock=True)

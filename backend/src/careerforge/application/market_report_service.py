@@ -58,6 +58,12 @@ def goal(db: Session, owner: UUID, identifier: UUID) -> CareerGoalVersion:
 
 
 def start(db: Session, owner: UUID, body: MarketRunInput, key: str | None) -> dict[str, Any]:
+    from careerforge.config.settings import get_settings
+
+    if get_settings().job_contract_write and get_settings().job_contract_read == "on":
+        from careerforge.application.job_contract_service import start_market
+
+        return start_market(db, owner, body, key)
     record = idempotency(db, owner, "market.create", key, body.model_dump(mode="json"))
     goal(db, owner, body.goal_version_id)
     rows = inputs(db, owner, [str(i) for i in body.source_snapshot_ids])
@@ -523,6 +529,10 @@ def read_report(db: Session, owner: UUID, identifier: UUID) -> MarketReport:
     if row is None:
         raise not_found()
     inputs(db, owner, row.payload["source_snapshot_ids"])
+    if row.payload.get("demand_report_id"):
+        from careerforge.application.job_contract_service import read
+
+        read(db, owner, UUID(row.payload["demand_report_id"]), "report")
     return row
 
 
@@ -610,7 +620,12 @@ def decide(
         choice = body.decision if c.id == identifier else latest.decision if latest else "unknown"
         decisions.append({"left": str(c.left_id), "right": str(c.right_id), "decision": choice})
     try:
-        groups(posting_items(db, postings), decisions)
+        if candidate.reason.startswith("contract_"):
+            from careerforge.domain.job_requirements import validate_dedup_decisions
+
+            validate_dedup_decisions(decisions)
+        else:
+            groups(posting_items(db, postings), decisions)
     except ValueError as exc:
         raise BusinessError(
             409, "DEDUP_CONFLICT", "决定与已有重复组矛盾，请先复核相关决定。"

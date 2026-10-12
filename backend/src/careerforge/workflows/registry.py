@@ -49,3 +49,8 @@ from careerforge.application.learning_service import VERSION as LEARNING_VERSION
 from careerforge.workflows.learning_path.workflow import execute as execute_learning  # noqa: E402
 
 WORKFLOWS[("learning_path", LEARNING_VERSION)] = execute_learning
+
+from careerforge.application.job_contract_service import VERSION as CONTRACT_VERSION  # noqa: E402
+from careerforge.workflows.job_contract import execute as execute_contract  # noqa: E402
+
+WORKFLOWS[("market_research", CONTRACT_VERSION)] = execute_contract

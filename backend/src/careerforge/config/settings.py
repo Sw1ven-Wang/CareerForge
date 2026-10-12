@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -14,6 +15,8 @@ class Settings(BaseSettings):
     session_hours: int = Field(default=24, ge=1, le=168)
     max_source_chars: int = Field(default=100000, ge=1)
     auth_mode: str = "session"
+    job_contract_write: bool = True
+    job_contract_read: Literal["off", "shadow", "on"] = "on"
     maintenance_enabled: bool = False
     redis_url: SecretStr = SecretStr("redis://127.0.0.1:56379/0")
 

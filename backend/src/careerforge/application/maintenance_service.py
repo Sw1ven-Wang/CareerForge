@@ -110,7 +110,10 @@ def clean_once(db: Session, limit: int = 100) -> dict[str, int]:
     revoked = 0
     erased = 0
     # Invalidate dependent rows before erasing upstream text. Guards are authoritative.
+    from careerforge.application.job_contract_service import read as contract_read
+    from careerforge.infrastructure.db.models import JobContractArtifact
     checks: list[tuple[Any, Any]] = [
+        (JobContractArtifact, contract_read),
         (PersonalEvidenceVersion, planning_service.evidence_version),
         (LearningObjectiveVersion, planning_service.objective_version),
         (ProjectRecommendation, repository_service.recommendation),
@@ -129,6 +132,8 @@ def clean_once(db: Session, limit: int = 100) -> dict[str, int]:
                 if error.status != 404:
                     raise
                 row.payload = {**scrub(row.payload), "_revoked": True}
+                if isinstance(row, JobContractArtifact):
+                    row.raw_bytes = None
                 invalid.add(str(row.id))
                 revoked += 1
     for run in page(

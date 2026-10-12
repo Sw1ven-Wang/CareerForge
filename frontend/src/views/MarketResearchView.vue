@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api, apiPage, mutation } from '../api/client'
+import ContractDemandPanel from '../components/ContractDemandPanel.vue'
 import RunPanel from '../components/RunPanel.vue'
 import type { components } from '../types/generated_api'
 type Extraction = Omit<components['schemas']['RequirementCorrection'], 'expected_version' | 'reason'>
@@ -10,7 +11,7 @@ type Requirement = Extraction & {posting_version_id:string;requirement_id:string
 type Goal = {goal_version_id:string;role_direction:string;job_type:string;regions:string[]}
 type Source = {source_id:string;title:string|null;source_type:string;read_status:string}
 type Snapshot = {source_snapshot_id:string;version_no:number;metadata:{source_type:string}}
-type Report = {market_report_id:string;generated_by_run_id:string;source_snapshot_ids:string[];
+type Report = {job_contract?:InstanceType<typeof ContractDemandPanel>['$props']['value'];market_report_id:string;generated_by_run_id:string;source_snapshot_ids:string[];
   input_summaries:{source_snapshot_id:string;source_type:string;title:string|null;read_status:string}[];eligible_posting_version_ids:string[];counts:Record<string,number>;warnings:string[];requirements:Requirement[];
   filters:{job_type:string;regions:string[]};
   skill_statistics:{skill_concept_id:string;numerator:number;denominator:number;ratio:number|null;supporting_posting_version_ids:string[];denominator_posting_version_ids:string[]}[];
@@ -132,6 +133,7 @@ onMounted(load)
   </section>
   <section v-if="reports.length" style="margin-bottom:24px"><h2>已保存报告</h2><el-button v-for="r in reports" :key="r.market_report_id" @click="viewReport(r.market_report_id)">{{new Date(r.created_at).toLocaleString()}}</el-button><el-button v-if="nextReportCursor" @click="loadReports(true)">更早报告</el-button></section>
   <RunPanel v-if="runId" :key="runId" :run-id="runId" @changed="progress" />
+  <ContractDemandPanel v-if="report?.job_contract" :value="report.job_contract"/>
   <section v-if="report" class="table-card" style="padding:24px;margin-top:24px">
     <h2>本次样本与统计</h2><p>岗位类别：{{report.filters.job_type}} · 地区：{{report.filters.regions.join('、') || '未限定'}} · 同范围有效分母：{{scopedJobCount}}</p>
     <div class="goal-grid"><div v-for="(count,key) in report.counts" :key="key"><strong>{{count}}</strong> {{countNames[key] ?? key}}</div></div>
@@ -139,11 +141,11 @@ onMounted(load)
     <h3>输入材料与岗位分母</h3>
     <el-table :data="report.input_summaries"><el-table-column prop="title" label="材料"/><el-table-column prop="source_type" label="材料类型"/><el-table-column prop="read_status" label="正文状态"/></el-table>
     <el-table :data="report.posting_summaries"><el-table-column prop="title" label="岗位"/><el-table-column label="提取类别"><template #default="{row}">{{row.job_type ?? '未知'}}</template></el-table-column><el-table-column label="地区"><template #default="{row}">{{row.regions.join('、') || '未知'}}</template></el-table-column><el-table-column label="进入技能分母"><template #default="{row}">{{report.eligible_posting_version_ids.includes(row.posting_version_id)?'是（去重代表）':'否（范围未知、不符、失败或重复）'}}</template></el-table-column></el-table>
-    <h3>技能出现率（按岗位计数）</h3>
+    <template v-if="!report.job_contract"><h3>技能出现率（按岗位计数）</h3>
     <el-table :data="report.skill_statistics"><el-table-column prop="skill_concept_id" label="技能 / 能力"/><el-table-column label="可复算数量"><template #default="{row}">{{row.numerator}} / {{row.denominator}}</template></el-table-column><el-table-column label="样本出现率"><template #default="{row}"><el-progress v-if="row.ratio!==null" :percentage="Math.round(row.ratio*100)"/><span v-else>分母不足</span></template></el-table-column><el-table-column label="支持岗位"><template #default="{row}">{{row.supporting_posting_version_ids.map((id:string)=>report?.posting_summaries.find(p=>p.posting_version_id===id)?.title ?? id.slice(0,8)).join('、') || '无'}}</template></el-table-column></el-table>
     <h3>岗位要求与原文依据</h3>
     <el-table :data="report.requirements"><el-table-column label="来源岗位" min-width="160"><template #default="{row}">{{report.posting_summaries.find(p=>p.posting_version_id===row.posting_version_id)?.title ?? row.posting_version_id}}<small v-if="!report.eligible_posting_version_ids.includes(row.posting_version_id)">（不计本次分母）</small></template></el-table-column><el-table-column prop="normalized_skill" label="概念"/><el-table-column label="类别"><template #default="{row}">{{typeNames[row.requirement_type]}}<small v-if="row.logical_group"> · 可选条件组</small></template></el-table-column><el-table-column prop="text" label="原文" min-width="240"/><el-table-column label="核查" width="150"><template #default="{row}"><el-button link @click="readQuote(row)">查看引用</el-button><el-button link @click="edit(row)">更正</el-button></template></el-table-column></el-table>
-    <h3>范围排除与提取失败</h3><p v-if="!report.scope_exclusions.length&&!report.unresolved_sources.length">本次没有范围排除或提取失败；仍须人工检查规则遗漏。</p><p v-for="x in report.scope_exclusions" :key="x.posting_version_id">{{x.posting_version_id.slice(0,8)}}：岗位类别或地区不符合，或范围未知。</p><p v-for="x in report.unresolved_sources" :key="x.source_snapshot_id">{{x.source_snapshot_id.slice(0,8)}}：{{x.reason}}</p>
+    </template><h3>范围排除与提取失败</h3><p v-if="!report.job_contract&&!report.scope_exclusions.length&&!report.unresolved_sources.length">本次没有范围排除或提取失败；仍须人工检查规则遗漏。</p><p v-for="x in report.scope_exclusions" :key="x.posting_version_id">{{x.posting_version_id.slice(0,8)}}：岗位类别或地区不符合，或范围未知。</p><p v-for="x in report.unresolved_sources" :key="x.source_snapshot_id">{{x.source_snapshot_id.slice(0,8)}}：{{x.reason}}</p>
     <h3>疑似重复（确认前保留独立岗位）</h3>
     <div v-for="c in candidates" :key="c.candidate_id" style="margin:12px 0"><span>{{c.posting_version_ids.map(id=>report?.posting_summaries.find(p=>p.posting_version_id===id)?.title ?? id.slice(0,8)).join(' ↔ ')}} · {{c.latest_decision?.decision ?? '待确认'}}</span><el-button link @click="Object.assign(decisionForm,{candidate_id:c.candidate_id,version:c.version,decision:'unknown',reason:''})">判定</el-button><el-checkbox v-if="c.latest_decision" v-model="decisionIds" :value="c.latest_decision.decision_id">下次报告采用此决定</el-checkbox></div>
   </section>

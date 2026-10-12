@@ -1152,6 +1152,125 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/job-data/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ingest */
+        post: operations["ingest_api_v1_job_data_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/job-data/source-snapshots/{identifier}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Source Snapshot */
+        get: operations["source_snapshot_api_v1_job_data_source_snapshots__identifier__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/job-data/source-snapshots/{identifier}/normalize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Normalize */
+        post: operations["normalize_api_v1_job_data_source_snapshots__identifier__normalize_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/job-data/artifacts/{identifier}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Detail */
+        get: operations["detail_api_v1_job_data_artifacts__identifier__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/job-data/facts/{identifier}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revise */
+        post: operations["revise_api_v1_job_data_facts__identifier__versions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/job-data/planning-contexts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Context */
+        post: operations["context_api_v1_job_data_planning_contexts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/job-data/planning-contexts/{identifier}/alignment-runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Alignment */
+        post: operations["alignment_api_v1_job_data_planning_contexts__identifier__alignment_runs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1174,7 +1293,7 @@ export interface components {
             previous_plan_version_id?: string | null;
             /** Assessment Ids */
             assessment_ids?: string[];
-            user_constraints?: components["schemas"]["UserConstraints"];
+            user_constraints?: components["schemas"]["careerforge__schemas__planning__UserConstraints"];
             /**
              * Budget Profile
              * @default development_small
@@ -1192,12 +1311,55 @@ export interface components {
              */
             purpose: "source" | "personal_evidence" | "submission";
         };
+        /** BooleanExpr */
+        BooleanExpr: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "all_of" | "any_of";
+            /** Children */
+            children: (components["schemas"]["ConceptExpr"] | components["schemas"]["ConstraintExpr"] | components["schemas"]["BooleanExpr"])[];
+        };
         /** CancelInput */
         CancelInput: {
             /** Expected Version */
             expected_version: number;
             /** Reason */
             reason?: string | null;
+        };
+        /** CaptureImport */
+        CaptureImport: {
+            /**
+             * Provider
+             * @default manual_import
+             * @enum {string}
+             */
+            provider: "manual_import" | "greenhouse" | "lever" | "ashby" | "json_ld";
+            /** Source Url */
+            source_url?: string | null;
+            /** Board Scope */
+            board_scope?: string | null;
+            /** Title */
+            title?: string | null;
+            /** Employer Name */
+            employer_name?: string | null;
+            /** Raw Payload */
+            raw_payload: string;
+            /**
+             * Read Status
+             * @default full_text
+             * @enum {string}
+             */
+            read_status: "full_text" | "partial_text" | "metadata_only" | "unavailable";
+            /** Http Status */
+            http_status?: number | null;
+            /**
+             * Usage Policy Status
+             * @default unknown
+             * @enum {string}
+             */
+            usage_policy_status: "allowed" | "restricted" | "unknown";
         };
         /** CitationInput */
         CitationInput: {
@@ -1212,6 +1374,52 @@ export interface components {
             char_end: number;
             /** Text Hash */
             text_hash: string;
+        };
+        /** ConceptExpr */
+        ConceptExpr: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "concept";
+            /** Concept Id */
+            concept_id: string;
+            /**
+             * Concept Kind
+             * @enum {string}
+             */
+            concept_kind: "technology" | "capability" | "knowledge" | "other";
+        };
+        /** ConstraintExpr */
+        ConstraintExpr: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "constraint";
+            /** Field */
+            field: string;
+            /**
+             * Comparator
+             * @enum {string}
+             */
+            comparator: "eq" | "gte" | "lte" | "in";
+            /** Value */
+            value: string | number | string[];
+            /** Unit */
+            unit?: string | null;
+        };
+        /** ContextInput */
+        ContextInput: {
+            /** Goal Version Id */
+            goal_version_id: string;
+            /** Demand Report Id */
+            demand_report_id: string;
+            /** Selected Demand Ids */
+            selected_demand_ids?: string[];
+            /** Personal Evidence Version Ids */
+            personal_evidence_version_ids?: string[];
+            user_constraints?: components["schemas"]["careerforge__schemas__job_contract__UserConstraints"];
         };
         /** Credentials */
         Credentials: {
@@ -1348,6 +1556,29 @@ export interface components {
             expected_version: number;
             /** Change Reason */
             change_reason: string;
+        };
+        /** EvidenceSpan */
+        EvidenceSpan: {
+            /** Raw Snapshot Id */
+            raw_snapshot_id: string;
+            /** Job Snapshot Id */
+            job_snapshot_id: string;
+            /** Section Id */
+            section_id: string;
+            /** Start */
+            start: number;
+            /** End */
+            end: number;
+            /** Quote */
+            quote: string;
+        };
+        /** FactRevision */
+        FactRevision: {
+            /** Expected Fact Id */
+            expected_fact_id: string;
+            correction: components["schemas"]["RequirementFactV1"];
+            /** Reason */
+            reason: string;
         };
         /** GoalInput */
         GoalInput: {
@@ -1585,7 +1816,7 @@ export interface components {
             adjustment_reason: string;
             /** Deferred */
             deferred?: string[];
-            user_constraints?: components["schemas"]["UserConstraints"];
+            user_constraints?: components["schemas"]["careerforge__schemas__planning__UserConstraints"];
         };
         /** ProgressInput */
         ProgressInput: {
@@ -1678,6 +1909,45 @@ export interface components {
             /** Reason */
             reason: string;
         };
+        /** RequirementFactV1 */
+        RequirementFactV1: {
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: "careerforge.requirement.v1";
+            /** Requirement Id */
+            requirement_id: string;
+            /** Job Snapshot Id */
+            job_snapshot_id: string;
+            /**
+             * Requirement Kind
+             * @enum {string}
+             */
+            requirement_kind: "technical_skill" | "engineering_capability" | "knowledge" | "eligibility" | "other";
+            /**
+             * Importance
+             * @enum {string}
+             */
+            importance: "required" | "preferred" | "responsibility" | "unknown";
+            /**
+             * Origin
+             * @enum {string}
+             */
+            origin: "explicit" | "inferred";
+            /** Expression */
+            expression: components["schemas"]["ConceptExpr"] | components["schemas"]["ConstraintExpr"] | components["schemas"]["BooleanExpr"];
+            evidence: components["schemas"]["EvidenceSpan"];
+            /**
+             * Review Status
+             * @enum {string}
+             */
+            review_status: "auto_extracted" | "pending_review" | "confirmed" | "rejected";
+            /** Extractor Version */
+            extractor_version: string;
+            /** Taxonomy Version */
+            taxonomy_version: string;
+        };
         /** ResumeInput */
         ResumeInput: {
             /** Expected Version */
@@ -1767,16 +2037,6 @@ export interface components {
              */
             reserved_fraction: number;
         };
-        /** UserConstraints */
-        UserConstraints: {
-            /** Available Hours */
-            available_hours?: number | null;
-            /**
-             * Notes
-             * @default
-             */
-            notes: string;
-        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -1794,6 +2054,25 @@ export interface components {
         VersionInput: {
             /** Expected Version */
             expected_version: number;
+        };
+        /** UserConstraints */
+        careerforge__schemas__job_contract__UserConstraints: {
+            /** Hours Per Week */
+            hours_per_week?: number | null;
+            /** Preferred Languages */
+            preferred_languages?: string[];
+            /** Target Date */
+            target_date?: string | null;
+        };
+        /** UserConstraints */
+        careerforge__schemas__planning__UserConstraints: {
+            /** Available Hours */
+            available_hours?: number | null;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
         };
     };
     responses: never;
@@ -4304,6 +4583,241 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ingest_api_v1_job_data_import_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CaptureImport"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    source_snapshot_api_v1_job_data_source_snapshots__identifier__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    normalize_api_v1_job_data_source_snapshots__identifier__normalize_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string | null;
+            };
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    detail_api_v1_job_data_artifacts__identifier__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revise_api_v1_job_data_facts__identifier__versions_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string | null;
+            };
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FactRevision"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    context_api_v1_job_data_planning_contexts_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContextInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    alignment_api_v1_job_data_planning_contexts__identifier__alignment_runs_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string | null;
+            };
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };

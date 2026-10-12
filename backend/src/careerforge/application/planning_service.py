@@ -148,6 +148,10 @@ def revoke_evidence(
 
 def objective_version(db: Session, owner: UUID, identifier: UUID) -> LearningObjectiveVersion:
     row = owned(db, LearningObjectiveVersion, owner, identifier)
+    if row.payload.get("planning_basis"):
+        from careerforge.application.job_contract_service import read
+
+        read(db, owner, UUID(row.payload["planning_basis"]["planning_context_id"]), "context")
     owned(db, LearningObjective, owner, row.objective_id)
     from careerforge.application.source_service import get_snapshot
     from careerforge.infrastructure.db.models import (
@@ -298,6 +302,10 @@ def save_objective(
         db.add(root)
         db.flush()
     row = persist_objective(db, owner, value, root, origin, requirements)
+    if identifier and previous.payload.get("planning_basis"):
+        objective_version(db, owner, previous.id)
+        row.payload = {**row.payload, "planning_basis": previous.payload["planning_basis"]}
+        row.content_hash = fingerprint(row.payload)
     result = objective_result(db, owner, row)
     record.response_summary = result
     return result
@@ -424,6 +432,11 @@ def edit_plan(
         body.objective_version_ids,
         "draft",
         {
+            **{
+                k: v
+                for k, v in source.payload.items()
+                if k in {"planning_context_id", "eligibility_checks", "warnings"}
+            },
             "adjustment_reason": body.adjustment_reason,
             "deferred": body.deferred,
             "user_constraints": constraints,
@@ -509,7 +522,26 @@ def start_alignment(
     db: Session, owner: UUID, body: AlignmentInput, key: str | None
 ) -> dict[str, Any]:
     record = idempotency(db, owner, "alignment.create", key, body.model_dump(mode="json"))
-    validate_alignment(db, owner, body.model_dump(mode="json"))
+    data = body.model_dump(mode="json")
+    market = read_report(db, owner, body.market_report_id)
+    if market.payload.get("demand_report_id"):
+        from uuid import NAMESPACE_URL, uuid5
+
+        from careerforge.application.job_contract_service import create_context
+        from careerforge.schemas.job_contract import ContextInput
+
+        context = create_context(
+            db,
+            owner,
+            ContextInput(
+                goal_version_id=str(body.goal_version_id),
+                demand_report_id=market.payload["demand_report_id"],
+                personal_evidence_version_ids=data["personal_evidence_version_ids"],
+            ),
+            str(uuid5(NAMESPACE_URL, f"alignment-context:{owner}:{key}")),
+        )
+        data["planning_context_id"] = context["contract_artifact_id"]
+    validate_alignment(db, owner, data)
     if record.response_summary:
         return record.response_summary
     run = create_run(
@@ -517,7 +549,7 @@ def start_alignment(
         owner,
         "alignment",
         VERSION,
-        body.model_dump(mode="json"),
+        data,
         call_budget=0,
         goal_version_id=body.goal_version_id,
     )
@@ -526,6 +558,15 @@ def start_alignment(
 
 
 def validate_alignment(db: Session, owner: UUID, data: dict[str, Any]) -> None:
+    if data.get("planning_context_id"):
+        from careerforge.application.job_contract_service import read
+
+        context = read(db, owner, UUID(data["planning_context_id"]), "context").payload["context"]
+        if (
+            context["goal_version_id"] != data["goal_version_id"]
+            or context["personal_evidence_version_ids"] != data["personal_evidence_version_ids"]
+        ):
+            raise BusinessError(409, "CONTEXT_INPUT_MISMATCH", "规划输入与冻结上下文不一致。")
     target = owned(db, CareerGoalVersion, owner, UUID(data["goal_version_id"]))
     report = read_report(db, owner, UUID(data["market_report_id"]))
     if report.goal_version_id != target.id:

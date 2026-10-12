@@ -4440,6 +4440,397 @@
           }
         }
       }
+    },
+    "/api/v1/job-data/import": {
+      "post": {
+        "tags": [
+          "job-data-contract"
+        ],
+        "summary": "Ingest",
+        "operationId": "ingest_api_v1_job_data_import_post",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaptureImport"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/job-data/source-snapshots/{identifier}": {
+      "get": {
+        "tags": [
+          "job-data-contract"
+        ],
+        "summary": "Source Snapshot",
+        "operationId": "source_snapshot_api_v1_job_data_source_snapshots__identifier__get",
+        "parameters": [
+          {
+            "name": "identifier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Identifier"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/job-data/source-snapshots/{identifier}/normalize": {
+      "post": {
+        "tags": [
+          "job-data-contract"
+        ],
+        "summary": "Normalize",
+        "operationId": "normalize_api_v1_job_data_source_snapshots__identifier__normalize_post",
+        "parameters": [
+          {
+            "name": "identifier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Identifier"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/job-data/artifacts/{identifier}": {
+      "get": {
+        "tags": [
+          "job-data-contract"
+        ],
+        "summary": "Detail",
+        "operationId": "detail_api_v1_job_data_artifacts__identifier__get",
+        "parameters": [
+          {
+            "name": "identifier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Identifier"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/job-data/facts/{identifier}/versions": {
+      "post": {
+        "tags": [
+          "job-data-contract"
+        ],
+        "summary": "Revise",
+        "operationId": "revise_api_v1_job_data_facts__identifier__versions_post",
+        "parameters": [
+          {
+            "name": "identifier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Identifier"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FactRevision"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/job-data/planning-contexts": {
+      "post": {
+        "tags": [
+          "job-data-contract"
+        ],
+        "summary": "Context",
+        "operationId": "context_api_v1_job_data_planning_contexts_post",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContextInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/job-data/planning-contexts/{identifier}/alignment-runs": {
+      "post": {
+        "tags": [
+          "job-data-contract"
+        ],
+        "summary": "Alignment",
+        "operationId": "alignment_api_v1_job_data_planning_contexts__identifier__alignment_runs_post",
+        "parameters": [
+          {
+            "name": "identifier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Identifier"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4487,7 +4878,7 @@
             "title": "Assessment Ids"
           },
           "user_constraints": {
-            "$ref": "#/components/schemas/UserConstraints"
+            "$ref": "#/components/schemas/careerforge__schemas__planning__UserConstraints"
           },
           "budget_profile": {
             "type": "string",
@@ -4528,6 +4919,51 @@
         ],
         "title": "Body_upload_api_v1_attachments_post"
       },
+      "BooleanExpr": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "all_of",
+              "any_of"
+            ],
+            "title": "Type"
+          },
+          "children": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/ConceptExpr"
+                },
+                {
+                  "$ref": "#/components/schemas/ConstraintExpr"
+                },
+                {
+                  "$ref": "#/components/schemas/BooleanExpr"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "type",
+                "mapping": {
+                  "all_of": "#/components/schemas/BooleanExpr",
+                  "any_of": "#/components/schemas/BooleanExpr",
+                  "concept": "#/components/schemas/ConceptExpr",
+                  "constraint": "#/components/schemas/ConstraintExpr"
+                }
+              }
+            },
+            "type": "array",
+            "title": "Children"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "children"
+        ],
+        "title": "BooleanExpr"
+      },
       "CancelInput": {
         "properties": {
           "expected_version": {
@@ -4553,6 +4989,114 @@
           "expected_version"
         ],
         "title": "CancelInput"
+      },
+      "CaptureImport": {
+        "properties": {
+          "provider": {
+            "type": "string",
+            "enum": [
+              "manual_import",
+              "greenhouse",
+              "lever",
+              "ashby",
+              "json_ld"
+            ],
+            "title": "Provider",
+            "default": "manual_import"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url"
+          },
+          "board_scope": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Board Scope"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "employer_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Employer Name"
+          },
+          "raw_payload": {
+            "type": "string",
+            "maxLength": 1000000,
+            "title": "Raw Payload"
+          },
+          "read_status": {
+            "type": "string",
+            "enum": [
+              "full_text",
+              "partial_text",
+              "metadata_only",
+              "unavailable"
+            ],
+            "title": "Read Status",
+            "default": "full_text"
+          },
+          "http_status": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 599.0,
+                "minimum": 100.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Http Status"
+          },
+          "usage_policy_status": {
+            "type": "string",
+            "enum": [
+              "allowed",
+              "restricted",
+              "unknown"
+            ],
+            "title": "Usage Policy Status",
+            "default": "unknown"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "raw_payload"
+        ],
+        "title": "CaptureImport"
       },
       "CitationInput": {
         "properties": {
@@ -4586,6 +5130,138 @@
           "text_hash"
         ],
         "title": "CitationInput"
+      },
+      "ConceptExpr": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "concept",
+            "title": "Type",
+            "default": "concept"
+          },
+          "concept_id": {
+            "type": "string",
+            "title": "Concept Id"
+          },
+          "concept_kind": {
+            "type": "string",
+            "enum": [
+              "technology",
+              "capability",
+              "knowledge",
+              "other"
+            ],
+            "title": "Concept Kind"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "concept_id",
+          "concept_kind"
+        ],
+        "title": "ConceptExpr"
+      },
+      "ConstraintExpr": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "constraint",
+            "title": "Type",
+            "default": "constraint"
+          },
+          "field": {
+            "type": "string",
+            "title": "Field"
+          },
+          "comparator": {
+            "type": "string",
+            "enum": [
+              "eq",
+              "gte",
+              "lte",
+              "in"
+            ],
+            "title": "Comparator"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Value"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "field",
+          "comparator",
+          "value"
+        ],
+        "title": "ConstraintExpr"
+      },
+      "ContextInput": {
+        "properties": {
+          "goal_version_id": {
+            "type": "string",
+            "title": "Goal Version Id"
+          },
+          "demand_report_id": {
+            "type": "string",
+            "title": "Demand Report Id"
+          },
+          "selected_demand_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Selected Demand Ids"
+          },
+          "personal_evidence_version_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Personal Evidence Version Ids"
+          },
+          "user_constraints": {
+            "$ref": "#/components/schemas/careerforge__schemas__job_contract__UserConstraints"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "goal_version_id",
+          "demand_report_id"
+        ],
+        "title": "ContextInput"
       },
       "Credentials": {
         "properties": {
@@ -4990,6 +5666,72 @@
           "change_reason"
         ],
         "title": "EvidenceRevision"
+      },
+      "EvidenceSpan": {
+        "properties": {
+          "raw_snapshot_id": {
+            "type": "string",
+            "title": "Raw Snapshot Id"
+          },
+          "job_snapshot_id": {
+            "type": "string",
+            "title": "Job Snapshot Id"
+          },
+          "section_id": {
+            "type": "string",
+            "title": "Section Id"
+          },
+          "start": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Start"
+          },
+          "end": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "End"
+          },
+          "quote": {
+            "type": "string",
+            "title": "Quote"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "raw_snapshot_id",
+          "job_snapshot_id",
+          "section_id",
+          "start",
+          "end",
+          "quote"
+        ],
+        "title": "EvidenceSpan"
+      },
+      "FactRevision": {
+        "properties": {
+          "expected_fact_id": {
+            "type": "string",
+            "title": "Expected Fact Id"
+          },
+          "correction": {
+            "$ref": "#/components/schemas/RequirementFactV1"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected_fact_id",
+          "correction",
+          "reason"
+        ],
+        "title": "FactRevision"
       },
       "GoalInput": {
         "properties": {
@@ -5690,7 +6432,7 @@
             "title": "Deferred"
           },
           "user_constraints": {
-            "$ref": "#/components/schemas/UserConstraints"
+            "$ref": "#/components/schemas/careerforge__schemas__planning__UserConstraints"
           }
         },
         "additionalProperties": false,
@@ -5948,6 +6690,112 @@
           "reason"
         ],
         "title": "RequirementCorrection"
+      },
+      "RequirementFactV1": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "careerforge.requirement.v1",
+            "title": "Schema Version"
+          },
+          "requirement_id": {
+            "type": "string",
+            "title": "Requirement Id"
+          },
+          "job_snapshot_id": {
+            "type": "string",
+            "title": "Job Snapshot Id"
+          },
+          "requirement_kind": {
+            "type": "string",
+            "enum": [
+              "technical_skill",
+              "engineering_capability",
+              "knowledge",
+              "eligibility",
+              "other"
+            ],
+            "title": "Requirement Kind"
+          },
+          "importance": {
+            "type": "string",
+            "enum": [
+              "required",
+              "preferred",
+              "responsibility",
+              "unknown"
+            ],
+            "title": "Importance"
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "explicit",
+              "inferred"
+            ],
+            "title": "Origin"
+          },
+          "expression": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ConceptExpr"
+              },
+              {
+                "$ref": "#/components/schemas/ConstraintExpr"
+              },
+              {
+                "$ref": "#/components/schemas/BooleanExpr"
+              }
+            ],
+            "title": "Expression",
+            "discriminator": {
+              "propertyName": "type",
+              "mapping": {
+                "all_of": "#/components/schemas/BooleanExpr",
+                "any_of": "#/components/schemas/BooleanExpr",
+                "concept": "#/components/schemas/ConceptExpr",
+                "constraint": "#/components/schemas/ConstraintExpr"
+              }
+            }
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/EvidenceSpan"
+          },
+          "review_status": {
+            "type": "string",
+            "enum": [
+              "auto_extracted",
+              "pending_review",
+              "confirmed",
+              "rejected"
+            ],
+            "title": "Review Status"
+          },
+          "extractor_version": {
+            "type": "string",
+            "title": "Extractor Version"
+          },
+          "taxonomy_version": {
+            "type": "string",
+            "title": "Taxonomy Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema_version",
+          "requirement_id",
+          "job_snapshot_id",
+          "requirement_kind",
+          "importance",
+          "origin",
+          "expression",
+          "evidence",
+          "review_status",
+          "extractor_version",
+          "taxonomy_version"
+        ],
+        "title": "RequirementFactV1"
       },
       "ResumeInput": {
         "properties": {
@@ -6224,32 +7072,6 @@
         "type": "object",
         "title": "TimeBudget"
       },
-      "UserConstraints": {
-        "properties": {
-          "available_hours": {
-            "anyOf": [
-              {
-                "type": "number",
-                "maximum": 10000.0,
-                "exclusiveMinimum": 0.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Available Hours"
-          },
-          "notes": {
-            "type": "string",
-            "maxLength": 4000,
-            "title": "Notes",
-            "default": ""
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "title": "UserConstraints"
-      },
       "ValidationError": {
         "properties": {
           "loc": {
@@ -6304,6 +7126,69 @@
           "expected_version"
         ],
         "title": "VersionInput"
+      },
+      "careerforge__schemas__job_contract__UserConstraints": {
+        "properties": {
+          "hours_per_week": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hours Per Week"
+          },
+          "preferred_languages": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Preferred Languages"
+          },
+          "target_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Date"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "UserConstraints"
+      },
+      "careerforge__schemas__planning__UserConstraints": {
+        "properties": {
+          "available_hours": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 10000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Available Hours"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 4000,
+            "title": "Notes",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "UserConstraints"
       }
     }
   }

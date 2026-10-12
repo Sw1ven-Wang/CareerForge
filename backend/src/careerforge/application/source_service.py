@@ -1,5 +1,5 @@
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
@@ -80,7 +80,9 @@ def import_source(db: Session, owner: UUID, value: SourceImport, key: str | None
     raw = attachment_text(db, owner, value.attachment_id) if value.attachment_id else value.content
     content = normalize(raw) if raw is not None else None
     metadata = value.model_dump(mode="json", exclude={"content", "import_mode", "source_url"})
-    identity_hash = digest(value.source_url or content or "")
+    identity_hash = digest(
+        value.source_url or (str(uuid4()) if value.source_type == "job_posting" else content or "")
+    )
     # Serialize natural source identity across different idempotency keys.
     lock_key = int(digest(str(owner) + identity_hash)[:15], 16)
     db.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": lock_key})
@@ -133,6 +135,10 @@ def import_source(db: Session, owner: UUID, value: SourceImport, key: str | None
         db.add(snapshot)
         db.flush()
         materialize_job(db, snapshot)
+        if get_settings().job_contract_write and value.source_type == "job_posting":
+            from careerforge.application.job_contract_service import from_legacy
+
+            from_legacy(db, owner, source, snapshot, raw=raw)
         result = snapshot_result(source, snapshot)
     record.response_summary = result
     return result
@@ -202,6 +208,15 @@ def new_snapshot(
     source.title = metadata.get("title")
     db.flush()
     materialize_job(db, snapshot)
+    if get_settings().job_contract_write and metadata.get("source_type") == "job_posting":
+        from careerforge.application.job_contract_service import from_legacy
+
+        supplied = (
+            attachment_text(db, owner, value.attachment_id)
+            if value.attachment_id
+            else value.content
+        )
+        from_legacy(db, owner, source, snapshot, raw=supplied)
     result = snapshot_result(source, snapshot)
     record.response_summary = result
     return result

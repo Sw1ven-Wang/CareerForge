@@ -1,0 +1,55 @@
+{
+  "schema_version": "careerforge.demand_report.v1",
+  "report_id": "dr_demo_001",
+  "goal_version_id": "goal_v001",
+  "scope": {
+    "role_families": [
+      "agent_application"
+    ],
+    "employment_types": [
+      "internship"
+    ],
+    "locations": [
+      "北京"
+    ]
+  },
+  "included_job_snapshot_ids": [
+    "j1"
+  ],
+  "excluded_job_snapshot_ids": [],
+  "excluded_reasons": {},
+  "eligibility_requirement_ids": [
+    "r_elig_demo_001"
+  ],
+  "denominator": 1,
+  "taxonomy_version": "tax-v1",
+  "extractor_version": "extract-v1",
+  "aggregation_version": "aggregate-v1",
+  "demands": [
+    {
+      "demand_id": "dem_demo_001",
+      "demand_unit": "expression_group",
+      "expression_signature": "any_of(technology.go,technology.python)",
+      "concept_id": null,
+      "required_solo": {
+        "count": 0,
+        "denominator": 1
+      },
+      "required_alternative": {
+        "count": 1,
+        "denominator": 1
+      },
+      "preferred": {
+        "count": 0,
+        "denominator": 1
+      },
+      "responsibility": {
+        "count": 0,
+        "denominator": 1
+      },
+      "supporting_requirement_ids": [
+        "r1"
+      ]
+    }
+  ]
+}

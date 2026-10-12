@@ -57,6 +57,9 @@ def replay_guard(db: Session, owner: UUID, summary: dict[str, Any]) -> None:
         repository_service,
     )
 
+    if summary.get("contract_artifact_id"):
+        from careerforge.application.job_contract_service import read
+        read(db, owner, UUID(summary["contract_artifact_id"]))
     if summary.get("evidence_version_id"):
         planning_service.evidence_version(db, owner, UUID(summary["evidence_version_id"]))
     if summary.get("current_task_version_id"):

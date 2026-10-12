@@ -62,3 +62,5 @@ docker compose -f compose.yaml -f compose.offline.yaml --profile app up -d --no-
 - [离线检索与条件守卫对照](evals/reports/offline_comparison.json)
 
 数据库密码为本机开发示例，所有端口仅绑定回环地址。自动物理擦除默认关闭；逻辑撤销及读取阻断立即生效，清理只在独立验证库执行过。外部模型、向量库、Langfuse 和 MCP 写操作均未开放。费用/Token/时长预算的真实供应商验证属于后续受控启用门槛，不能将当前调用数限额冒充生产成本控制。
+
+岗位标准化 V1.1 已接入来源、调研和现有计划编辑流程；使用与回滚见 [数据协议说明](docs/progress/JOB_DATA_CONTRACT_V1_1.md)。

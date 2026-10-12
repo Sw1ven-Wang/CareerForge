@@ -1,0 +1,35 @@
+{
+  "schema_version": "careerforge.planning_context.v1",
+  "planning_context_id": "pc_demo_001",
+  "goal_version_id": "goal_v001",
+  "demand_report_id": "dr_demo_001",
+  "selected_demand_ids": [
+    "dem_demo_001"
+  ],
+  "personal_evidence_version_ids": [
+    "pev_demo_001"
+  ],
+  "eligibility_checks": [
+    {
+      "field": "availability.days_per_week",
+      "status": "unknown",
+      "source_requirement_ids": [
+        "r_elig_demo_001"
+      ],
+      "action": "ask_user"
+    }
+  ],
+  "user_constraints": {
+    "hours_per_week": 8.0,
+    "preferred_languages": [
+      "Python"
+    ],
+    "target_date": null
+  },
+  "planning_policy": {
+    "preserve_unknown": true,
+    "explicit_requirements_only": true,
+    "require_source_evidence": true
+  },
+  "input_fingerprint_sha256": "2f1747a993fffedcfae36e663ee3dbe1401d623fb1f317391af879b961ae38b6"
+}

@@ -1,0 +1,53 @@
+{
+  "schema_version": "careerforge.job_snapshot.v1",
+  "posting_id": "p1",
+  "job_snapshot_id": "j1",
+  "source": {
+    "source_capture_id": "cap1",
+    "provider": "manual_import",
+    "ingest_method": "manual_import",
+    "raw_snapshot_id": "raw1",
+    "source_url": null,
+    "external_posting_id": null,
+    "retrieved_at": "2026-10-12T08:00:00Z",
+    "read_status": "full_text"
+  },
+  "job": {
+    "title_raw": "Agent 应用开发实习生",
+    "employer_name": "合成示例",
+    "role_family": null,
+    "employment_type": null,
+    "internship_type": null,
+    "locations": [],
+    "published_at": null,
+    "provider_updated_at": null,
+    "salary_raw": null,
+    "published_at_semantics": "unknown"
+  },
+  "document": {
+    "canonical_text": "工作职责：参与Agent工作流研发。\n任职要求：熟悉 Python 或 Go 任意一种语言；每周至少出勤 4 天。",
+    "sections": [
+      {
+        "section_id": "sec1",
+        "kind": "responsibility",
+        "start": 0,
+        "end": 18,
+        "text": "工作职责：参与Agent工作流研发。"
+      },
+      {
+        "section_id": "sec2",
+        "kind": "qualification",
+        "start": 19,
+        "end": 57,
+        "text": "任职要求：熟悉 Python 或 Go 任意一种语言；每周至少出勤 4 天。"
+      }
+    ]
+  },
+  "quality": {
+    "normalization_status": "ready",
+    "normalizer_version": "norm-v1",
+    "dedupe_status": "unique",
+    "dedupe_group_id": null,
+    "issues": []
+  }
+}
