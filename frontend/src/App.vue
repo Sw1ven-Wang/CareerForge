@@ -38,9 +38,34 @@ async function logout() {
   </main>
   <div v-else class="app-shell">
     <aside class="sidebar"><div class="brand"><span class="brand-mark">C</span> CareerForge</div><p class="sidebar-caption">职业实践工作台</p>
-      <nav><router-link to="/">◈ 当前工作台</router-link><router-link to="/sources">▤ 岗位资料与来源</router-link><router-link to="/market">▥ 岗位要求分析</router-link><router-link to="/mock-research">▧ 模拟调研与计划</router-link><router-link to="/planning">◇ 证据与学习计划</router-link><router-link to="/projects">⌘ 项目与代码学习</router-link><router-link to="/runs">◷ 运行记录</router-link></nav>
+      <nav aria-label="工作台导航">
+        <router-link to="/">◈ 当前工作台</router-link>
+        <router-link to="/sources">▤ 岗位资料与来源</router-link>
+        <details class="sidebar-group" open>
+          <summary>▥ 要求分析与计划</summary>
+          <div class="sidebar-group-links">
+            <router-link to="/market">岗位要求分析</router-link>
+            <router-link to="/planning">证据与学习计划</router-link>
+            <router-link to="/mock-research">模拟调研与计划</router-link>
+          </div>
+        </details>
+        <router-link to="/projects">⌘ 项目与代码学习</router-link>
+        <router-link to="/runs">◷ 运行记录</router-link>
+      </nav>
       <div class="sidebar-bottom"><span class="status-dot"></span> 个人空间<br><small>{{ session.user.email }}</small><el-button link @click="logout">退出登录</el-button></div>
     </aside>
     <main class="main-content"><header class="topbar"><span>把学习变成可以核查的成果</span><el-tag type="info" effect="plain">开发预览 · V1</el-tag></header><router-view /></main>
   </div>
 </template>
+
+<style scoped>
+.sidebar-group{min-width:0;border-radius:8px}
+.sidebar-group summary{padding:13px 15px;cursor:pointer;font-size:14px;color:#bdd0cb;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.sidebar-group summary::-webkit-details-marker{display:none}
+.sidebar-group summary::after{content:'›';transition:transform .15s}
+.sidebar-group[open] summary::after{transform:rotate(90deg)}
+.sidebar-group:has(.router-link-exact-active)>summary{color:#ebf5f0}
+.sidebar-group-links{display:grid;gap:5px;margin:0 0 4px 18px;padding-left:8px;border-left:1px solid #355653}
+.sidebar-group-links a{font-size:13px;padding:11px 13px}
+@media(max-width:720px){.sidebar-group{grid-column:1 / -1}.sidebar-group-links{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}}
+</style>
