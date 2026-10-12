@@ -1,64 +1,63 @@
-# CareerForge
+# CareerForge · V1 离线预览
 
-将岗位要求转化为学习任务、实践成果与可信证据的个人 Agent 工作台。
+个人 Agent 开发学习与实践工作台：岗位正文 → 要求与引用 → 个人材料与目标 → 固定版本参考代码 → 学习单元 → 本人任务、提交、分项自验与计划调整。
 
-当前：S00 环境与离线模型契约已验证；S01 最小工作台、S02 持久化运行内核、S03 来源导入与岗位要求报告已实现并离线验证（80 项测试，含 Linux Celery 队列与杀进程恢复）。工作流采用 Python 显式阶段函数，见 `docs/decisions/0002-explicit-workflows.md`。六模块应用尚未完成，阶段记录见 `docs/progress/`。
-产品基线见 `docs/00_README.md`，按 `docs/03_IMPLEMENTATION_ROADMAP.md` 顺序推进。
+六模块已实现，可在本机完整操作。工作流采用 **Python 显式阶段函数 + PostgreSQL 阶段产物 + Celery/Redis**；不安装或运行 LangGraph。保存的 LangGraph 源码仅是 S00 固定版本的只读学习材料，许可证和文件哈希随包保留。
 
-## 开发验证（PowerShell）
+**当前交付是离线工程版本。** 岗位提取使用规则与 FakeModel 契约；后续规划、代码学习和材料审阅采用保守规则，缺少证据保持 unknown。真实模型质量、独立校准/留出评测及作者本人真实迁移任务尚未验证，不宣称正式 R4 效果门槛通过。完整状态见 [V1 交付记录](docs/progress/V1_DELIVERY.md)。
+
+## 启动
+
+在项目目录运行（PowerShell）：
 
 ```powershell
 uv sync --project backend --python 3.12 --locked
-docker compose up -d --wait
-$env:TEST_DATABASE_URL="postgresql://careerforge:careerforge_dev@127.0.0.1:55432/careerforge_test?connect_timeout=5"
-$env:TEST_REDIS_URL="redis://127.0.0.1:56379/15"
-uv run --project backend pytest -c backend/pyproject.toml backend/tests -q
-uv run --project backend ruff check --config backend/pyproject.toml backend/src backend/tests scripts
-uv run --project backend mypy --config-file backend/pyproject.toml backend/src/careerforge
-uv run --project backend python scripts/check_environment.py
-uv run --project backend python scripts/validate_manual_case.py
+npm.cmd ci --prefix frontend
+npm.cmd run build --prefix frontend
+# 先准备 API 镜像，离线 UI 网关将复用它。
+docker compose --profile app build api worker dispatcher migrate
+docker compose -f compose.yaml -f compose.offline.yaml --profile app build frontend
+docker compose -f compose.yaml -f compose.offline.yaml --profile app up -d --no-build
 ```
 
-模型测试使用 synthetic fixture 和 MockTransport，不读取真实 API 配置，不发生模型费用。
-缺少基础设施环境变量时 infrastructure 测试明确跳过，不算验收通过。
-Compose 只绑定回环地址，示例数据库密码仅用于本地隔离开发，禁止作为私有部署密码。
-个人材料快照在 `private/`，默认不进入 Git 或公开证据包。
+打开 **http://127.0.0.1:8080**。当前机器已启动这一入口。Docker Hub 的 Node 镜像拉取曾超时，故提供复用 Python 镜像与本地构建静态资源的网关；联网环境仍可使用原来的 Nginx 多阶段 Dockerfile。离线网关只用于回环地址下的本机私有预览。
 
-## 启动当前工作台
+没有通用初始管理员或后门账号。你可以在登录页注册自己的本地账号。当前已创建的**合成演示账号**：
+
+- 邮箱：`v1-demo-20261012@example.test`
+- 密码：`SyntheticOfflineDemo2026`
+
+这个账号里的验收记录明确标记为合成流程测试，不构成 joblearn 或本人能力认证。joblearn 仅按授权清单读取，未修改、导入执行或测试它的代码。真实材料、数据库备份与完整运行记录均保存在 Git 忽略的 `private/` 或本地数据库中。
+
+## 页面
+
+| 入口 | 用途 |
+| --- | --- |
+| `/` | 职业目标与当前工作台 |
+| `/sources`、`/market` | 正文/附件导入、要求引用、去重、人工更正与报告 |
+| `/planning` | 个人材料改版与撤销、未知对齐、目标与完整条件、计划草稿和子集采纳 |
+| `/projects` | 固定 commit 候选、代码引用、明确选择、学习单元、追问纠错、独立阅读进度 |
+| `/build` | 本人项目、任务改版、材料提交、完整条件审阅、分项自验、返修补交与撤销 |
+| `/runs` | 后台状态、持久化事件、等待决定与取消 |
+
+## 可复现演示
 
 ```powershell
-uv run --project backend alembic -c backend/alembic.ini upgrade head
-uv run --project backend uvicorn careerforge.api.app:app --host 127.0.0.1 --port 8000
-# 新终端
-npm.cmd --prefix frontend run dev
+uv run --project backend python scripts/run_offline_demo.py --email your-synthetic-demo@example.test --create-synthetic-account --queue --joblearn E:CodingProject_Datajava_datajoblearn
 ```
 
-浏览器访问 http://127.0.0.1:5173；使用自己的邮箱与新密码创建本地账号。当前仅支持本机开发，不用于公网部署。
+命令只创建专用合成账号和演示数据，不执行任何提交命令。先缺材料提交、返修，再补交合成材料、自验确认、重新规划和采纳；实际运行链见 [演示记录](docs/demo/V1_QUEUE_TRACE.json)。不带 `--queue` 时直接执行同一注册工作流，适合新库复现。
 
-容器版配置已提供：`docker compose --profile app up --build`，入口 127.0.0.1:8080。此命令尚未做完整镜像构建验证，不算部署验收。
+## 验证与运维
 
+最终只做了一次整体回归：85 项通过、1 项并发确认失败、4 项 Linux 故障用例未重复运行；修复行锁后的 ORM 旧对象问题后，该失败用例定向通过。失败原始记录仍保留，没有改写成全绿。新业务关键闭环、类型检查、前端构建及 Linux Celery 七次业务运行通过。既有杀进程恢复证据沿用 S02/S03。
 
-## S02 后台执行与运行记录
+独立新库从全部迁移启动成功；备份恢复后 56 张表、430 行及内容聚合哈希一致。恢复工具只允许新建 `careerforge_restore_` 数据库，不能覆盖当前工作库。
 
-```powershell
-docker compose --profile worker up -d --build worker
-# 日常使用可另启持续投递器；故障测试期间不要同时启用。
-docker compose --profile dispatcher up -d --build dispatcher
-# 在已启动 Linux Worker 的环境中验证真实队列：
-$env:RUN_LINUX_QUEUE_TESTS="1"
-uv run --project backend pytest -c backend/pyproject.toml backend/tests -q
-```
+- [启动与备份恢复](docs/operations/deployment.md)
+- [恢复、取消与事件](docs/operations/recovery.md)
+- [撤销、正文清理与保留边界](docs/operations/deletion.md)
+- [工程取舍与真实限制](docs/interview/project_evidence.md)
+- [离线检索与条件守卫对照](evals/reports/offline_comparison.json)
 
-`/runs` 展示本用户持久化运行、待处理决定及事件。S02 合成演示只从测试代码创建；S03 已提供岗位分析业务创建入口。详情见 `docs/progress/S02_REPORT.md`。当前未开放真实模型调用，模型质量与完整 V1 尚未验收。
-
-## S03 岗位要求分析（离线）
-
-启动 API、前端、worker 与 dispatcher 后，打开 `/market` 选择目标固定版本及材料快照。页面支持附件导入、原文引用、明确的岗位分母、人工更正与重复判定。统计由程序计算；FakeModel 仅验证输出契约，不代表真实模型质量。
-
-已有本地演示账号可生成三份已保存官方 JD 与 joblearn 静态清单的报告：
-
-```powershell
-uv run --project backend python scripts/seed_s03_demo.py --email browser-s01-20261012@example.test --joblearn E:\Coding\Project_Data\java_data\joblearn
-```
-
-阶段结果和边界见 `docs/progress/S03_REPORT.md`；可复算输出见 `docs/samples/S03_OFFLINE_REPORT.json`；提取评分约定见 `evals/README.md`。S04 尚未开始，进入下一阶段所需的用户解释检查和真实模型质量验证仍待完成。
+数据库密码为本机开发示例，所有端口仅绑定回环地址。自动物理擦除默认关闭；逻辑撤销及读取阻断立即生效，清理只在独立验证库执行过。外部模型、向量库、Langfuse 和 MCP 写操作均未开放。费用/Token/时长预算的真实供应商验证属于后续受控启用门槛，不能将当前调用数限额冒充生产成本控制。

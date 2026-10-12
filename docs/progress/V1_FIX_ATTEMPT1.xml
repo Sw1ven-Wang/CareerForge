@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="1.633" timestamp="2026-10-12T15:32:35.947897+08:00" hostname="MyBestcomputer"><testcase classname="tests.integration.test_learning_practice" name="test_concurrent_confirmation_creates_one_review" time="0.761"><failure message="NameError: name 'AssessmentReview' is not defined">backend\tests\integration\test_learning_practice.py:417: in test_concurrent_confirmation_creates_one_review
+    assert len(list(db.scalars(select(AssessmentReview).where(AssessmentReview.assessment_id == UUID(proposal["assessment_id"]))))) == 1
+                                      ^^^^^^^^^^^^^^^^
+E   NameError: name 'AssessmentReview' is not defined</failure></testcase></testsuite></testsuites>

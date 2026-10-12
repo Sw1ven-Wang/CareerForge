@@ -1,0 +1,157 @@
+{
+  "schema_version": 1,
+  "mode": "offline_engineering_only",
+  "repository_commit": "799c2f04fd3a56186e24e9fb8bbf3568e543cfbe",
+  "files": [
+    {
+      "path": "LICENSE",
+      "sha256": "d9bb52f2e3540d60ff50d8f0f5b6ba649b7fd346948c4c3d086c8afb120763c7",
+      "bytes": 1072
+    },
+    {
+      "path": "libs/langgraph/langgraph/types.py",
+      "sha256": "062583a1c0af9833477935a9a78d336408cc9a33c425722a1191e000d032107a",
+      "bytes": 37830
+    },
+    {
+      "path": "libs/checkpoint-postgres/langgraph/checkpoint/postgres/__init__.py",
+      "sha256": "d1701a76ca1df8a400fca6bcaa6a792a34f9745f41273543aa61bc687008d94f",
+      "bytes": 24219
+    }
+  ],
+  "input_hash": "a308705273c948ba1ae9b7cf9e146e080f60df757c32859d8b5d47c0c7bdb64d",
+  "data_split": "development only; one repository; no holdout or calibration",
+  "retrieval": [
+    {
+      "query": "get_tuple",
+      "expected": "get_tuple",
+      "group": "saved_public_repo",
+      "direct_file_hits": 1,
+      "direct_expected_found": true,
+      "ast_symbol_hits": 1,
+      "ast_expected_found": true,
+      "locations": [
+        {
+          "path": "libs/checkpoint-postgres/langgraph/checkpoint/postgres/__init__.py",
+          "symbol": "PostgresSaver.get_tuple",
+          "start_line": 192
+        }
+      ]
+    },
+    {
+      "query": "状态恢复",
+      "expected": "get_tuple",
+      "group": "saved_public_repo",
+      "direct_file_hits": 0,
+      "direct_expected_found": false,
+      "ast_symbol_hits": 7,
+      "ast_expected_found": true,
+      "locations": [
+        {
+          "path": "libs/checkpoint-postgres/langgraph/checkpoint/postgres/__init__.py",
+          "symbol": "PostgresSaver.get_tuple",
+          "start_line": 192
+        },
+        {
+          "path": "libs/checkpoint-postgres/langgraph/checkpoint/postgres/__init__.py",
+          "symbol": "PostgresSaver._load_checkpoint_tuple",
+          "start_line": 562
+        },
+        {
+          "path": "libs/langgraph/langgraph/types.py",
+          "symbol": "ensure_valid_checkpointer",
+          "start_line": 118
+        }
+      ]
+    },
+    {
+      "query": "持久化",
+      "expected": "put",
+      "group": "saved_public_repo",
+      "direct_file_hits": 0,
+      "direct_expected_found": false,
+      "ast_symbol_hits": 16,
+      "ast_expected_found": true,
+      "locations": [
+        {
+          "path": "libs/checkpoint-postgres/langgraph/checkpoint/postgres/__init__.py",
+          "symbol": "PostgresSaver.put",
+          "start_line": 263
+        },
+        {
+          "path": "libs/checkpoint-postgres/langgraph/checkpoint/postgres/__init__.py",
+          "symbol": "PostgresSaver.put_writes",
+          "start_line": 347
+        },
+        {
+          "path": "libs/checkpoint-postgres/langgraph/checkpoint/postgres/__init__.py",
+          "symbol": "PostgresSaver",
+          "start_line": 40
+        }
+      ]
+    },
+    {
+      "query": "nonexistent_zz_2026",
+      "expected": null,
+      "group": "negative",
+      "direct_file_hits": 0,
+      "direct_expected_found": true,
+      "ast_symbol_hits": 0,
+      "ast_expected_found": true,
+      "locations": []
+    }
+  ],
+  "criterion_guard_comparison": [
+    {
+      "criterion_ids": [
+        "00000000-0000-0000-0000-000000000001",
+        "00000000-0000-0000-0000-000000000002",
+        "00000000-0000-0000-0000-000000000003"
+      ],
+      "client_subset_baseline_accepts": true,
+      "full_set_guard_accepts": true,
+      "expected_accepts": true
+    },
+    {
+      "criterion_ids": [
+        "00000000-0000-0000-0000-000000000001"
+      ],
+      "client_subset_baseline_accepts": true,
+      "full_set_guard_accepts": false,
+      "expected_accepts": false
+    },
+    {
+      "criterion_ids": [
+        "00000000-0000-0000-0000-000000000001",
+        "00000000-0000-0000-0000-000000000001",
+        "00000000-0000-0000-0000-000000000003"
+      ],
+      "client_subset_baseline_accepts": true,
+      "full_set_guard_accepts": false,
+      "expected_accepts": false
+    },
+    {
+      "criterion_ids": [
+        "00000000-0000-0000-0000-000000000001",
+        "00000000-0000-0000-0000-000000000002",
+        "00000000-0000-0000-0000-000000000004"
+      ],
+      "client_subset_baseline_accepts": true,
+      "full_set_guard_accepts": false,
+      "expected_accepts": false
+    }
+  ],
+  "model_calls": 0,
+  "model_cost": 0,
+  "quality_claim": null,
+  "decisions": {
+    "retrieval": "keep lexical aliases/AST; no measured embedding benefit",
+    "roles": "single bounded role; no live evidence for extra roles",
+    "observability": "DB metadata retained; external Langfuse/MCP disabled"
+  },
+  "limitations": [
+    "定义定位不代表引用支持机制结论",
+    "synthetic guard comparison is not recommendation or model quality",
+    "真实模型、独立校准/留出及作者迁移证据待授权或实际发生"
+  ]
+}

@@ -1,0 +1,112 @@
+{
+  "mode": "offline_synthetic_engineering_demo",
+  "queue": true,
+  "model_calls_live": 0,
+  "authorship_verified": false,
+  "learning_verified": false,
+  "personal_material": "joblearn",
+  "trace": [
+    {
+      "run_id": "1208e497-a874-4330-8b3a-d5b5cde1840a",
+      "type": "market_research",
+      "status": "partially_succeeded",
+      "output_refs": [
+        {
+          "stage_artifact_id": "3617336f-f40b-41e3-9ee1-9a001f42612d",
+          "market_report_id": "87c21f80-a701-44b5-becc-d5f612174dbc"
+        }
+      ]
+    },
+    {
+      "run_id": "28486aa4-5611-4920-b0af-cd0c43235f14",
+      "type": "alignment",
+      "status": "succeeded",
+      "output_refs": [
+        {
+          "stage_artifact_id": "ff195a1e-0fc1-4288-9b7c-1a3468eb45d3",
+          "plan_id": "3ac84b1a-f748-4074-8f49-f10f597accc4",
+          "plan_version_id": "b0dd6a69-92c2-47d7-8988-b523fda8312b",
+          "alignment_report_id": "f7c3edab-4267-4be1-925c-a734addf107d"
+        }
+      ]
+    },
+    {
+      "run_id": "72359ac6-1ccd-4b62-ba31-9dce298840b7",
+      "type": "project_research",
+      "status": "succeeded",
+      "output_refs": [
+        {
+          "stage_artifact_id": "7acb1bd7-9508-46d6-9048-9ad7f858b4c6",
+          "recommendation_ids": [
+            "f7bd137e-cc54-41db-b598-865536b1328d"
+          ]
+        }
+      ]
+    },
+    {
+      "run_id": "a5086c05-ff0b-4fe4-ad65-4dff9740f6d1",
+      "type": "learning_path",
+      "status": "succeeded",
+      "output_refs": [
+        {
+          "stage_artifact_id": "c8dc2361-6892-4c72-b996-c0d59dd3f8fd",
+          "learning_unit_id": "63ac9140-a475-45db-88e4-c09fd3ba1d7e"
+        }
+      ]
+    },
+    {
+      "run_id": "d8e1ee41-5dfe-42bd-bfaa-37037a51ce32",
+      "type": "assessment",
+      "status": "succeeded",
+      "output_refs": [
+        {
+          "stage_artifact_id": "1c4c9b19-22e9-40e2-89df-59444301331f",
+          "assessment_id": "788edc22-a57f-4359-8237-65e5f9e1e9d9"
+        }
+      ]
+    },
+    {
+      "submission_id": "8a5ac175-066f-4925-96c5-82961ebd3d1a",
+      "assessment_id": "788edc22-a57f-4359-8237-65e5f9e1e9d9",
+      "task_status": "needs_revision",
+      "synthetic": true
+    },
+    {
+      "run_id": "3c0bd99b-15cd-4fcc-b077-ead52fd5435e",
+      "type": "assessment",
+      "status": "succeeded",
+      "output_refs": [
+        {
+          "stage_artifact_id": "d22956a9-3fe3-4131-bc72-8f001e3165dd",
+          "assessment_id": "13c59789-bc8d-47bb-a125-c5f975a5d974"
+        }
+      ]
+    },
+    {
+      "submission_id": "8f5accff-24d6-4df5-bd11-bb0b2fa45528",
+      "assessment_id": "13c59789-bc8d-47bb-a125-c5f975a5d974",
+      "task_status": "accepted",
+      "synthetic": true
+    },
+    {
+      "run_id": "3e4c492e-5147-4c97-8a3b-7f2c48bb7bcd",
+      "type": "alignment",
+      "status": "succeeded",
+      "output_refs": [
+        {
+          "stage_artifact_id": "e0d17d00-eb27-4933-ae69-bf5b262ee09f",
+          "plan_id": "3ac84b1a-f748-4074-8f49-f10f597accc4",
+          "plan_version_id": "a271e595-27cb-40bd-a1b0-5d6c5ccc0638",
+          "alignment_report_id": "6f3963d1-95bd-408f-9151-28979e75dc63"
+        }
+      ]
+    }
+  ],
+  "task_id": "07c42650-253c-4669-a8da-f1e1df1a1495",
+  "learning_unit_id": "63ac9140-a475-45db-88e4-c09fd3ba1d7e",
+  "goal_version_id": "09671877-6962-449d-b618-b16d647fe08e",
+  "limits": [
+    "合成任务验收不构成真实本人能力证明",
+    "真实模型与私有试用效果未验证"
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "source_database": "careerforge_v1_validation_20261012",
+  "restored_database": "careerforge_restore_validation_20261012",
+  "backup_bytes": 241144,
+  "backup_sha256": "62f53afce3f2962d23369cb30f308196fb110e0833b529d26d7a5976d499bf81",
+  "identical": true,
+  "table_count": 56,
+  "row_count": 430,
+  "original_database_overwritten": false,
+  "private_content_exposed": false
+}
