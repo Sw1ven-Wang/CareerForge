@@ -88,13 +88,15 @@ def result(row):
     return {"contract_artifact_id": str(row.id), "kind": row.kind, **row.payload}
 
 
-def add_capture(db, owner, source, snapshot, raw, value, legacy=False):
+def add_capture(db, owner, source, snapshot, raw, value, legacy=False, collected=None):
     capture_id = uuid4()
     job_id = uuid4()
-    provider = value.provider
+    provider = collected["channel"] if collected else value.provider
     try:
-        job, canonical, external, url, metadata = adapt(
-            provider, raw, value.title, value.employer_name
+        job, canonical, external, url, metadata = (
+            collected["adapted"]
+            if collected
+            else adapt(provider, raw, value.title, value.employer_name)
         )
     except (ValueError, TypeError, KeyError) as error:
         raise BusinessError(
@@ -110,7 +112,7 @@ def add_capture(db, owner, source, snapshot, raw, value, legacy=False):
         status = "unavailable"
     if status in {"unavailable", "metadata_only"}:
         canonical = ""
-    raw_bytes = raw.encode("utf-8")
+    raw_bytes = collected["raw_bytes"] if collected else raw.encode("utf-8")
     capture = {
         "schema_version": "careerforge.source_capture.v1",
         "source_capture_id": str(capture_id),
@@ -143,6 +145,15 @@ def add_capture(db, owner, source, snapshot, raw, value, legacy=False):
         "limits": {"max_raw_bytes": 1000000, "network_access": False},
         "error_kind": "source_unavailable" if status == "unavailable" else None,
     }
+    if collected:
+        capture.update(
+            ingest_method=collected["ingest_method"],
+            effective_url=collected["effective_url"],
+            raw_format=collected["raw_format"],
+            adapter_version=collected["adapter_version"],
+            capture_method="anonymous_public_fetch",
+            limits={"max_raw_bytes": 1000000, "network_access": True},
+        )
     db.add(
         Artifact(
             id=capture_id,
@@ -175,6 +186,8 @@ def add_capture(db, owner, source, snapshot, raw, value, legacy=False):
         "dedupe_group_id": None,
         "issues": ["原始字节不可恢复；当前仅保留历史规范文本，不进入正式分母"]
         if legacy
+        else ["公开岗位原文采集；在招状态以来源当次显示为准，要求仍需人工确认"]
+        if collected
         else ["离线适配器；字段为用户提交的已保存响应，不构成官方采集证明"],
     }
     normalized = JobPostingSnapshotV1.model_validate(

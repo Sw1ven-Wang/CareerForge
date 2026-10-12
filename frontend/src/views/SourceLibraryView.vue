@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CollectionPanel from '../components/CollectionPanel.vue'
 import JobContractPanel from '../components/JobContractPanel.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -189,6 +190,7 @@ async function remove(row: Row) {
 </script>
 <template>
   <section class="page-heading"><div><span class="eyebrow">SOURCE LIBRARY</span><h1>岗位资料与来源</h1><p>按岗位分类、来源分类逐级查看岗位，保留原文与版本。</p></div><div class="library-actions"><el-button v-if="!selectedSource" type="primary" @click="openCategory()">{{ selectedJob ? '＋ 添加来源分类' : '＋ 添加岗位分类' }}</el-button><el-button :type="selectedSource ? 'primary' : 'default'" @click="openImport">{{ selectedSource ? '＋ 添加岗位' : '导入资料' }}</el-button></div></section>
+  <CollectionPanel :job-category="selectedJob" @imported="load"/>
   <div class="library-toolbar"><el-select v-model="filter" placeholder="全部资料类型" clearable @change="goRoot(); load()"><el-option v-for="(label, value) in labels" :key="value" :label="label" :value="value" /></el-select><span>链接线索不计为已读正文</span></div>
   <nav class="library-path" aria-label="资料层级">
     <button type="button" :aria-current="!selectedJob ? 'page' : undefined" @click="goRoot">岗位分类</button>

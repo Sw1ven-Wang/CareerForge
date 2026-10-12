@@ -56,7 +56,7 @@ def sections(text: str) -> list[dict[str, Any]]:
             re.I,
         ):
             kind = "preferred"
-        elif re.search(r"任职|岗位要求|资格|requirements|qualifications|必须", body, re.I):
+        elif re.search(r"任职|岗位要求|职责要求|资格|requirements|qualifications|必须", body, re.I):
             kind = "qualification"
         elif re.search(r"职责|responsibilities|what.you.ll.do", body, re.I):
             kind = "responsibility"

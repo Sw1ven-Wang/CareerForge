@@ -610,3 +610,8 @@ app.include_router(job_data_router)
 from careerforge.api.routes.source_library import router as source_library_router  # noqa: E402
 
 app.include_router(source_library_router)
+
+
+from careerforge.api.routes.collection import router as collection_router  # noqa: E402
+
+app.include_router(collection_router)

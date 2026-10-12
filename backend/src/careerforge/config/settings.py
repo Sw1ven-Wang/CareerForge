@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     model_reasoning_effort: Literal["low"] = "low"
     model_max_output_tokens: int = Field(default=2048, ge=128, le=2048)
     real_agent_timeout_seconds: int = Field(default=120, ge=10, le=180)
+    tavily_api_key: SecretStr = Field(
+        default=SecretStr(""),
+        validation_alias=AliasChoices("CAREERFORGE_TAVILY_API_KEY", "TAVILY_API_KEY"),
+    )
     maintenance_enabled: bool = False
     redis_url: SecretStr = SecretStr("redis://127.0.0.1:56379/0")
 

@@ -5129,6 +5129,169 @@
           }
         }
       }
+    },
+    "/api/v1/collection/config": {
+      "get": {
+        "tags": [
+          "job-collection"
+        ],
+        "summary": "Config",
+        "operationId": "config_api_v1_collection_config_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/collection/skill": {
+      "get": {
+        "tags": [
+          "job-collection"
+        ],
+        "summary": "Skill",
+        "operationId": "skill_api_v1_collection_skill_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/collection/runs": {
+      "post": {
+        "tags": [
+          "job-collection"
+        ],
+        "summary": "Start",
+        "operationId": "start_api_v1_collection_runs_post",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CollectionInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "job-collection"
+        ],
+        "summary": "History",
+        "operationId": "history_api_v1_collection_runs_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/collection/runs/{run_id}": {
+      "get": {
+        "tags": [
+          "job-collection"
+        ],
+        "summary": "Result",
+        "operationId": "result_api_v1_collection_runs__run_id__get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5514,6 +5677,102 @@
           "text_hash"
         ],
         "title": "CitationInput"
+      },
+      "CollectionInput": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Query",
+            "default": "Agent 开发"
+          },
+          "channels": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "boss",
+                "nowcoder",
+                "liepin",
+                "tencent",
+                "baidu",
+                "bytedance",
+                "alibaba",
+                "meituan",
+                "jd",
+                "netease",
+                "kuaishou"
+              ]
+            },
+            "type": "array",
+            "maxItems": 11,
+            "minItems": 1,
+            "title": "Channels"
+          },
+          "urls": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "title": "Urls"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "manual",
+              "agent"
+            ],
+            "title": "Mode",
+            "default": "manual"
+          },
+          "job_category": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Job Category",
+            "default": "Agent 开发"
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 12.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "default": 6
+          },
+          "request_limit": {
+            "type": "integer",
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Request Limit",
+            "default": 30
+          },
+          "model_call_limit": {
+            "type": "integer",
+            "maximum": 3.0,
+            "minimum": 1.0,
+            "title": "Model Call Limit",
+            "default": 2
+          },
+          "allow_model_calls": {
+            "type": "boolean",
+            "title": "Allow Model Calls",
+            "default": false
+          },
+          "allow_search_api": {
+            "type": "boolean",
+            "title": "Allow Search Api",
+            "default": false
+          },
+          "refresh_existing": {
+            "type": "boolean",
+            "title": "Refresh Existing",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "CollectionInput"
       },
       "ConceptExpr": {
         "properties": {
