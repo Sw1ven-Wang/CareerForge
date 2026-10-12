@@ -7,6 +7,7 @@ from careerforge.application import job_contract_service as service
 from careerforge.application.source_service import get_snapshot
 from careerforge.config.settings import get_settings
 from careerforge.domain.errors import BusinessError, not_found
+from careerforge.schemas.job_agent import ExtractionRunInput
 from careerforge.schemas.job_contract import CaptureImport, ContextInput, FactRevision
 from careerforge.schemas.resources import Envelope
 
@@ -149,3 +150,24 @@ def alignment(
     )
     record.response_summary = {"run_id": str(run.id), "status": run.status, "version": run.version}
     return response(request, record.response_summary)
+
+
+@router.get("/agent-config", response_model=Envelope)
+def agent_config(request: Request, user: Authenticated):
+    from careerforge.application.job_agent_service import configuration
+
+    return response(request, configuration())
+
+
+@router.post("/extraction-runs", status_code=202, response_model=Envelope)
+def extraction(
+    body: ExtractionRunInput,
+    request: Request,
+    db: Database,
+    user: Authenticated,
+    key: IdempotencyKey,
+):
+    enabled()
+    from careerforge.application.job_agent_service import start
+
+    return response(request, start(db, user.id, body, key))

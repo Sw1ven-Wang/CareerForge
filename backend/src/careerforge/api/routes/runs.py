@@ -85,6 +85,8 @@ def result(db: Session, run: AgentRun) -> dict[str, Any]:
                     if k
                     in {
                         "market_report_id",
+                        "job_snapshot_id",
+                        "requirement_ids",
                         "alignment_report_id",
                         "plan_id",
                         "plan_version_id",

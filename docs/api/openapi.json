@@ -4831,6 +4831,86 @@
           }
         }
       }
+    },
+    "/api/v1/job-data/agent-config": {
+      "get": {
+        "tags": [
+          "job-data-contract"
+        ],
+        "summary": "Agent Config",
+        "operationId": "agent_config_api_v1_job_data_agent_config_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/job-data/extraction-runs": {
+      "post": {
+        "tags": [
+          "job-data-contract"
+        ],
+        "summary": "Extraction",
+        "operationId": "extraction_api_v1_job_data_extraction_runs_post",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExtractionRunInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5707,6 +5787,21 @@
           "quote"
         ],
         "title": "EvidenceSpan"
+      },
+      "ExtractionRunInput": {
+        "properties": {
+          "job_snapshot_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Job Snapshot Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "job_snapshot_id"
+        ],
+        "title": "ExtractionRunInput"
       },
       "FactRevision": {
         "properties": {

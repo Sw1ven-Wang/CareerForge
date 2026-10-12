@@ -98,17 +98,24 @@ def parse_stream(lines: list[str]) -> ModelResult:
 class OpenAICompatibleProvider:
     """Single adapter. Construction never sends requests; no automatic paid retries."""
 
-    def __init__(self, *, base_url: str, api_key: str, client: httpx.AsyncClient):
+    def __init__(
+        self, *, base_url: str, api_key: str, client: httpx.AsyncClient, timeout_seconds: float = 30
+    ):
         self._url = base_url.rstrip("/") + "/chat/completions"
         self._api_key = api_key
         self._client = client
+        self._timeout_seconds = timeout_seconds
 
     async def complete(self, request: ModelRequest) -> ModelResult:
         body: dict[str, Any] = {
             "model": request.model,
             "messages": [{"role": "user", "content": request.prompt}],
-            "max_tokens": request.max_output_tokens,
+            (
+                "max_completion_tokens" if request.reasoning_effort else "max_tokens"
+            ): request.max_output_tokens,
         }
+        if request.reasoning_effort is not None:
+            body["reasoning_effort"] = request.reasoning_effort
         if request.tools:
             body["tools"] = request.tools
         if request.response_schema is not None:
@@ -125,7 +132,7 @@ class OpenAICompatibleProvider:
                 self._url,
                 json=body,
                 headers={"Authorization": f"Bearer {self._api_key}"},
-                timeout=httpx.Timeout(30, connect=5),
+                timeout=httpx.Timeout(self._timeout_seconds, connect=5),
             )
         except httpx.TimeoutException:
             raise ModelError("timeout", retryable=True) from None
