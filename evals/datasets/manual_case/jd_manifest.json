@@ -1,0 +1,32 @@
+[
+  {
+    "id": "J105397",
+    "source_url": "https://talent.baidu.com/jobs/detail/INTERN/83a5dbcc-48a6-4356-b6d6-b4da9f0a2528",
+    "origin_type": "real",
+    "job_type": "INTERN",
+    "captured_at": "2026-10-12T04:08:16.325476+00:00",
+    "sha256": "3024f00131f6cfeb2cb7d3e5f41ffcaac539725a2742c193da3accebbed3d9af",
+    "read_status": "available",
+    "content_path": "jd/J105397.txt"
+  },
+  {
+    "id": "J99649",
+    "source_url": "https://talent.baidu.com/jobs/detail/INTERN/e3cec5b8-b7a3-4946-99fc-b292b749cd53",
+    "origin_type": "real",
+    "job_type": "INTERN",
+    "captured_at": "2026-10-12T04:08:16.552666+00:00",
+    "sha256": "921ad89ec81b2c792c2b69cbf282e71aa2128fa66cc6bee429f8aa1a228adc98",
+    "read_status": "available",
+    "content_path": "jd/J99649.txt"
+  },
+  {
+    "id": "J99560",
+    "source_url": "https://talent.baidu.com/jobs/detail/SOCIAL/75d3af47-7f79-4d71-862b-6fbca577bb19",
+    "origin_type": "real",
+    "job_type": "SOCIAL",
+    "captured_at": "2026-10-12T04:08:16.775736+00:00",
+    "sha256": "1085fdf49ca11de61729069ae5f8007cf11a8a501b5143c0b4f319b9bfb2bbfd",
+    "read_status": "available",
+    "content_path": "jd/J99560.txt"
+  }
+]

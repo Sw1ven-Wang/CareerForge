@@ -1,0 +1,15 @@
+{
+  "id": "synthetic-response",
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "message": {
+        "content": "offline text"
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 10,
+    "completion_tokens": 3
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "id": "synthetic-response",
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "message": {
+        "content": "offline text"
+      }
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+name: CareerForge checks
+on: [push, pull_request]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: careerforge
+          POSTGRES_PASSWORD: careerforge_dev
+          POSTGRES_DB: careerforge_test
+        ports: ["55432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U careerforge -d careerforge_test"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ["56379:6379"]
+    env:
+      CAREERFORGE_DATABASE_URL: postgresql+psycopg://careerforge:careerforge_dev@127.0.0.1:55432/careerforge_test?connect_timeout=5
+      TEST_DATABASE_URL: postgresql://careerforge:careerforge_dev@127.0.0.1:55432/careerforge_test?connect_timeout=5
+      TEST_REDIS_URL: redis://127.0.0.1:56379/15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with: { version: "0.12.5", python-version: "3.12" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "24", cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - run: uv sync --project backend --locked
+      - run: uv run --project backend alembic -c backend/alembic.ini upgrade head
+      - run: uv run --project backend alembic -c backend/alembic.ini check
+      - run: uv run --project backend ruff check --config backend/pyproject.toml backend/src backend/tests scripts
+      - run: uv run --project backend mypy --config-file backend/pyproject.toml backend/src/careerforge
+      - run: uv run --project backend pytest -c backend/pyproject.toml backend/tests -q
+      - run: uv run --project backend python scripts/export_openapi.py
+      - run: npm ci --prefix frontend
+      - run: npm --prefix frontend run api:generate
+      - run: git diff --exit-code -- docs/api/openapi.json frontend/src/types/generated_api.ts
+      - run: npm --prefix frontend run build
+      - run: uv run --project backend python scripts/validate_manual_case.py

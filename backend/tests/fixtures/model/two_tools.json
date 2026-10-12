@@ -1,0 +1,33 @@
+{
+  "id": "synthetic-response",
+  "choices": [
+    {
+      "finish_reason": "tool_calls",
+      "message": {
+        "content": null,
+        "tool_calls": [
+          {
+            "id": "call_0",
+            "type": "function",
+            "function": {
+              "name": "read_source",
+              "arguments": "{\"source_id\": \"synthetic-0\"}"
+            }
+          },
+          {
+            "id": "call_1",
+            "type": "function",
+            "function": {
+              "name": "read_source",
+              "arguments": "{\"source_id\": \"synthetic-1\"}"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 10,
+    "completion_tokens": 3
+  }
+}

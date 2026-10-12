@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "origin_type": "real",
+  "role_direction": "Agent开发",
+  "captured_at": "2026-10-12T04:11:06.357508+00:00",
+  "job_sources": [
+    {
+      "id": "J105397",
+      "source_url": "https://talent.baidu.com/jobs/detail/INTERN/83a5dbcc-48a6-4356-b6d6-b4da9f0a2528",
+      "origin_type": "real",
+      "job_type": "INTERN",
+      "captured_at": "2026-10-12T04:08:16.325476+00:00",
+      "sha256": "3024f00131f6cfeb2cb7d3e5f41ffcaac539725a2742c193da3accebbed3d9af",
+      "read_status": "available",
+      "content_path": "jd/J105397.txt"
+    },
+    {
+      "id": "J99649",
+      "source_url": "https://talent.baidu.com/jobs/detail/INTERN/e3cec5b8-b7a3-4946-99fc-b292b749cd53",
+      "origin_type": "real",
+      "job_type": "INTERN",
+      "captured_at": "2026-10-12T04:08:16.552666+00:00",
+      "sha256": "921ad89ec81b2c792c2b69cbf282e71aa2128fa66cc6bee429f8aa1a228adc98",
+      "read_status": "available",
+      "content_path": "jd/J99649.txt"
+    },
+    {
+      "id": "J99560",
+      "source_url": "https://talent.baidu.com/jobs/detail/SOCIAL/75d3af47-7f79-4d71-862b-6fbca577bb19",
+      "origin_type": "real",
+      "job_type": "SOCIAL",
+      "captured_at": "2026-10-12T04:08:16.775736+00:00",
+      "sha256": "1085fdf49ca11de61729069ae5f8007cf11a8a501b5143c0b4f319b9bfb2bbfd",
+      "read_status": "available",
+      "content_path": "jd/J99560.txt"
+    }
+  ],
+  "sample_scope": {
+    "internship_ids": [
+      "J105397",
+      "J99649"
+    ],
+    "social_reference_ids": [
+      "J99560"
+    ],
+    "employers": 1,
+    "generalization": "not evaluated"
+  },
+  "requirement": {
+    "source_id": "J105397",
+    "quote": "支持工作流节点编排、上下文传递、异常处理、状态追踪和执行结果归档",
+    "char_start": 355,
+    "char_end": 387,
+    "offset_unit": "Unicode code point; [start,end)",
+    "kind": "responsibility"
+  },
+  "personal_evidence": {
+    "provided_by": "user-authorized joblearn workspace",
+    "ability_verdict": "unknown",
+    "files": [
+      {
+        "source_path": "README.md",
+        "sha256": "62ee1e4b045142861e4cb3a67ccfb9580eecaacb4b824348150614e41129d4ac",
+        "snapshot_path": "private/manual_case/joblearn/README.md"
+      },
+      {
+        "source_path": "backend/app/services/import_service.py",
+        "sha256": "ae59237515441ddab2504d91a3a7f076b3f1874fef94f1623f8ce4bbb946bbae",
+        "snapshot_path": "private/manual_case/joblearn/backend/app/services/import_service.py"
+      },
+      {
+        "source_path": "backend/app/services/learning_path_service.py",
+        "sha256": "e1bf84351eb07797efd43b9c97062536dfe5449b8b9cffc7a8f8815c16d3d914",
+        "snapshot_path": "private/manual_case/joblearn/backend/app/services/learning_path_service.py"
+      },
+      {
+        "source_path": "backend/app/db/session.py",
+        "sha256": "e08f65c1fcf418308a00091e482829738699db460312c19106eccfdb3d0197fe",
+        "snapshot_path": "private/manual_case/joblearn/backend/app/db/session.py"
+      }
+    ],
+    "runtime_verified": false,
+    "authorship_verified": false
+  },
+  "reference_manifest": "reference_manifest.json",
+  "learning_objective": "为岗位研究任务提供持久化状态、事件与断线后结果展示",
+  "acceptance_criteria": [
+    {
+      "id": "manual-result",
+      "dimension": "performance",
+      "result": "not_executed"
+    },
+    {
+      "id": "manual-explanation",
+      "dimension": "explanation",
+      "result": "not_executed"
+    },
+    {
+      "id": "manual-transfer",
+      "dimension": "transfer",
+      "result": "not_executed"
+    }
+  ],
+  "real_model_validation": "deferred by user; offline only"
+}

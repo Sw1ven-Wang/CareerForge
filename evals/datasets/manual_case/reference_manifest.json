@@ -1,0 +1,22 @@
+{
+  "repository": "https://github.com/langchain-ai/langgraph",
+  "commit": "799c2f04fd3a56186e24e9fb8bbf3568e543cfbe",
+  "files": [
+    {
+      "path": "LICENSE",
+      "sha256": "d9bb52f2e3540d60ff50d8f0f5b6ba649b7fd346948c4c3d086c8afb120763c7",
+      "bytes": 1072
+    },
+    {
+      "path": "libs/langgraph/langgraph/types.py",
+      "sha256": "062583a1c0af9833477935a9a78d336408cc9a33c425722a1191e000d032107a",
+      "bytes": 37830
+    },
+    {
+      "path": "libs/checkpoint-postgres/langgraph/checkpoint/postgres/__init__.py",
+      "sha256": "d1701a76ca1df8a400fca6bcaa6a792a34f9745f41273543aa61bc687008d94f",
+      "bytes": 24219
+    }
+  ],
+  "coverage": "selected files only; imported source never executed"
+}

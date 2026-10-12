@@ -1,0 +1,46 @@
+name: careerforge
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: careerforge
+      POSTGRES_PASSWORD: careerforge_dev
+      POSTGRES_DB: careerforge_test
+    ports: ["127.0.0.1:55432:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U careerforge -d careerforge_test"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  redis:
+    image: redis:7-alpine
+    ports: ["127.0.0.1:56379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  migrate:
+    build: ./backend
+    environment:
+      CAREERFORGE_DATABASE_URL: postgresql+psycopg://careerforge:careerforge_dev@postgres:5432/careerforge_test?connect_timeout=5
+    command: ["alembic", "-c", "alembic.ini", "upgrade", "head"]
+    depends_on:
+      postgres: { condition: service_healthy }
+    profiles: ["app"]
+  api:
+    build: ./backend
+    environment:
+      CAREERFORGE_DATABASE_URL: postgresql+psycopg://careerforge:careerforge_dev@postgres:5432/careerforge_test?connect_timeout=5
+      CAREERFORGE_ALLOWED_ORIGINS: '["http://127.0.0.1:8080"]'
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    profiles: ["app"]
+  frontend:
+    build: ./frontend
+    ports: ["127.0.0.1:8080:80"]
+    depends_on: [api]
+    profiles: ["app"]
+volumes:
+  pgdata:

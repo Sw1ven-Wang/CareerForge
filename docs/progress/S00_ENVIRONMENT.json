@@ -1,0 +1,31 @@
+{
+  "captured_at": "2026-10-12T04:11:06.906450+00:00",
+  "os": "Windows-11-10.0.26200-SP0",
+  "python": "3.12.14",
+  "packages": {
+    "pydantic": "2.14.1",
+    "httpx": "0.28.1",
+    "fastapi": "0.143.0",
+    "sqlalchemy": "2.1.4",
+    "alembic": "1.20.0",
+    "psycopg": "3.3.6",
+    "redis": "6.4.0",
+    "celery": "5.6.3",
+    "langgraph": "1.2.14",
+    "langgraph-checkpoint-postgres": "3.1.2"
+  },
+  "node": {
+    "status": "available",
+    "version": "v24.12.0"
+  },
+  "uv": {
+    "status": "available",
+    "version": "uv 0.12.5 (210d1f678 2026-08-14 x86_64-pc-windows-msvc)"
+  },
+  "docker": {
+    "status": "available",
+    "version": "29.8.1"
+  },
+  "real_model_calls": 0,
+  "worker_runtime": "Linux container (required in S02)"
+}

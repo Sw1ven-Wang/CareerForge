@@ -1,0 +1,15 @@
+{
+  "id": "synthetic-response",
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "message": {
+        "content": "{\"status\": \"unknown\", \"evidence_ids\": []}"
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 10,
+    "completion_tokens": 3
+  }
+}
