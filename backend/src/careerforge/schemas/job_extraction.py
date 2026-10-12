@@ -27,6 +27,7 @@ class JobExtraction(InputModel):
 
 
 class MarketRunInput(InputModel):
+    analysis_mode: Literal["offline", "real_agent"] = "offline"
     goal_version_id: UUID
     source_snapshot_ids: list[UUID] = Field(min_length=1, max_length=20)
     retrieval_mode: Literal["import_only"] = "import_only"

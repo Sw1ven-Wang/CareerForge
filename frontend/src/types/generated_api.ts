@@ -1950,6 +1950,12 @@ export interface components {
         /** MarketRunInput */
         MarketRunInput: {
             /**
+             * Analysis Mode
+             * @default offline
+             * @enum {string}
+             */
+            analysis_mode: "offline" | "real_agent";
+            /**
              * Goal Version Id
              * Format: uuid
              */

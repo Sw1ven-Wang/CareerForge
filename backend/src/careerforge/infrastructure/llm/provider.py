@@ -3,7 +3,14 @@ from typing import Literal, Protocol
 from careerforge.schemas.model_io import ModelRequest, ModelResult
 
 ErrorCode = Literal[
-    "authentication", "rate_limited", "timeout", "unavailable", "invalid_response", "rejected"
+    "authentication",
+    "rate_limited",
+    "timeout",
+    "unavailable",
+    "invalid_response",
+    "rejected",
+    "output_limit",
+    "invalid_structured_json",
 ]
 
 

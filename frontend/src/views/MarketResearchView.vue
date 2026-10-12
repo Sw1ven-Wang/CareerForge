@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { api, apiPage, mutation } from '../api/client'
+import AgentAnalysisPanel from '../components/AgentAnalysisPanel.vue'
 import ContractDemandPanel from '../components/ContractDemandPanel.vue'
 import RunPanel from '../components/RunPanel.vue'
 import type { components } from '../types/generated_api'
@@ -12,7 +13,7 @@ type Requirement = Extraction & {posting_version_id:string;requirement_id:string
 type Goal = {goal_version_id:string;role_direction:string;job_type:string;regions:string[]}
 type Source = {source_id:string;title:string|null;source_type:string;read_status:string}
 type Snapshot = {source_snapshot_id:string;version_no:number;metadata:{source_type:string}}
-type Report = {goal_version_id:string;job_contract?:InstanceType<typeof ContractDemandPanel>['$props']['value'];market_report_id:string;generated_by_run_id:string;source_snapshot_ids:string[];
+type Report = {agent_analysis?:InstanceType<typeof AgentAnalysisPanel>['$props']['value'];goal_version_id:string;job_contract?:InstanceType<typeof ContractDemandPanel>['$props']['value'];market_report_id:string;generated_by_run_id:string;source_snapshot_ids:string[];
   input_summaries:{source_snapshot_id:string;source_type:string;title:string|null;read_status:string}[];eligible_posting_version_ids:string[];counts:Record<string,number>;warnings:string[];requirements:Requirement[];
   filters:{job_type:string;regions:string[]};
   skill_statistics:{skill_concept_id:string;numerator:number;denominator:number;ratio:number|null;supporting_posting_version_ids:string[];denominator_posting_version_ids:string[]}[];
@@ -23,6 +24,8 @@ type Report = {goal_version_id:string;job_contract?:InstanceType<typeof Contract
 type Candidate = {candidate_id:string;posting_version_ids:string[];reason:string;version:number;
  latest_decision:null|{decision_id:string;decision:string;reason:string}}
 const route=useRoute(), router=useRouter()
+const analysisMode=ref<'real_agent'|'offline'>('real_agent')
+const agentConfig=ref<{enabled:boolean;configured:boolean;model:string;max_output_tokens:number}|null>(null)
 const handoffNotice=ref(''), handledHandoff=ref('')
 const goals=ref<Goal[]>([]), goalId=ref(''), choices=ref<{id:string;label:string;kind:string}[]>([])
 const chosen=ref<string[]>([]), report=ref<Report|null>(null), runId=ref(''), busy=ref(false)
@@ -38,6 +41,7 @@ const typeNames:Record<string,string>={must:'必须项',preferred:'优先项',re
 const scopedJobCount=computed(()=>report.value?.eligible_posting_version_ids.length ?? 0)
 async function load() {
   try {
+    agentConfig.value=await api('/job-data/agent-config')
     goals.value=await api<Goal[]>('/career-goals?limit=100')
     if (!goalId.value) goalId.value=goals.value[0]?.goal_version_id ?? ''
     const rows:Source[]=[]; let cursor:string|null=null
@@ -90,7 +94,7 @@ async function start() {
   busy.value=true
   try {
     const run=await write<{run_id:string}>('/market-research-runs','POST',{
-      goal_version_id:goalId.value,source_snapshot_ids:chosen.value,retrieval_mode:'import_only',
+      analysis_mode:analysisMode.value,goal_version_id:goalId.value,source_snapshot_ids:chosen.value,retrieval_mode:'import_only',
       dedup_decision_ids:decisionIds.value,budget_profile:'development_small',source_queries:[],
     });runId.value=run.run_id;report.value=null
   } catch(e) {ElMessage.error(String(e))} finally {busy.value=false}
@@ -140,19 +144,21 @@ onMounted(load)
 </script>
 <template>
   <section class="page-heading"><div><span class="eyebrow">岗位材料 → 可核查的要求</span><h1>岗位要求分析</h1><p>每项要求都有原文，每个比例都有明确的岗位分母。</p></div></section>
-  <el-alert title="离线验证模式：规则产生候选，FakeModel 验证输出契约；未调用真实模型，不能据此评价模型提取质量。" type="warning" :closable="false" style="margin-bottom:20px"/>
+  <el-alert :title="analysisMode==='real_agent' ? `真实 Agent：${agentConfig?.model ?? '读取配置中'} · low。每份正文最多调用一次，上限 ${agentConfig?.max_output_tokens ?? 2048} 输出 token；失败不自动重试。` : '离线整理：使用已有规则候选与人工确认要求，不调用真实模型。'" type="info" :closable="false" style="margin-bottom:20px"/>
   <el-alert v-if="handoffNotice" :title="handoffNotice" type="success" :closable="false" style="margin-bottom:20px"/>
   <section class="table-card" style="padding:24px;margin-bottom:24px">
     <el-form label-position="top">
+      <el-form-item label="分析方式"><el-radio-group v-model="analysisMode"><el-radio-button value="real_agent">真实 Agent 分析</el-radio-button><el-radio-button value="offline">离线整理</el-radio-button></el-radio-group><p v-if="analysisMode==='real_agent' && agentConfig && (!agentConfig.enabled || !agentConfig.configured)">真实模型尚未启用或配置完整，请检查服务端配置。</p></el-form-item>
       <el-form-item label="职业目标的固定版本"><el-select v-model="goalId" @change="report=null;runId='';decisionIds=[];candidates=[];loadReports()"><el-option v-for="g in goals" :key="g.goal_version_id" :value="g.goal_version_id" :label="`${g.role_direction} · ${g.job_type} · ${g.regions.join('、') || '地区未限定'}`"/></el-select></el-form-item>
-      <el-form-item label="选择具体材料快照（最多 20 份，至少一份 JD）"><el-select v-model="chosen" multiple filterable :multiple-limit="20"><el-option v-for="s in choices" :key="s.id" :label="s.label" :value="s.id"/></el-select></el-form-item>
+      <el-form-item :label="analysisMode==='real_agent' ? '选择岗位正文（最多 5 份）' : '选择具体材料快照（最多 20 份，至少一份 JD）'"><el-select v-model="chosen" multiple filterable :multiple-limit="analysisMode==='real_agent'?5:20"><el-option v-for="s in choices" :key="s.id" :label="s.label" :value="s.id"/></el-select></el-form-item>
       <p>面经和个人材料只显示材料覆盖，不进入岗位分母。未读链接不能选择。</p><el-button link @click="router.push('/sources')">返回资料库选材 / 核对要求</el-button>
-      <el-button type="primary" :loading="busy" :disabled="!goalId || !chosen.length" @click="start">开始离线分析</el-button><el-button @click="load">刷新材料</el-button>
+      <el-button type="primary" :loading="busy" :disabled="!goalId || !chosen.length || (analysisMode==='real_agent' && (chosen.length>5 || !agentConfig?.enabled || !agentConfig?.configured))" @click="start">{{analysisMode==='real_agent'?'生成真实分析报告':'开始离线整理'}}</el-button><el-button @click="load">刷新材料</el-button>
     </el-form>
   </section>
   <section v-if="reports.length" style="margin-bottom:24px"><h2>已保存报告</h2><el-button v-for="r in reports" :key="r.market_report_id" @click="viewReport(r.market_report_id)">{{new Date(r.created_at).toLocaleString()}}</el-button><el-button v-if="nextReportCursor" @click="loadReports(true)">更早报告</el-button></section>
   <RunPanel v-if="runId" :key="runId" :run-id="runId" @changed="progress" />
   <section v-if="report" class="table-card" style="padding:20px;margin-top:20px"><h2>下一步：证据与学习计划</h2><p>将这份固定版本报告带入计划页，选择个人材料进行对齐，继续编辑已有计划。</p><el-button type="primary" @click="continueToPlan">将本报告用于学习计划</el-button></section>
+  <AgentAnalysisPanel v-if="report?.agent_analysis" :value="report.agent_analysis"/>
   <ContractDemandPanel v-if="report?.job_contract" :value="report.job_contract"/>
   <section v-if="report" class="table-card" style="padding:24px;margin-top:24px">
     <h2>本次样本与统计</h2><p>岗位类别：{{report.filters.job_type}} · 地区：{{report.filters.regions.join('、') || '未限定'}} · 同范围有效分母：{{scopedJobCount}}</p>

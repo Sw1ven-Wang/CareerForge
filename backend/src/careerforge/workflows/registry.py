@@ -65,3 +65,8 @@ from careerforge.application.collection_service import VERSION as COLLECTION_VER
 from careerforge.workflows.job_collection import execute as execute_collection  # noqa: E402
 
 WORKFLOWS[("market_research", COLLECTION_VERSION)] = execute_collection
+
+from careerforge.application.market_agent_service import VERSION as MARKET_AGENT_VERSION  # noqa: E402
+from careerforge.workflows.market_agent import execute as execute_market_agent  # noqa: E402
+
+WORKFLOWS[("market_research", MARKET_AGENT_VERSION)] = execute_market_agent

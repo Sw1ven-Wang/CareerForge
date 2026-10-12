@@ -11,6 +11,8 @@ from careerforge.schemas.model_io import ModelRequest, ModelResult, ToolCall, Us
 def parse_response(payload: dict[str, Any], *, structured: bool = False) -> ModelResult:
     try:
         choice = payload["choices"][0]
+        if structured and choice.get("finish_reason") == "length":
+            raise ModelError("output_limit", retryable=False)
         message = choice["message"]
         calls = []
         for call in message.get("tool_calls") or []:
@@ -27,7 +29,10 @@ def parse_response(payload: dict[str, Any], *, structured: bool = False) -> Mode
             status="known" if input_tokens is not None and output_tokens is not None else "unknown",
         )
         text = message.get("content") or ""
-        value = json.loads(text) if structured else None
+        try:
+            value = json.loads(text) if structured else None
+        except (TypeError, ValueError):
+            raise ModelError("invalid_structured_json", retryable=False) from None
         return ModelResult(
             provider="openai_compatible",
             request_id=payload.get("id"),

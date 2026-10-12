@@ -512,8 +512,21 @@ def start_market(db, owner, body, key):
                 "decision_id": str(decision.id),
             }
         )
+    version, budget = VERSION, 0
+    if body.analysis_mode == "real_agent":
+        from careerforge.application.market_agent_service import VERSION as agent_version
+        from careerforge.application.market_agent_service import freeze
+
+        manifest.update(freeze(jobs))
+        version, budget = agent_version, len(jobs)
     run = create_run(
-        db, owner, "market_research", VERSION, manifest, call_budget=0, goal_version_id=target.id
+        db,
+        owner,
+        "market_research",
+        version,
+        manifest,
+        call_budget=budget,
+        goal_version_id=target.id,
     )
     record.response_summary = {
         "run_id": str(run.id),
@@ -524,8 +537,11 @@ def start_market(db, owner, body, key):
     return record.response_summary
 
 
-def produce_report(db, run):
-    manifest = run.input_manifest
+def produce_report(db, run, extra_fact_ids=()):
+    manifest = {
+        **run.input_manifest,
+        "fact_ids": list(dict.fromkeys([*run.input_manifest["fact_ids"], *extra_fact_ids])),
+    }
     owner = run.owner_id
     existing = db.scalar(select(MarketReport).where(MarketReport.run_id == run.id))
     if existing:
@@ -719,7 +735,11 @@ def produce_report(db, run):
             "input_manifest": manifest,
             "facts": [f.model_dump(mode="json") for f in facts],
             "snapshots": [s.model_dump(mode="json") for s in snapshots],
-            "warnings": ["仅统计已确认的明确要求；规则覆盖有限，不能推断真实市场质量"],
+            "warnings": [
+                "仅统计已确认的明确要求；模型候选覆盖有限，不能推断真实市场质量"
+                if manifest.get("analysis_mode") == "real_agent"
+                else "仅统计已确认的明确要求；规则覆盖有限，不能推断真实市场质量"
+            ],
         },
     )
     db.add(row)

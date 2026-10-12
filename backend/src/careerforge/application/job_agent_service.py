@@ -114,6 +114,12 @@ experience.years, education.degree, graduation.year, location.allowed。
         {"taxonomy": CONCEPTS, "sections": [s.model_dump() for s in snapshot.document.sections]},
         ensure_ascii=False,
     )
+    if manifest.get("analysis_mode") == "real_agent":
+        prompt += (
+            "\n本次输出预算很小：最多提出 4 条最重要且依据充分的候选，"
+            "quote 尽量不超过 160 字；unresolved 最多 3 项。"
+            "优先输出完整可解析的 JSON，不追求覆盖全部岗位要求。"
+        )
     return ModelRequest(
         model=manifest["model"],
         prompt=prompt,
@@ -163,8 +169,10 @@ def validated_facts(snapshot, result):
     return facts, extraction.unresolved
 
 
-def save_facts(db, run, facts, unresolved, result):
-    row = read(db, run.owner_id, UUID(run.input_manifest["job_snapshot_id"]), "snapshot")
+def save_facts(db, run, facts, unresolved, result, job_snapshot_id=None):
+    row = read(
+        db, run.owner_id, UUID(job_snapshot_id or run.input_manifest["job_snapshot_id"]), "snapshot"
+    )
     for fact in facts:
         db.add(
             JobContractArtifact(

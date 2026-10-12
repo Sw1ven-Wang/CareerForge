@@ -6724,6 +6724,15 @@
       },
       "MarketRunInput": {
         "properties": {
+          "analysis_mode": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "real_agent"
+            ],
+            "title": "Analysis Mode",
+            "default": "offline"
+          },
           "goal_version_id": {
             "type": "string",
             "format": "uuid",

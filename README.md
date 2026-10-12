@@ -74,3 +74,5 @@ docker compose -f compose.yaml -f compose.offline.yaml --profile app up -d --no-
 跨站关键词发现可在本地 `.env` 配置 `CAREERFORGE_TAVILY_API_KEY`，重建容器后单独开启本轮搜索；当前未配置，也未调用该服务。BOSS、登录验证页及无可验证正文的动态页面返回明确限制。官网导航登记不等于所有官网已具备自动采集适配器。真实采集记录及可复用路径见 [岗位采集说明](docs/progress/JOB_COLLECTION.md)。
 
 资料库现可点击 **下一步：岗位要求分析** 选择正文并带入固定版本；报告可继续带入现有学习计划。操作与边界见 [资料库衔接说明](docs/progress/SOURCE_ANALYSIS_HANDOFF.md)。
+
+岗位要求分析已接入真实 Agent（供应商成功响应待验证）：[接入说明](docs/progress/REAL_MARKET_ANALYSIS.md)。
