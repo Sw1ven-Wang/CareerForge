@@ -2,6 +2,7 @@
 import CollectionPanel from '../components/CollectionPanel.vue'
 import JobContractPanel from '../components/JobContractPanel.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api, apiPage, mutation, uploadAttachment } from '../api/client'
 import type { components } from '../types/generated_api'
@@ -11,6 +12,8 @@ type Snapshot = { source_snapshot_id: string; version_no: number; metadata: Reco
 type Detail = Row & { source_url: string | null; snapshots: Snapshot[] }
 type SnapshotDetail = { content: string; metadata: Record<string, unknown>; content_hash: string; version_no: number }
 const labels: Record<string, string> = { job_posting: '岗位 JD', interview_experience: '面经', official_doc: '官方资料', user_note: '个人笔记' }
+const router = useRouter()
+const handoffDialog = ref(false), handoffBusy = ref(false), handoffIds = ref<string[]>([])
 const rows = ref<Row[]>([]), showImport = ref(false), busy = ref(false), filter = ref('')
 const detail = ref<Detail | null>(null), selectedSnapshot = ref(''), snapshot = ref<SnapshotDetail | null>(null)
 const correcting = ref(false), correction = reactive({ content: '', reason: '', source_type: '' })
@@ -116,6 +119,27 @@ const jobGroups = computed(() => rootCategories.value.map(item => ({ ...item, co
 const jobRows = computed(() => rows.value.filter(row => jobGroup(row) === selectedJob.value))
 const sourceGroups = computed(() => categories.value.filter(item => item.parent_id === currentRoot.value?.id).map(item => ({ ...item, count: jobRows.value.filter(row => sourceGroup(row) === item.name).length })))
 const visibleRows = computed(() => jobRows.value.filter(row => sourceGroup(row) === selectedSource.value))
+const handoffRows = computed(() => (selectedSource.value ? visibleRows.value : selectedJob.value ? jobRows.value : rows.value).filter(row => row.source_type === 'job_posting' && row.read_status === 'available'))
+function openHandoff() { handoffIds.value = []; handoffDialog.value = true }
+async function sendToAnalysis() {
+  handoffBusy.value = true
+  try {
+    const selected = handoffRows.value.filter(row => handoffIds.value.includes(row.source_id))
+    if (!selected.length || selected.length > 20) { ElMessage.warning('请选择 1–20 份正文可读的岗位 JD'); return }
+    const snapshots = await Promise.all(selected.map(async row => {
+      const current = await api<Detail>('/sources/' + row.source_id)
+      const latest = [...current.snapshots].sort((a,b) => b.version_no-a.version_no)[0]
+      if (!latest || latest.metadata.source_type !== 'job_posting') throw new Error('部分资料已变化，请刷新资料库后重新选择')
+      return latest.source_snapshot_id
+    }))
+    handoffDialog.value = false
+    await router.push({path:'/market',query:{snapshot:snapshots}})
+  } catch (error) { ElMessage.error(String(error)) }
+  finally { handoffBusy.value = false }
+}
+function analyzeSnapshot() {
+  if (snapshot.value && selectedSnapshot.value) void router.push({path:'/market',query:{snapshot:selectedSnapshot.value}})
+}
 function goRoot() { selectedJob.value = ''; selectedSource.value = '' }
 function chooseJob(name: string) { selectedJob.value = name; selectedSource.value = '' }
 async function load() {
@@ -189,7 +213,7 @@ async function remove(row: Row) {
 }
 </script>
 <template>
-  <section class="page-heading"><div><span class="eyebrow">SOURCE LIBRARY</span><h1>岗位资料与来源</h1><p>按岗位分类、来源分类逐级查看岗位，保留原文与版本。</p></div><div class="library-actions"><el-button v-if="!selectedSource" type="primary" @click="openCategory()">{{ selectedJob ? '＋ 添加来源分类' : '＋ 添加岗位分类' }}</el-button><el-button :type="selectedSource ? 'primary' : 'default'" @click="openImport">{{ selectedSource ? '＋ 添加岗位' : '导入资料' }}</el-button></div></section>
+  <section class="page-heading"><div><span class="eyebrow">SOURCE LIBRARY</span><h1>岗位资料与来源</h1><p>按岗位分类、来源分类逐级查看岗位，保留原文与版本。</p></div><div class="library-actions"><el-button :disabled="!handoffRows.length" @click="openHandoff">下一步：岗位要求分析</el-button><el-button v-if="!selectedSource" type="primary" @click="openCategory()">{{ selectedJob ? '＋ 添加来源分类' : '＋ 添加岗位分类' }}</el-button><el-button :type="selectedSource ? 'primary' : 'default'" @click="openImport">{{ selectedSource ? '＋ 添加岗位' : '导入资料' }}</el-button></div></section>
   <CollectionPanel :job-category="selectedJob" @imported="load"/>
   <div class="library-toolbar"><el-select v-model="filter" placeholder="全部资料类型" clearable @change="goRoot(); load()"><el-option v-for="(label, value) in labels" :key="value" :label="label" :value="value" /></el-select><span>链接线索不计为已读正文</span></div>
   <nav class="library-path" aria-label="资料层级">
@@ -234,11 +258,19 @@ async function remove(row: Row) {
     <template #footer><el-button @click="sourceDialog = false">取消</el-button><el-button type="primary" :loading="busy" @click="saveSourceEdit">保存岗位</el-button></template>
   </el-dialog>
   <el-dialog v-model="showImport" title="添加岗位与来源资料" width="640px"><el-form label-position="top"><el-form-item label="岗位分类"><el-select v-model="jobCategory" filterable allow-create default-first-option clearable placeholder="选择或输入岗位方向"><el-option v-for="name in [...new Set([...jobOptions, ...jobGroups.map(group => group.name)])]" :key="name" :label="name" :value="name"/></el-select></el-form-item><el-form-item label="来源分类"><el-select v-model="sourceCategory" filterable allow-create default-first-option clearable placeholder="留空时按来源链接归类"><el-option v-for="name in [...new Set([...sourceOptions, ...sourceNames])]" :key="name" :label="name" :value="name"/></el-select></el-form-item><el-form-item label="资料类型"><el-select v-model="form.source_type"><el-option v-for="(label, value) in labels" :key="value" :label="label" :value="value"/></el-select></el-form-item><template v-if="form.source_type==='job_posting' && form.import_mode==='text'"><el-form-item label="原文格式（仅导入保存的数据，不联网）"><el-select v-model="provider"><el-option v-for="v in ['manual_import','greenhouse','lever','ashby','json_ld']" :key="v" :value="v" :label="v"/></el-select></el-form-item><el-form-item label="招聘板 / 来源范围（有外部 ID 时填写）"><el-input v-model="boardScope"/></el-form-item><el-form-item label="公司（来源未提供时填写）"><el-input v-model="employer"/></el-form-item></template><el-form-item label="标题（可留空）"><el-input v-model="form.title"/></el-form-item><el-form-item label="原始链接（粘贴正文时可留空）"><el-input v-model="form.source_url" placeholder="https://…"/></el-form-item><el-form-item label="导入方式"><el-radio-group v-model="form.import_mode"><el-radio value="text">粘贴正文</el-radio><el-radio value="attachment">文本附件</el-radio><el-radio value="link_clue">只保存链接线索</el-radio></el-radio-group></el-form-item><el-form-item v-if="form.import_mode === 'text'" label="原文（最多 100,000 字符）"><el-input v-model="form.content" type="textarea" :rows="10" :maxlength="100000" show-word-limit/></el-form-item><el-form-item v-else-if="form.import_mode === 'attachment'" label="UTF-8 文本附件（最多 1 MiB）"><input type="file" accept=".txt,.md,.json,.log,.py,.xml" @change="selectAttachment" /></el-form-item><el-alert v-else type="info" :closable="false" title="仅保存链接，不自动读取，也不纳入 JD 统计。支持指定岗位和来源分类。"/></el-form><template #footer><el-button @click="showImport = false">取消</el-button><el-button type="primary" :loading="busy" @click="save">保存资料</el-button></template></el-dialog>
-  <el-drawer :model-value="!!detail" title="来源与版本" size="min(720px, 100vw)" @close="detail = null"><template v-if="detail"><h2>{{ detail.title || '未命名资料' }}</h2><p class="muted">{{ detail.source_url || '手动导入 · 未提供原链接' }}</p><el-select v-model="selectedSnapshot" placeholder="尚无正文快照" @change="readSnapshot"><el-option v-for="item in detail.snapshots" :key="item.source_snapshot_id" :label="`快照 v${item.version_no} · ${item.source_snapshot_id.slice(0, 8)}`" :value="item.source_snapshot_id"/></el-select><el-button @click="openSourceEdit(detail)">编辑岗位信息</el-button><el-button @click="correct">{{ snapshot ? '编辑正文（保留历史）' : '补充正文' }}</el-button><template v-if="snapshot"><div class="snapshot-meta"><el-tag>{{ labels[String(snapshot.metadata.source_type)] }}</el-tag><span>发布时间：{{ snapshot.metadata.published_at || '未知' }}</span></div><pre class="source-body">{{ snapshot.content }}</pre><small class="hash">SHA-256 {{ snapshot.content_hash }}</small></template><el-empty v-else description="链接已保存，正文未读取。可以补贴正文后继续。"/><JobContractPanel v-if="detail.source_type==='job_posting' && selectedSnapshot" :key="selectedSnapshot" :snapshot-id="selectedSnapshot"/></template></el-drawer>
+  <el-dialog v-model="handoffDialog" title="选择进入岗位分析的资料" width="min(720px,95vw)">
+    <p>当前范围：{{ selectedJob || '全部岗位分类' }}{{ selectedSource ? ' / ' + selectedSource : '' }}。选择 1–20 份 JD，下一页核对版本和职业目标后再开始分析。</p>
+    <el-alert title="仅列出正文可读的岗位 JD；面经和个人材料可在分析或计划页补选。模拟资料请按标题辨别，不会自动全选。" type="info" :closable="false"/>
+    <el-checkbox-group v-model="handoffIds" :max="20" class="handoff-choices"><el-checkbox v-for="row in handoffRows" :key="row.source_id" :value="row.source_id">{{ row.title || '未命名岗位' }} · {{ jobGroup(row) }} / {{ sourceGroup(row) }}</el-checkbox></el-checkbox-group>
+    <p>已选择 {{ handoffIds.length }} / 20 份；进入下一页时固定当前最新正文版本。</p>
+    <template #footer><el-button @click="handoffDialog=false">取消</el-button><el-button type="primary" :loading="handoffBusy" :disabled="!handoffIds.length" @click="sendToAnalysis">带入岗位要求分析</el-button></template>
+  </el-dialog>
+  <el-drawer :model-value="!!detail" title="来源与版本" size="min(720px, 100vw)" @close="detail = null"><template v-if="detail"><h2>{{ detail.title || '未命名资料' }}</h2><p class="muted">{{ detail.source_url || '手动导入 · 未提供原链接' }}</p><el-select v-model="selectedSnapshot" placeholder="尚无正文快照" @change="readSnapshot"><el-option v-for="item in detail.snapshots" :key="item.source_snapshot_id" :label="`快照 v${item.version_no} · ${item.source_snapshot_id.slice(0, 8)}`" :value="item.source_snapshot_id"/></el-select><el-button @click="openSourceEdit(detail)">编辑岗位信息</el-button><el-button v-if="detail.source_type==='job_posting' && snapshot" type="primary" @click="analyzeSnapshot">用此版本分析岗位要求</el-button><el-button @click="correct">{{ snapshot ? '编辑正文（保留历史）' : '补充正文' }}</el-button><template v-if="snapshot"><div class="snapshot-meta"><el-tag>{{ labels[String(snapshot.metadata.source_type)] }}</el-tag><span>发布时间：{{ snapshot.metadata.published_at || '未知' }}</span></div><pre class="source-body">{{ snapshot.content }}</pre><small class="hash">SHA-256 {{ snapshot.content_hash }}</small></template><el-empty v-else description="链接已保存，正文未读取。可以补贴正文后继续。"/><JobContractPanel v-if="detail.source_type==='job_posting' && selectedSnapshot" :key="selectedSnapshot" :snapshot-id="selectedSnapshot"/></template></el-drawer>
   <el-dialog v-model="correcting" title="保存新的来源快照" width="620px"><el-form label-position="top"><el-form-item label="资料类型"><el-select v-model="correction.source_type"><el-option v-for="(label, value) in labels" :key="value" :label="label" :value="value"/></el-select></el-form-item><el-form-item label="正文"><el-input v-model="correction.content" type="textarea" :rows="10" :maxlength="100000"/></el-form-item><el-form-item label="更正原因"><el-input v-model="correction.reason"/></el-form-item></el-form><template #footer><el-button type="primary" :loading="busy" @click="revise">保存新快照</el-button></template></el-dialog>
 </template>
 
 <style scoped>
+.handoff-choices{display:flex;flex-direction:column;gap:10px;margin:20px 0;max-height:380px;overflow:auto}.handoff-choices :deep(.el-checkbox){height:auto;white-space:normal;line-height:1.8}.handoff-choices :deep(.el-checkbox__label){white-space:normal}
 .library-path{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:0 0 22px;font-size:14px}
 .library-path button{border:0;background:none;padding:5px 0;color:#247968;cursor:pointer}
 .library-path button[aria-current="page"]{color:#253343;font-weight:600}

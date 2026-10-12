@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { api, apiPage, mutation } from '../api/client'
 import ContractDemandPanel from '../components/ContractDemandPanel.vue'
@@ -11,7 +12,7 @@ type Requirement = Extraction & {posting_version_id:string;requirement_id:string
 type Goal = {goal_version_id:string;role_direction:string;job_type:string;regions:string[]}
 type Source = {source_id:string;title:string|null;source_type:string;read_status:string}
 type Snapshot = {source_snapshot_id:string;version_no:number;metadata:{source_type:string}}
-type Report = {job_contract?:InstanceType<typeof ContractDemandPanel>['$props']['value'];market_report_id:string;generated_by_run_id:string;source_snapshot_ids:string[];
+type Report = {goal_version_id:string;job_contract?:InstanceType<typeof ContractDemandPanel>['$props']['value'];market_report_id:string;generated_by_run_id:string;source_snapshot_ids:string[];
   input_summaries:{source_snapshot_id:string;source_type:string;title:string|null;read_status:string}[];eligible_posting_version_ids:string[];counts:Record<string,number>;warnings:string[];requirements:Requirement[];
   filters:{job_type:string;regions:string[]};
   skill_statistics:{skill_concept_id:string;numerator:number;denominator:number;ratio:number|null;supporting_posting_version_ids:string[];denominator_posting_version_ids:string[]}[];
@@ -21,6 +22,8 @@ type Report = {job_contract?:InstanceType<typeof ContractDemandPanel>['$props'][
   dedup_groups:string[][]; regional_posting_groups:Record<string,string[]>}
 type Candidate = {candidate_id:string;posting_version_ids:string[];reason:string;version:number;
  latest_decision:null|{decision_id:string;decision:string;reason:string}}
+const route=useRoute(), router=useRouter()
+const handoffNotice=ref(''), handledHandoff=ref('')
 const goals=ref<Goal[]>([]), goalId=ref(''), choices=ref<{id:string;label:string;kind:string}[]>([])
 const chosen=ref<string[]>([]), report=ref<Report|null>(null), runId=ref(''), busy=ref(false)
 const reports=ref<{market_report_id:string;created_at:string}[]>([]), candidates=ref<Candidate[]>([])
@@ -47,8 +50,22 @@ async function load() {
       return detail.snapshots.map(s=>({id:s.source_snapshot_id,kind:s.metadata.source_type,
         label:`${row.title ?? '未命名材料'} · v${s.version_no} · ${s.metadata.source_type==='job_posting'?'JD':s.metadata.source_type==='interview_experience'?'面经':'非岗位材料'}`}))
     }))
-    choices.value=sourceDetails.flat(); await loadReports()
+    choices.value=sourceDetails.flat(); applyHandoff(); await loadReports()
   } catch(e) {ElMessage.error(String(e))}
+}
+function applyHandoff() {
+  const value=route.query.snapshot
+  if (!value || handledHandoff.value===route.fullPath || !choices.value.length) return
+  const requested=[...new Set((Array.isArray(value)?value:[value]).filter((id):id is string=>typeof id==='string'))]
+  const valid=new Set(choices.value.filter(item=>item.kind==='job_posting').map(item=>item.id))
+  chosen.value=requested.filter(id=>valid.has(id)).slice(0,20)
+  handledHandoff.value=route.fullPath
+  handoffNotice.value=`已从资料库带入 ${chosen.value.length} 份岗位正文的固定版本。请核对职业目标与材料后开始分析。`
+  if (requested.length!==chosen.value.length) ElMessage.warning('部分版本不可读、已撤销或超过 20 份，未带入；请重新核对资料')
+}
+watch(()=>route.query.snapshot,applyHandoff)
+function continueToPlan() {
+  if(report.value) void router.push({path:'/planning',query:{report:report.value.market_report_id}})
 }
 async function loadReports(more=false) {
   const page=await apiPage<{market_report_id:string;created_at:string}>('/market-reports?limit=20'+
@@ -58,6 +75,7 @@ async function loadReports(more=false) {
 async function viewReport(id:string) {
   try {
     report.value=await api<Report>(`/market-reports/${id}`)
+    goalId.value=report.value.goal_version_id
     runId.value=report.value.generated_by_run_id
     const all:Candidate[]=[]; let cursor:string|null=null
     do {
@@ -123,16 +141,18 @@ onMounted(load)
 <template>
   <section class="page-heading"><div><span class="eyebrow">岗位材料 → 可核查的要求</span><h1>岗位要求分析</h1><p>每项要求都有原文，每个比例都有明确的岗位分母。</p></div></section>
   <el-alert title="离线验证模式：规则产生候选，FakeModel 验证输出契约；未调用真实模型，不能据此评价模型提取质量。" type="warning" :closable="false" style="margin-bottom:20px"/>
+  <el-alert v-if="handoffNotice" :title="handoffNotice" type="success" :closable="false" style="margin-bottom:20px"/>
   <section class="table-card" style="padding:24px;margin-bottom:24px">
     <el-form label-position="top">
       <el-form-item label="职业目标的固定版本"><el-select v-model="goalId" @change="report=null;runId='';decisionIds=[];candidates=[];loadReports()"><el-option v-for="g in goals" :key="g.goal_version_id" :value="g.goal_version_id" :label="`${g.role_direction} · ${g.job_type} · ${g.regions.join('、') || '地区未限定'}`"/></el-select></el-form-item>
       <el-form-item label="选择具体材料快照（最多 20 份，至少一份 JD）"><el-select v-model="chosen" multiple filterable :multiple-limit="20"><el-option v-for="s in choices" :key="s.id" :label="s.label" :value="s.id"/></el-select></el-form-item>
-      <p>面经和个人材料只显示材料覆盖，不进入岗位分母。未读链接不能选择。</p>
+      <p>面经和个人材料只显示材料覆盖，不进入岗位分母。未读链接不能选择。</p><el-button link @click="router.push('/sources')">返回资料库选材 / 核对要求</el-button>
       <el-button type="primary" :loading="busy" :disabled="!goalId || !chosen.length" @click="start">开始离线分析</el-button><el-button @click="load">刷新材料</el-button>
     </el-form>
   </section>
   <section v-if="reports.length" style="margin-bottom:24px"><h2>已保存报告</h2><el-button v-for="r in reports" :key="r.market_report_id" @click="viewReport(r.market_report_id)">{{new Date(r.created_at).toLocaleString()}}</el-button><el-button v-if="nextReportCursor" @click="loadReports(true)">更早报告</el-button></section>
   <RunPanel v-if="runId" :key="runId" :run-id="runId" @changed="progress" />
+  <section v-if="report" class="table-card" style="padding:20px;margin-top:20px"><h2>下一步：证据与学习计划</h2><p>将这份固定版本报告带入计划页，选择个人材料进行对齐，继续编辑已有计划。</p><el-button type="primary" @click="continueToPlan">将本报告用于学习计划</el-button></section>
   <ContractDemandPanel v-if="report?.job_contract" :value="report.job_contract"/>
   <section v-if="report" class="table-card" style="padding:24px;margin-top:24px">
     <h2>本次样本与统计</h2><p>岗位类别：{{report.filters.job_type}} · 地区：{{report.filters.regions.join('、') || '未限定'}} · 同范围有效分母：{{scopedJobCount}}</p>
