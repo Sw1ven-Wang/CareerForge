@@ -28,7 +28,7 @@ services:
     command: ["alembic", "-c", "alembic.ini", "upgrade", "head"]
     depends_on:
       postgres: { condition: service_healthy }
-    profiles: ["app"]
+    profiles: ["app", "worker", "dispatcher"]
   api:
     build: ./backend
     environment:
@@ -37,6 +37,26 @@ services:
     depends_on:
       migrate: { condition: service_completed_successfully }
     profiles: ["app"]
+  worker:
+    build: ./backend
+    environment:
+      CAREERFORGE_DATABASE_URL: postgresql+psycopg://careerforge:careerforge_dev@postgres:5432/careerforge_test?connect_timeout=5
+      CAREERFORGE_REDIS_URL: redis://redis:6379/0
+    command: ["celery", "-A", "careerforge.infrastructure.queue.celery_app:app", "worker", "-Q", "careerforge", "--loglevel=INFO", "--concurrency=2", "--uid=65534"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+    profiles: ["app", "worker"]
+  dispatcher:
+    build: ./backend
+    environment:
+      CAREERFORGE_DATABASE_URL: postgresql+psycopg://careerforge:careerforge_dev@postgres:5432/careerforge_test?connect_timeout=5
+      CAREERFORGE_REDIS_URL: redis://redis:6379/0
+    command: ["python", "-m", "careerforge.infrastructure.queue.outbox_dispatcher"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+    profiles: ["app", "dispatcher"]
   frontend:
     build: ./frontend
     ports: ["127.0.0.1:8080:80"]

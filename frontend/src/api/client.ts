@@ -3,7 +3,7 @@ export function setCsrf(value: string) { csrfToken = value }
 export class ApiError extends Error {
   constructor(public status: number, public code: string, message: string) { super(message) }
 }
-export async function api<T>(path: string, method = 'GET', body?: unknown, key?: string): Promise<T> {
+async function request<T>(path: string, method = 'GET', body?: unknown, key?: string): Promise<{data: T; next_cursor?: string | null}> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   if (method !== 'GET') {
     if (csrfToken) headers['X-CSRF-Token'] = csrfToken
@@ -15,8 +15,12 @@ export async function api<T>(path: string, method = 'GET', body?: unknown, key?:
   const value = await response.json()
   if (!response.ok) throw new ApiError(response.status, value.error?.code ?? 'HTTP_ERROR',
     value.error?.message ?? '请求失败，请稍后再试。')
-  return value.data as T
+  return value as {data: T; next_cursor?: string | null}
 }
+export async function api<T>(path: string, method = 'GET', body?: unknown, key?: string): Promise<T> {
+  return (await request<T>(path, method, body, key)).data
+}
+export async function apiPage<T>(path: string) { return request<T[]>(path) }
 // Keep the key after an uncertain response; a changed payload is a different operation.
 export function mutation() {
   let previous = '', key = ''

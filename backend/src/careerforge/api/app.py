@@ -526,3 +526,8 @@ def citation_detail(
             "quote": snapshot.content[value.char_start : value.char_end],
         },
     )
+
+
+from careerforge.api.routes.runs import router as runs_router  # noqa: E402
+
+app.include_router(runs_router)

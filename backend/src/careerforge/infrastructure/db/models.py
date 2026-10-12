@@ -3,6 +3,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from sqlalchemy import (
+    CheckConstraint,
     DateTime,
     ForeignKey,
     ForeignKeyConstraint,
@@ -137,3 +138,115 @@ class Deletion(Timestamped, Base):
     owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
     source_id: Mapped[UUID] = mapped_column(ForeignKey("sources.id"))
     status: Mapped[str] = mapped_column(String(20), default="revoked")
+
+
+class AgentRun(Timestamped, Base):
+    __tablename__ = "agent_runs"
+    __table_args__ = (
+        UniqueConstraint("id", "owner_id"),
+        ForeignKeyConstraint(
+            ["goal_version_id", "owner_id"],
+            ["career_goal_versions.id", "career_goal_versions.owner_id"],
+        ),
+        CheckConstraint(
+            "call_budget >= 0 AND calls_reserved >= 0 AND calls_reserved <= call_budget",
+            name="ck_run_budget",
+        ),
+        CheckConstraint(
+            "status IN ('queued','running','waiting_user','succeeded',"
+            "'partially_succeeded','failed','budget_stopped','cancelled')",
+            name="ck_run_status",
+        ),
+    )
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    goal_version_id: Mapped[UUID | None]
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.clock_timestamp()
+    )
+    workflow_type: Mapped[str] = mapped_column(String(40))
+    workflow_version: Mapped[str] = mapped_column(String(80))
+    input_manifest: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    input_manifest_hash: Mapped[str] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(30), default="queued", index=True)
+    version: Mapped[int] = mapped_column(default=1)
+    epoch: Mapped[int] = mapped_column(default=0)
+    worker_id: Mapped[str | None] = mapped_column(String(100))
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    event_seq: Mapped[int] = mapped_column(default=0)
+    min_event_seq: Mapped[int] = mapped_column(default=1)
+    call_budget: Mapped[int] = mapped_column(default=3)
+    calls_reserved: Mapped[int] = mapped_column(default=0)
+
+
+class RunAttempt(Timestamped, Base):
+    __tablename__ = "run_attempts"
+    __table_args__ = (UniqueConstraint("run_id", "epoch"),)
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    run_id: Mapped[UUID] = mapped_column(ForeignKey("agent_runs.id"))
+    epoch: Mapped[int]
+    worker_id: Mapped[str] = mapped_column(String(100))
+
+
+class RunEvent(Timestamped, Base):
+    __tablename__ = "run_events"
+    run_id: Mapped[UUID] = mapped_column(ForeignKey("agent_runs.id"), primary_key=True)
+    seq: Mapped[int] = mapped_column(primary_key=True)
+    schema_version: Mapped[int] = mapped_column(default=1)
+    type: Mapped[str] = mapped_column(String(80))
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+
+
+class StageArtifact(Timestamped, Base):
+    __tablename__ = "stage_artifacts"
+    __table_args__ = (
+        UniqueConstraint("run_id", "stage_key", "input_fingerprint", "stage_version"),
+    )
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    run_id: Mapped[UUID] = mapped_column(ForeignKey("agent_runs.id"))
+    stage_key: Mapped[str] = mapped_column(String(100))
+    input_fingerprint: Mapped[str] = mapped_column(String(64))
+    stage_version: Mapped[str] = mapped_column(String(80))
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+
+
+class WaitRequest(Timestamped, Base):
+    __tablename__ = "wait_requests"
+    __table_args__ = (
+        UniqueConstraint(
+            "run_id", "stage_key", "input_fingerprint", "question_version", "wait_sequence"
+        ),
+        UniqueConstraint("id", "run_id"),
+    )
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    run_id: Mapped[UUID] = mapped_column(ForeignKey("agent_runs.id"))
+    stage_key: Mapped[str] = mapped_column(String(100))
+    input_fingerprint: Mapped[str] = mapped_column(String(64))
+    question_version: Mapped[str] = mapped_column(String(80))
+    wait_sequence: Mapped[int] = mapped_column(default=1)
+    question: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    response_schema: Mapped[dict[str, Any]] = mapped_column(JSONB)
+
+
+class ResumeDecision(Timestamped, Base):
+    __tablename__ = "resume_decisions"
+    wait_request_id: Mapped[UUID] = mapped_column(ForeignKey("wait_requests.id"), primary_key=True)
+    response: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    response_hash: Mapped[str] = mapped_column(String(64))
+
+
+class OutboxMessage(Timestamped, Base):
+    __tablename__ = "outbox_messages"
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    run_id: Mapped[UUID] = mapped_column(ForeignKey("agent_runs.id"), index=True)
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class ModelCallReceipt(Timestamped, Base):
+    __tablename__ = "model_call_receipts"
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    run_id: Mapped[UUID] = mapped_column(ForeignKey("agent_runs.id"))
+    epoch: Mapped[int]
+    request_hash: Mapped[str] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(30), default="reserved")
+    usage: Mapped[dict[str, Any] | None] = mapped_column(JSONB)

@@ -37,7 +37,7 @@ def parse_response(payload: dict[str, Any], *, structured: bool = False) -> Mode
             finish_reason=choice["finish_reason"],
             usage=usage,
         )
-    except (KeyError, IndexError, TypeError, ValueError, ValidationError):
+    except (AttributeError, KeyError, IndexError, TypeError, ValueError, ValidationError):
         raise ModelError("invalid_response", retryable=False) from None
 
 

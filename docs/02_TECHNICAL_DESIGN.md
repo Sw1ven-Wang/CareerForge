@@ -140,7 +140,7 @@ Python 对象依赖顺序为 API/Workflow → Application → Domain；基础设
 | OutboxMessage | run_id、dispatch_seq、available_at、状态、投递尝试 | 业务创建与待投递通知同事务 |
 | RunEvent | run_id、seq、schema_version、type、payload、created_at | 页面断线后可以回放的业务事件 |
 | ModelCallReceipt | run_id、stage_key、call_id、attempt、provider_request_id、used/reserved、usage_status | 外部调用的用量和未知结果独立记账 |
-| WaitRequest | run_id、stage_key、input_fingerprint、question_version、wait_sequence、question、schema_hash | 稳定业务等待身份；当前 generation 的 runtime interrupt 只映射到此记录 |
+| WaitRequest | run_id、stage_key、input_fingerprint、question_version、wait_sequence、question、schema_hash | 稳定业务等待身份；问题与响应 schema 同事务冻结 |
 | ResumeDecision | wait_request_id、payload_hash、payload、input_manifest_hash、accepted_at | 一个等待只接受一个决定；重试按稳定业务等待身份复用，不依赖进程内位置 |
 | IdempotencyRecord | owner_id、operation、key、request_hash、response_code、response_refs、response_summary | 复用前重新检查引用授权；不缓存含私人正文的完整响应 |
 
@@ -186,8 +186,8 @@ R2/S11 的多人试用使用普通登录与服务端会话：密码由成熟密�
 | --- | --- | --- |
 | queued | running、cancelled | 获得租约，或用户取消 |
 | running | waiting_user、succeeded、partially_succeeded、failed、budget_stopped、cancelled | 满足各阶段条件；图调用返回不自动等于成功 |
-| running 且租约失效 | queued | 恢复扫描撤销旧 epoch，准备新的图 generation 和投递 |
-| waiting_user | queued、cancelled | 有效 interrupt 回复被保存，或取消 |
+| running 且租约失效 | queued | 恢复扫描撤销旧 epoch，准备阶段重放和投递 |
+| waiting_user | queued、cancelled | 有效等待回复被保存，或取消 |
 | 终态 | 不直接恢复 | 需要新 run；用户等待恢复与终态重新运行是不同接口语义 |
 
 `partially_succeeded` 只用于允许局部缺失的产物，例如部分来源无法读取，但剩余材料足以形成带覆盖说明的报告。验收材料不足不能被包装为确定性的能力通过。
