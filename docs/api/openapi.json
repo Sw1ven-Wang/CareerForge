@@ -5072,6 +5072,30 @@
       },
       "CaptureImport": {
         "properties": {
+          "job_category": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Category"
+          },
+          "source_category": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Category"
+          },
           "provider": {
             "type": "string",
             "enum": [
@@ -6165,6 +6189,30 @@
       },
       "MetadataOverride": {
         "properties": {
+          "job_category": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Category"
+          },
+          "source_category": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Category"
+          },
           "source_type": {
             "anyOf": [
               {
@@ -7018,6 +7066,30 @@
       },
       "SourceImport": {
         "properties": {
+          "job_category": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Category"
+          },
+          "source_category": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Category"
+          },
           "source_type": {
             "type": "string",
             "enum": [

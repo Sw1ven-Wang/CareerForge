@@ -322,6 +322,8 @@ def import_capture(db, owner, value, key):
         metadata_values={
             "source_type": "job_posting",
             "title": source.title,
+            "job_category": value.job_category,
+            "source_category": value.source_category,
             "declared_provenance": "用户提供的离线来源响应；不是平台联网采集",
         },
     )

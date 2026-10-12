@@ -47,6 +47,8 @@ Precision = Literal["exact", "date_only", "approximate", "unknown"]
 
 
 class SourceImport(InputModel):
+    job_category: str | None = Field(default=None, max_length=100)
+    source_category: str | None = Field(default=None, max_length=100)
     source_type: SourceType
     title: str | None = Field(default=None, max_length=500)
     source_url: str | None = Field(default=None, max_length=4000)
@@ -78,6 +80,8 @@ class SourceImport(InputModel):
 
 
 class MetadataOverride(InputModel):
+    job_category: str | None = Field(default=None, max_length=100)
+    source_category: str | None = Field(default=None, max_length=100)
     source_type: SourceType | None = None
     title: str | None = Field(default=None, max_length=500)
     source_name: str | None = Field(default=None, max_length=500)

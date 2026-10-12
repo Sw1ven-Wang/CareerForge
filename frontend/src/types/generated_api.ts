@@ -1364,6 +1364,10 @@ export interface components {
         };
         /** CaptureImport */
         CaptureImport: {
+            /** Job Category */
+            job_category?: string | null;
+            /** Source Category */
+            source_category?: string | null;
             /**
              * Provider
              * @default manual_import
@@ -1746,6 +1750,10 @@ export interface components {
         };
         /** MetadataOverride */
         MetadataOverride: {
+            /** Job Category */
+            job_category?: string | null;
+            /** Source Category */
+            source_category?: string | null;
             /** Source Type */
             source_type?: ("job_posting" | "interview_experience" | "official_doc" | "user_note") | null;
             /** Title */
@@ -2037,6 +2045,10 @@ export interface components {
         };
         /** SourceImport */
         SourceImport: {
+            /** Job Category */
+            job_category?: string | null;
+            /** Source Category */
+            source_category?: string | null;
             /**
              * Source Type
              * @enum {string}

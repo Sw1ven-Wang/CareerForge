@@ -315,6 +315,8 @@ def validate_requirement_against_snapshot(
 
 
 class CaptureImport(ContractModel):
+    job_category: str | None = Field(default=None, max_length=100)
+    source_category: str | None = Field(default=None, max_length=100)
     provider: Literal["manual_import", "greenhouse", "lever", "ashby", "json_ld"] = "manual_import"
     source_url: str | None = None
     board_scope: str | None = Field(default=None, max_length=200)

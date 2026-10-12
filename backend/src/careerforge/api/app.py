@@ -384,12 +384,27 @@ def sources(
     elif read_status is not None:
         raise BusinessError(422, "INVALID_FILTER", "可读状态筛选无效。")
     rows, following = paginate(query, Source, db, cursor, limit)
+    metadata = {
+        source_id: values
+        for source_id, values in db.execute(
+            select(SourceSnapshot.source_id, SourceSnapshot.metadata_values)
+            .where(
+                SourceSnapshot.owner_id == user.id,
+                SourceSnapshot.source_id.in_([row.id for row in rows]),
+            )
+            .distinct(SourceSnapshot.source_id)
+            .order_by(SourceSnapshot.source_id, SourceSnapshot.version_no.desc())
+        )
+    }
     return envelope(
         request,
         [
             {
                 "source_id": str(row.id),
                 "source_type": row.source_type,
+                "source_url": row.source_url,
+                "job_category": metadata.get(row.id, {}).get("job_category"),
+                "source_category": metadata.get(row.id, {}).get("source_category"),
                 "title": row.title,
                 "version": row.revision,
                 "created_at": row.created_at.isoformat(),
