@@ -28,3 +28,9 @@ def execute_registered(run_id: UUID, worker: str) -> None:
         run = leased(db, run_id, epoch, worker)
         event(db, run, "workflow.incompatible", {"workflow_version": run.workflow_version})
         transition(db, run, "failed")
+
+
+from careerforge.application.market_report_service import VERSION as MARKET_VERSION  # noqa: E402
+from careerforge.workflows.market_research.workflow import execute as execute_market  # noqa: E402
+
+WORKFLOWS[("market_research", MARKET_VERSION)] = execute_market

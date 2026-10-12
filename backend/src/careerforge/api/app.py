@@ -22,6 +22,7 @@ from careerforge.api.dependencies import (
     IdempotencyKey,
     require_origin,
 )
+from careerforge.application.attachment_service import available as available_attachment
 from careerforge.application.common import digest
 from careerforge.application.goal_service import get_goal, goal_result, save_goal
 from careerforge.application.source_service import (
@@ -65,6 +66,22 @@ app.add_middleware(
     allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["Content-Type", "Idempotency-Key", "X-CSRF-Token"],
 )
+
+
+def source_read_status(db: Session, source: Source) -> str:
+    snapshot = latest(db, source)
+    if snapshot is None:
+        return "unread"
+    if snapshot.attachment_id:
+        try:
+            available_attachment(db, source.owner_id, snapshot.attachment_id)
+        except BusinessError as error:
+            if error.status == 404:
+                return "revoked"
+            raise
+    return "available"
+
+
 hasher = PasswordHasher()
 dummy_hash = hasher.hash("dummy-auth-timing-password")
 
@@ -376,7 +393,7 @@ def sources(
                 "title": row.title,
                 "version": row.revision,
                 "created_at": row.created_at.isoformat(),
-                "read_status": "available" if latest(db, row) else "unread",
+                "read_status": source_read_status(db, row),
             }
             for row in rows
         ],
@@ -402,7 +419,7 @@ def source_detail(
             "source_type": source.source_type,
             "title": source.title,
             "version": source.revision,
-            "read_status": "available" if snapshots else "unread",
+            "read_status": source_read_status(db, source),
             "snapshots": [
                 {
                     "source_snapshot_id": str(row.id),
@@ -531,3 +548,11 @@ def citation_detail(
 from careerforge.api.routes.runs import router as runs_router  # noqa: E402
 
 app.include_router(runs_router)
+
+from careerforge.api.routes.attachments import router as attachments_router  # noqa: E402
+
+app.include_router(attachments_router)
+
+from careerforge.api.routes.market_reports import router as market_router  # noqa: E402
+
+app.include_router(market_router)

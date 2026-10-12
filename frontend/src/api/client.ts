@@ -32,3 +32,12 @@ export function mutation() {
     return result
   }
 }
+
+export async function uploadAttachment(file: File, purpose = 'source', key = crypto.randomUUID()) {
+  const data = new FormData(); data.append('file', file); data.append('purpose', purpose)
+  const response = await fetch('/api/v1/attachments', {method:'POST', credentials:'same-origin',
+    headers:{'X-CSRF-Token':csrfToken,'Idempotency-Key':key}, body:data})
+  const value = await response.json()
+  if (!response.ok) throw new ApiError(response.status,value.error?.code ?? 'HTTP_ERROR',value.error?.message ?? '上传失败')
+  return value.data as {attachment_id:string; name:string; read_status:string}
+}

@@ -1,0 +1,866 @@
+{
+  "market_report_id": "0f33af7c-9632-4ee7-8ccf-e92c6ee79597",
+  "counts": {
+    "raw": 4,
+    "readable": 4,
+    "deduplicated": 3,
+    "job_postings": 3,
+    "other_material": 1,
+    "extraction_completed": 3,
+    "interview_experience": 0,
+    "unresolved_duplicates": 0
+  },
+  "filters": {
+    "regions": [],
+    "job_type": "internship"
+  },
+  "warnings": [
+    "离线规则候选 + FakeModel 契约验证；未验证真实模型质量。",
+    "未决去重项仍可能重复。",
+    "时间缺失保留未知；工具名不代表能力已掌握。"
+  ],
+  "dedup_groups": [
+    [
+      "10ff9402-87b9-49dc-9c95-abe2fa2c565f"
+    ],
+    [
+      "6842f5cb-0ee4-4cd6-be2a-73b52c53f025"
+    ],
+    [
+      "a7380454-7293-418f-86cd-522c79c2b76c"
+    ]
+  ],
+  "dedup_policy": "source_or_canonical_url_or_exact_hash_then_selected_decisions",
+  "observations": [
+    {
+      "text": "技能出现率仅描述本次已读、提取完成且符合范围的样本。",
+      "limitations": [
+        "非市场占比或录用概率"
+      ],
+      "citation_ids": []
+    }
+  ],
+  "requirements": [
+    {
+      "text": "-参与各类提效Agent开发",
+      "origin": "explicit",
+      "char_end": 103,
+      "citation": {
+        "char_end": 103,
+        "source_id": "14b714df-a88b-4bd8-935e-1c229d8d2c7d",
+        "text_hash": "b789b4ab7addebef1d9d34310660381f428521914bc7532fe3701517c326ce8d",
+        "char_start": 89,
+        "citation_id": "9555263d-57d2-4548-b0f3-82920be4fcab",
+        "source_snapshot_id": "2ebb0090-d8f8-4bd1-92f6-4f1314fbd9dc"
+      },
+      "char_start": 89,
+      "skill_kind": "capability",
+      "collection_id": "84049f02-5d88-4bec-8b3c-6db32af166bb",
+      "logical_group": null,
+      "requirement_id": "bb49ba29-54af-40c9-a795-b324f493da1c",
+      "normalized_skill": "agent",
+      "requirement_type": "responsibility",
+      "collection_version": 1,
+      "posting_version_id": "10ff9402-87b9-49dc-9c95-abe2fa2c565f",
+      "supersedes_requirement_id": null
+    },
+    {
+      "text": "-需求、研发、测试各类领域agent开发",
+      "origin": "explicit",
+      "char_end": 124,
+      "citation": {
+        "char_end": 124,
+        "source_id": "14b714df-a88b-4bd8-935e-1c229d8d2c7d",
+        "text_hash": "1a4897c398a8b6adc805a32d1388303e8c284600d1ac0d9145484613ec7ee6af",
+        "char_start": 104,
+        "citation_id": "ece043b5-1fd7-42e0-b103-37aa96222260",
+        "source_snapshot_id": "2ebb0090-d8f8-4bd1-92f6-4f1314fbd9dc"
+      },
+      "char_start": 104,
+      "skill_kind": "capability",
+      "collection_id": "84049f02-5d88-4bec-8b3c-6db32af166bb",
+      "logical_group": null,
+      "requirement_id": "478f63c3-b70b-4d8a-bb14-f3f46a254cf8",
+      "normalized_skill": "agent",
+      "requirement_type": "responsibility",
+      "collection_version": 1,
+      "posting_version_id": "10ff9402-87b9-49dc-9c95-abe2fa2c565f",
+      "supersedes_requirement_id": null
+    },
+    {
+      "text": "-参与效果评估体系搭建",
+      "origin": "explicit",
+      "char_end": 195,
+      "citation": {
+        "char_end": 195,
+        "source_id": "14b714df-a88b-4bd8-935e-1c229d8d2c7d",
+        "text_hash": "72e211cc90ce53297b72308a79ee1fe704fe825469bb388d60cf6f9ae884f890",
+        "char_start": 184,
+        "citation_id": "4d47dd2e-4391-4b39-b5bc-818698d4a0e4",
+        "source_snapshot_id": "2ebb0090-d8f8-4bd1-92f6-4f1314fbd9dc"
+      },
+      "char_start": 184,
+      "skill_kind": "capability",
+      "collection_id": "84049f02-5d88-4bec-8b3c-6db32af166bb",
+      "logical_group": null,
+      "requirement_id": "576a671d-deb3-47f3-aa78-0c6f78cbfc90",
+      "normalized_skill": "evaluation",
+      "requirement_type": "responsibility",
+      "collection_version": 1,
+      "posting_version_id": "10ff9402-87b9-49dc-9c95-abe2fa2c565f",
+      "supersedes_requirement_id": null
+    },
+    {
+      "text": "-协助设计和实现自动化评估能力，包括工作流执行结果评估、节点质量评估、模型输出质量评估、人工反馈采集等",
+      "origin": "explicit",
+      "char_end": 247,
+      "citation": {
+        "char_end": 247,
+        "source_id": "14b714df-a88b-4bd8-935e-1c229d8d2c7d",
+        "text_hash": "ac744900b489563e4ac6534347bd9ec1cf00211c9c8cb67407810647e107fe01",
+        "char_start": 196,
+        "citation_id": "8bed1d04-6017-42cb-bbe2-5d7470f130c7",
+        "source_snapshot_id": "2ebb0090-d8f8-4bd1-92f6-4f1314fbd9dc"
+      },
+      "char_start": 196,
+      "skill_kind": "capability",
+      "collection_id": "84049f02-5d88-4bec-8b3c-6db32af166bb",
+      "logical_group": null,
+      "requirement_id": "02a0699c-b753-41b0-b6e5-131d72909b14",
+      "normalized_skill": "evaluation",
+      "requirement_type": "responsibility",
+      "collection_version": 1,
+      "posting_version_id": "10ff9402-87b9-49dc-9c95-abe2fa2c565f",
+      "supersedes_requirement_id": null
+    },
+    {
+      "text": "-支持构建评估样本、Golden Sample、评分规则和评估报告，提升框架可量化分析能力",
+      "origin": "explicit",
+      "char_end": 293,
+      "citation": {
+        "char_end": 293,
+        "source_id": "14b714df-a88b-4bd8-935e-1c229d8d2c7d",
+        "text_hash": "f64ed0fdb3d0ea1722ede261f6606ad03e2d054d76c58e49f82bf8bf68c6c421",
+        "char_start": 248,
+        "citation_id": "eab3c5f0-8fa5-4b32-aa96-a0d42367625e",
+        "source_snapshot_id": "2ebb0090-d8f8-4bd1-92f6-4f1314fbd9dc"
+      },
+      "char_start": 248,
+      "skill_kind": "capability",
+      "collection_id": "84049f02-5d88-4bec-8b3c-6db32af166bb",
+      "logical_group": null,
+      "requirement_id": "c8db4aeb-5045-46f9-99d2-977238bc8953",
+      "normalized_skill": "evaluation",
+      "requirement_type": "responsibility",
+      "collection_version": 1,
+      "posting_version_id": "10ff9402-87b9-49dc-9c95-abe2fa2c565f",
+      "supersedes_requirement_id": null
+    },
+    {
+      "text": "-协助设计、配置和调试自动化工作流，包括质量扫描、自动评估、问题归因、报告生成、回归验证等流程",
+      "origin": "explicit",
+      "char_end": 353,
+      "citation": {
+        "char_end": 353,
+        "source_id": "14b714df-a88b-4bd8-935e-1c229d8d2c7d",
+        "text_hash": "5d72aa4b268b6b5860e5ae70b1f30a4164c46f5864d5a84f472712551037ab04",
+        "char_start": 306,
+        "citation_id": "76ff3f8e-98ee-4d94-8cc2-cc762a9d1cc4",
+        "source_snapshot_id": "2ebb0090-d8f8-4bd1-92f6-4f1314fbd9dc"
+      },
+      "char_start": 306,
+      "skill_kind": "capability",
+      "collection_id": "84049f02-5d88-4bec-8b3c-6db32af166bb",
+      "logical_group": null,
+      "requirement_id": "7dbbbabf-1c51-467a-aa71-8a6858b22bd7",
+      "normalized_skill": "evaluation",
+      "requirement_type": "responsibility",
+      "collection_version": 1,
+      "posting_version_id": "10ff9402-87b9-49dc-9c95-abe2fa2c565f",
+      "supersedes_requirement_id": null
+    },
+    {
+      "text": "-支持工作流节点编排、上下文传递、异常处理、状态追踪和执行结果归档",
+      "origin": "explicit",
+      "char_end": 387,
+      "citation": {
+        "char_end": 387,
+        "source_id": "14b714df-a88b-4bd8-935e-1c229d8d2c7d",
+        "text_hash": "977683d43bc4b813ca0d548919e6c1743800e78fad9f0e4280af7e6eb0c21ee9",
+        "char_start": 354,
+        "citation_id": "bbc2dff2-a8d0-46c5-88fb-f6fd76fae7e5",
+        "source_snapshot_id": "2ebb0090-d8f8-4bd1-92f6-4f1314fbd9dc"
+      },
+      "char_start": 354,
+      "skill_kind": "capability",
+      "collection_id": "84049f02-5d88-4bec-8b3c-6db32af166bb",
+      "logical_group": null,
+      "requirement_id": "dd00447a-1fec-4fc3-9ba9-729fd30d155a",
+      "normalized_skill": "workflow_state",
+      "requirement_type": "responsibility",
+      "collection_version": 1,
+      "posting_version_id": "10ff9402-87b9-49dc-9c95-abe2fa2c565f",
+      "supersedes_requirement_id": null
+    },
+    {
+      "text": "-支持工作流节点编排、上下文传递、异常处理、状态追踪和执行结果归档",
+      "origin": "explicit",
+      "char_end": 387,
+      "citation": {
+        "char_end": 387,
+        "source_id": "14b714df-a88b-4bd8-935e-1c229d8d2c7d",
+        "text_hash": "977683d43bc4b813ca0d548919e6c1743800e78fad9f0e4280af7e6eb0c21ee9",
+        "char_start": 354,
+        "citation_id": "b80c9be8-a53b-4d71-a07a-d8bc53faa166",
+        "source_snapshot_id": "2ebb0090-d8f8-4bd1-92f6-4f1314fbd9dc"
+      },
+      "char_start": 354,
+      "skill_kind": "capability",
+      "collection_id": "84049f02-5d88-4bec-8b3c-6db32af166bb",
+      "logical_group": null,
+      "requirement_id": "62f3af7e-b532-4111-910a-1a2e951236e7",
+      "normalized_skill": "exception_handling",
+      "requirement_type": "responsibility",
+      "collection_version": 1,
+      "posting_version_id": "10ff9402-87b9-49dc-9c95-abe2fa2c565f",
+      "supersedes_requirement_id": null
+    },
+    {
+      "text": "-熟悉langchain，大模型原理，agent实践开发",
+      "origin": "explicit",
+      "char_end": 480,
+      "citation": {
+        "char_end": 480,
+        "source_id": "14b714df-a88b-4bd8-935e-1c229d8d2c7d",
+        "text_hash": "6e4c5bebb0f1e36038b435f797a4e3947be5a0eca8d68760da85fb085ad14ddc",
+        "char_start": 452,
+        "citation_id": "77979276-1e8b-4592-b971-e750158e7ed9",
+        "source_snapshot_id": "2ebb0090-d8f8-4bd1-92f6-4f1314fbd9dc"
+      },
+      "char_start": 452,
+      "skill_kind": "tool",
+      "collection_id": "84049f02-5d88-4bec-8b3c-6db32af166bb",
+      "logical_group": null,
+      "requirement_id": "41cd2256-7e43-4cbf-b721-afca3adf8101",
+      "normalized_skill": "langchain",
+      "requirement_type": "must",
+      "collection_version": 1,
+      "posting_version_id": "10ff9402-87b9-49dc-9c95-abe2fa2c565f",
+      "supersedes_requirement_id": null
+    },
+    {
+      "text": "-熟悉langchain，大模型原理，agent实践开发",
+      "origin": "explicit",
+      "char_end": 480,
+      "citation": {
+        "char_end": 480,
+        "source_id": "14b714df-a88b-4bd8-935e-1c229d8d2c7d",
+        "text_hash": "6e4c5bebb0f1e36038b435f797a4e3947be5a0eca8d68760da85fb085ad14ddc",
+        "char_start": 452,
+        "citation_id": "995a805f-1bda-4302-a529-d69e36efa45a",
+        "source_snapshot_id": "2ebb0090-d8f8-4bd1-92f6-4f1314fbd9dc"
+      },
+      "char_start": 452,
+      "skill_kind": "capability",
+      "collection_id": "84049f02-5d88-4bec-8b3c-6db32af166bb",
+      "logical_group": null,
+      "requirement_id": "7183ad7d-c8a7-4a2a-b7ba-bcba9f2d935a",
+      "normalized_skill": "agent",
+      "requirement_type": "must",
+      "collection_version": 1,
+      "posting_version_id": "10ff9402-87b9-49dc-9c95-abe2fa2c565f",
+      "supersedes_requirement_id": null
+    },
+    {
+      "text": "-参与大模型智能体应用的设计与开发，探索 Agent 在混合云场景下的工程化落地方案",
+      "origin": "explicit",
+      "char_end": 133,
+      "citation": {
+        "char_end": 133,
+        "source_id": "de4f5c39-fa8e-43a3-9644-c63b7501f324",
+        "text_hash": "dc5700f932ca1107b0f16ec8bc7a6e7753f7d1074740f31277d2d08e8c3f9baa",
+        "char_start": 91,
+        "citation_id": "e9bd4e1e-4c1d-4b35-8117-73d464ef8502",
+        "source_snapshot_id": "a128c6d8-48f4-41ae-8c94-522623cc647a"
+      },
+      "char_start": 91,
+      "skill_kind": "capability",
+      "collection_id": "06c6bdbf-55ee-4e8e-9fbe-8068fa32c612",
+      "logical_group": null,
+      "requirement_id": "8d359223-ee7d-4d56-9447-832bcf7464d6",
+      "normalized_skill": "agent",
+      "requirement_type": "responsibility",
+      "collection_version": 1,
+      "posting_version_id": "6842f5cb-0ee4-4cd6-be2a-73b52c53f025",
+      "supersedes_requirement_id": null
+    },
+    {
+      "text": "-利用 Agent 技术对代码质量、研发效能等方向进行自动化分析，辅助团队识别和解决高频问题",
+      "origin": "explicit",
+      "char_end": 221,
+      "citation": {
+        "char_end": 221,
+        "source_id": "de4f5c39-fa8e-43a3-9644-c63b7501f324",
+        "text_hash": "9c9d6681d1457722d9ae02941eed0294cffe49c7a9ff4879f343c80d56a4e3b5",
+        "char_start": 175,
+        "citation_id": "2246599a-4d27-45f8-ad10-19f8733e7d64",
+        "source_snapshot_id": "a128c6d8-48f4-41ae-8c94-522623cc647a"
+      },
+      "char_start": 175,
+      "skill_kind": "capability",
+      "collection_id": "06c6bdbf-55ee-4e8e-9fbe-8068fa32c612",
+      "logical_group": null,
+      "requirement_id": "c19b047b-457a-4e5c-98f4-02d39f550e8c",
+      "normalized_skill": "agent",
+      "requirement_type": "responsibility",
+      "collection_version": 1,
+      "posting_version_id": "6842f5cb-0ee4-4cd6-be2a-73b52c53f025",
+      "supersedes_requirement_id": null
+    },
+    {
+      "text": "-熟悉计算机操作系统、数据结构、算法、网络等基础知识，熟练掌握 Python / Java / Go 任意一种语言",
+      "origin": "explicit",
+      "char_end": 467,
+      "citation": {
+        "char_end": 467,
+        "source_id": "de4f5c39-fa8e-43a3-9644-c63b7501f324",
+        "text_hash": "f1a635e67e3bc0e8a87849cc0a4c7303a4fdacb4137419b1e9ab43bcbe140e6b",
+        "char_start": 410,
+        "citation_id": "fadbd756-f3b9-467f-8fcd-cb284a3ecb3a",
+        "source_snapshot_id": "a128c6d8-48f4-41ae-8c94-522623cc647a"
+      },
+      "char_start": 410,
+      "skill_kind": "tool",
+      "collection_id": "06c6bdbf-55ee-4e8e-9fbe-8068fa32c612",
+      "logical_group": "-熟悉计算机操作系统、数据结构、算法、网络等基础知识，熟练掌握 Python / Java / Go 任意一种语言",
+      "requirement_id": "8aab1b96-493c-4609-ab0d-bcad9e94038f",
+      "normalized_skill": "python",
+      "requirement_type": "must",
+      "collection_version": 1,
+      "posting_version_id": "6842f5cb-0ee4-4cd6-be2a-73b52c53f025",
+      "supersedes_requirement_id": null
+    },
+    {
+      "text": "-熟悉计算机操作系统、数据结构、算法、网络等基础知识，熟练掌握 Python / Java / Go 任意一种语言",
+      "origin": "explicit",
+      "char_end": 467,
+      "citation": {
+        "char_end": 467,
+        "source_id": "de4f5c39-fa8e-43a3-9644-c63b7501f324",
+        "text_hash": "f1a635e67e3bc0e8a87849cc0a4c7303a4fdacb4137419b1e9ab43bcbe140e6b",
+        "char_start": 410,
+        "citation_id": "cd4d712d-5c79-4a68-92e7-b2750fbda769",
+        "source_snapshot_id": "a128c6d8-48f4-41ae-8c94-522623cc647a"
+      },
+      "char_start": 410,
+      "skill_kind": "tool",
+      "collection_id": "06c6bdbf-55ee-4e8e-9fbe-8068fa32c612",
+      "logical_group": "-熟悉计算机操作系统、数据结构、算法、网络等基础知识，熟练掌握 Python / Java / Go 任意一种语言",
+      "requirement_id": "5d07739e-7681-4e13-8a45-9a09c69059b3",
+      "normalized_skill": "java",
+      "requirement_type": "must",
+      "collection_version": 1,
+      "posting_version_id": "6842f5cb-0ee4-4cd6-be2a-73b52c53f025",
+      "supersedes_requirement_id": null
+    },
+    {
+      "text": "-掌握 RAG 技术原理及 Prompt 工程方法，理解知识图谱基本概念（Neo4j / FalkorDB 等）",
+      "origin": "explicit",
+      "char_end": 524,
+      "citation": {
+        "char_end": 524,
+        "source_id": "de4f5c39-fa8e-43a3-9644-c63b7501f324",
+        "text_hash": "ff7824f6f1d14dfb7d83294724c7ba16917806d2e6ca4545cf8f33cb0557b58f",
+        "char_start": 468,
+        "citation_id": "855f1be5-fddd-4fd1-bd34-1cb0f6dacf5a",
+        "source_snapshot_id": "a128c6d8-48f4-41ae-8c94-522623cc647a"
+      },
+      "char_start": 468,
+      "skill_kind": "capability",
+      "collection_id": "06c6bdbf-55ee-4e8e-9fbe-8068fa32c612",
+      "logical_group": null,
+      "requirement_id": "24a5c74f-1282-46fe-bd0f-f3dd462e7010",
+      "normalized_skill": "rag",
+      "requirement_type": "must",
+      "collection_version": 1,
+      "posting_version_id": "6842f5cb-0ee4-4cd6-be2a-73b52c53f025",
+      "supersedes_requirement_id": null
+    },
+    {
+      "text": "-熟悉 LangChain / LlamaIndex 等 Agent 编排框架，使用过 Coze / Dify / AppBuilder / 百炼等任一平台",
+      "origin": "explicit",
+      "char_end": 603,
+      "citation": {
+        "char_end": 603,
+        "source_id": "de4f5c39-fa8e-43a3-9644-c63b7501f324",
+        "text_hash": "64e939e3d72f5a30d071b76ca83a202cb5ceea2947d2d78b35305ba1abc064aa",
+        "char_start": 525,
+        "citation_id": "680a71f6-4d6a-4cbc-a0bf-319380ff9cd3",
+        "source_snapshot_id": "a128c6d8-48f4-41ae-8c94-522623cc647a"
+      },
+      "char_start": 525,
+      "skill_kind": "tool",
+      "collection_id": "06c6bdbf-55ee-4e8e-9fbe-8068fa32c612",
+      "logical_group": null,
+      "requirement_id": "b36c39ba-e86f-4482-9df1-573a0b8bdbd4",
+      "normalized_skill": "langchain",
+      "requirement_type": "must",
+      "collection_version": 1,
+      "posting_version_id": "6842f5cb-0ee4-4cd6-be2a-73b52c53f025",
+      "supersedes_requirement_id": null
+    },
+    {
+      "text": "-熟悉 LangChain / LlamaIndex 等 Agent 编排框架，使用过 Coze / Dify / AppBuilder / 百炼等任一平台",
+      "origin": "explicit",
+      "char_end": 603,
+      "citation": {
+        "char_end": 603,
+        "source_id": "de4f5c39-fa8e-43a3-9644-c63b7501f324",
+        "text_hash": "64e939e3d72f5a30d071b76ca83a202cb5ceea2947d2d78b35305ba1abc064aa",
+        "char_start": 525,
+        "citation_id": "64a0600a-30da-41b0-b8f2-b102c1c18b35",
+        "source_snapshot_id": "a128c6d8-48f4-41ae-8c94-522623cc647a"
+      },
+      "char_start": 525,
+      "skill_kind": "capability",
+      "collection_id": "06c6bdbf-55ee-4e8e-9fbe-8068fa32c612",
+      "logical_group": null,
+      "requirement_id": "22acad06-c1bc-4f66-8cba-22789e5bb826",
+      "normalized_skill": "agent",
+      "requirement_type": "must",
+      "collection_version": 1,
+      "posting_version_id": "6842f5cb-0ee4-4cd6-be2a-73b52c53f025",
+      "supersedes_requirement_id": null
+    },
+    {
+      "text": "-参与 Agent 系统的设计与研发，围绕长程任务规划、工具调用、代码执行、状态管理等核心能力，建设可扩展的智能体执行框架",
+      "origin": "explicit",
+      "char_end": 144,
+      "citation": {
+        "char_end": 144,
+        "source_id": "f7721e5b-2f8f-40d5-a880-532c39f1865f",
+        "text_hash": "885f8def64ab1eed87a9695b157ebec362c4cad3bed03d9dc5b6feac2d44715a",
+        "char_start": 83,
+        "citation_id": "a923e5da-bf78-497d-8a95-c1f1470ffbb6",
+        "source_snapshot_id": "f9c3808f-df76-44ef-ba98-a664f9311c44"
+      },
+      "char_start": 83,
+      "skill_kind": "capability",
+      "collection_id": "fe2af585-d60d-4fd0-b1ec-073f14e3b9cb",
+      "logical_group": null,
+      "requirement_id": "3a719f47-94b0-414c-95bd-ad5538b3f376",
+      "normalized_skill": "agent",
+      "requirement_type": "responsibility",
+      "collection_version": 1,
+      "posting_version_id": "a7380454-7293-418f-86cd-522c79c2b76c",
+      "supersedes_requirement_id": null
+    },
+    {
+      "text": "-参与 Agent 系统的设计与研发，围绕长程任务规划、工具调用、代码执行、状态管理等核心能力，建设可扩展的智能体执行框架",
+      "origin": "explicit",
+      "char_end": 144,
+      "citation": {
+        "char_end": 144,
+        "source_id": "f7721e5b-2f8f-40d5-a880-532c39f1865f",
+        "text_hash": "885f8def64ab1eed87a9695b157ebec362c4cad3bed03d9dc5b6feac2d44715a",
+        "char_start": 83,
+        "citation_id": "ecf713bf-c796-4f9a-9c2d-44e3f6f7f4b0",
+        "source_snapshot_id": "f9c3808f-df76-44ef-ba98-a664f9311c44"
+      },
+      "char_start": 83,
+      "skill_kind": "capability",
+      "collection_id": "fe2af585-d60d-4fd0-b1ec-073f14e3b9cb",
+      "logical_group": null,
+      "requirement_id": "75149990-6710-46db-ae95-1dbd7aee5b81",
+      "normalized_skill": "workflow_state",
+      "requirement_type": "responsibility",
+      "collection_version": 1,
+      "posting_version_id": "a7380454-7293-418f-86cd-522c79c2b76c",
+      "supersedes_requirement_id": null
+    },
+    {
+      "text": "-参与自我演化Agent系统的工程研发，支持任务采样、训练调度、结果回传、实验管理等关键链路建设",
+      "origin": "explicit",
+      "char_end": 193,
+      "citation": {
+        "char_end": 193,
+        "source_id": "f7721e5b-2f8f-40d5-a880-532c39f1865f",
+        "text_hash": "47c3c69a1ecd406182d39a3d1ef08da16d8044af20d333bdc80fcdfee2e502e8",
+        "char_start": 145,
+        "citation_id": "bff7acf5-709a-46c9-b452-819891887ddd",
+        "source_snapshot_id": "f9c3808f-df76-44ef-ba98-a664f9311c44"
+      },
+      "char_start": 145,
+      "skill_kind": "capability",
+      "collection_id": "fe2af585-d60d-4fd0-b1ec-073f14e3b9cb",
+      "logical_group": null,
+      "requirement_id": "4df164a2-7187-4a26-8172-1b63b4cf6b87",
+      "normalized_skill": "agent",
+      "requirement_type": "responsibility",
+      "collection_version": 1,
+      "posting_version_id": "a7380454-7293-418f-86cd-522c79c2b76c",
+      "supersedes_requirement_id": null
+    },
+    {
+      "text": "-参与代码任务评估系统与执行环境的设计和实现，建设稳定、安全、可扩展的代码运行与自动评测能力",
+      "origin": "explicit",
+      "char_end": 240,
+      "citation": {
+        "char_end": 240,
+        "source_id": "f7721e5b-2f8f-40d5-a880-532c39f1865f",
+        "text_hash": "c28c19041e2b79c472a9c7ee007b7a7e5b21aa8e148ca073ed30a1d77912fdbc",
+        "char_start": 194,
+        "citation_id": "aede362e-23d9-46d7-96ca-b256a21f9a0d",
+        "source_snapshot_id": "f9c3808f-df76-44ef-ba98-a664f9311c44"
+      },
+      "char_start": 194,
+      "skill_kind": "capability",
+      "collection_id": "fe2af585-d60d-4fd0-b1ec-073f14e3b9cb",
+      "logical_group": null,
+      "requirement_id": "fb7898f2-c93b-4e1a-b659-61c8d26318ef",
+      "normalized_skill": "evaluation",
+      "requirement_type": "responsibility",
+      "collection_version": 1,
+      "posting_version_id": "a7380454-7293-418f-86cd-522c79c2b76c",
+      "supersedes_requirement_id": null
+    },
+    {
+      "text": "-参与云端产品业务系统的设计与研发，支撑 Agent 产品在多租户、任务编排、资源管理、权限控制等场景下的工程落地",
+      "origin": "explicit",
+      "char_end": 298,
+      "citation": {
+        "char_end": 298,
+        "source_id": "f7721e5b-2f8f-40d5-a880-532c39f1865f",
+        "text_hash": "2bb5a003fde887e0e9fb9e8dde9a26e9b4a5c5bcfbed9769d4b02a845eedf74d",
+        "char_start": 241,
+        "citation_id": "b28c33fc-eb77-4e86-875b-2a1ca63fa6cd",
+        "source_snapshot_id": "f9c3808f-df76-44ef-ba98-a664f9311c44"
+      },
+      "char_start": 241,
+      "skill_kind": "capability",
+      "collection_id": "fe2af585-d60d-4fd0-b1ec-073f14e3b9cb",
+      "logical_group": null,
+      "requirement_id": "2def6fe9-3989-450c-84d1-e1b99ca32f1f",
+      "normalized_skill": "agent",
+      "requirement_type": "responsibility",
+      "collection_version": 1,
+      "posting_version_id": "a7380454-7293-418f-86cd-522c79c2b76c",
+      "supersedes_requirement_id": null
+    },
+    {
+      "text": "-熟练掌握 Golang、Python 中至少一门语言，具备较强的工程实现能力和良好的编码习惯",
+      "origin": "explicit",
+      "char_end": 451,
+      "citation": {
+        "char_end": 451,
+        "source_id": "f7721e5b-2f8f-40d5-a880-532c39f1865f",
+        "text_hash": "8c1b2de6932667cccc74b72288a21ebe4a9267351c2c9ad4352a65b9d97b91dd",
+        "char_start": 404,
+        "citation_id": "794f0dac-404b-488d-a985-78c7b0e943d9",
+        "source_snapshot_id": "f9c3808f-df76-44ef-ba98-a664f9311c44"
+      },
+      "char_start": 404,
+      "skill_kind": "tool",
+      "collection_id": "fe2af585-d60d-4fd0-b1ec-073f14e3b9cb",
+      "logical_group": "-熟练掌握 Golang、Python 中至少一门语言，具备较强的工程实现能力和良好的编码习惯",
+      "requirement_id": "aba02426-9b94-486c-adb5-ad5a58159d28",
+      "normalized_skill": "python",
+      "requirement_type": "must",
+      "collection_version": 1,
+      "posting_version_id": "a7380454-7293-418f-86cd-522c79c2b76c",
+      "supersedes_requirement_id": null
+    },
+    {
+      "text": "-有云产品后端、分布式系统、任务调度系统或复杂业务系统研发经验者优先；有 AutoML、强化学习平台、Agent 系统或评测系统研发经验者优先",
+      "origin": "explicit",
+      "char_end": 523,
+      "citation": {
+        "char_end": 523,
+        "source_id": "f7721e5b-2f8f-40d5-a880-532c39f1865f",
+        "text_hash": "ca0a9fa50cf52dd7af934e7261b06b5ffc45cb87769cd91f05693bfa9f074804",
+        "char_start": 452,
+        "citation_id": "2b8afec5-0153-4c0b-97c3-40f8a9d90a1f",
+        "source_snapshot_id": "f9c3808f-df76-44ef-ba98-a664f9311c44"
+      },
+      "char_start": 452,
+      "skill_kind": "capability",
+      "collection_id": "fe2af585-d60d-4fd0-b1ec-073f14e3b9cb",
+      "logical_group": "-有云产品后端、分布式系统、任务调度系统或复杂业务系统研发经验者优先；有 AutoML、强化学习平台、Agent 系统或评测系统研发经验者优先",
+      "requirement_id": "5189591f-e429-4a1f-be36-eca76070bf8e",
+      "normalized_skill": "agent",
+      "requirement_type": "preferred",
+      "collection_version": 1,
+      "posting_version_id": "a7380454-7293-418f-86cd-522c79c2b76c",
+      "supersedes_requirement_id": null
+    }
+  ],
+  "dedup_decisions": [],
+  "extraction_mode": "offline_rules_v1+FakeModel_contract",
+  "goal_version_id": "877466d6-b382-4c61-b8a7-934ad06d8f68",
+  "input_summaries": [
+    {
+      "title": "Agent应用开发实习（J105397）",
+      "read_status": "available",
+      "source_type": "job_posting",
+      "source_snapshot_id": "2ebb0090-d8f8-4bd1-92f6-4f1314fbd9dc"
+    },
+    {
+      "title": "智能体应用开发实习生（J99649）",
+      "read_status": "available",
+      "source_type": "job_posting",
+      "source_snapshot_id": "a128c6d8-48f4-41ae-8c94-522623cc647a"
+    },
+    {
+      "title": "伐谋-Agent研发工程师（J99560）",
+      "read_status": "available",
+      "source_type": "job_posting",
+      "source_snapshot_id": "f9c3808f-df76-44ef-ba98-a664f9311c44"
+    },
+    {
+      "title": "joblearn 个人材料（只读静态核验）",
+      "read_status": "available",
+      "source_type": "user_note",
+      "source_snapshot_id": "971d723d-da6b-424f-b5cf-a3405f4633b0"
+    }
+  ],
+  "synthetic_model": true,
+  "scope_exclusions": [
+    {
+      "reason": "outside_or_unknown_scope",
+      "posting_version_id": "a7380454-7293-418f-86cd-522c79c2b76c"
+    }
+  ],
+  "skill_statistics": [
+    {
+      "ratio": 1.0,
+      "numerator": 2,
+      "denominator": 2,
+      "skill_concept_id": "agent",
+      "extraction_coverage": {
+        "total": 3,
+        "completed": 3
+      },
+      "supporting_posting_version_ids": [
+        "10ff9402-87b9-49dc-9c95-abe2fa2c565f",
+        "6842f5cb-0ee4-4cd6-be2a-73b52c53f025"
+      ],
+      "denominator_posting_version_ids": [
+        "10ff9402-87b9-49dc-9c95-abe2fa2c565f",
+        "6842f5cb-0ee4-4cd6-be2a-73b52c53f025"
+      ]
+    },
+    {
+      "ratio": 0.5,
+      "numerator": 1,
+      "denominator": 2,
+      "skill_concept_id": "evaluation",
+      "extraction_coverage": {
+        "total": 3,
+        "completed": 3
+      },
+      "supporting_posting_version_ids": [
+        "10ff9402-87b9-49dc-9c95-abe2fa2c565f"
+      ],
+      "denominator_posting_version_ids": [
+        "10ff9402-87b9-49dc-9c95-abe2fa2c565f",
+        "6842f5cb-0ee4-4cd6-be2a-73b52c53f025"
+      ]
+    },
+    {
+      "ratio": 0.5,
+      "numerator": 1,
+      "denominator": 2,
+      "skill_concept_id": "exception_handling",
+      "extraction_coverage": {
+        "total": 3,
+        "completed": 3
+      },
+      "supporting_posting_version_ids": [
+        "10ff9402-87b9-49dc-9c95-abe2fa2c565f"
+      ],
+      "denominator_posting_version_ids": [
+        "10ff9402-87b9-49dc-9c95-abe2fa2c565f",
+        "6842f5cb-0ee4-4cd6-be2a-73b52c53f025"
+      ]
+    },
+    {
+      "ratio": 0.5,
+      "numerator": 1,
+      "denominator": 2,
+      "skill_concept_id": "java",
+      "extraction_coverage": {
+        "total": 3,
+        "completed": 3
+      },
+      "supporting_posting_version_ids": [
+        "6842f5cb-0ee4-4cd6-be2a-73b52c53f025"
+      ],
+      "denominator_posting_version_ids": [
+        "10ff9402-87b9-49dc-9c95-abe2fa2c565f",
+        "6842f5cb-0ee4-4cd6-be2a-73b52c53f025"
+      ]
+    },
+    {
+      "ratio": 1.0,
+      "numerator": 2,
+      "denominator": 2,
+      "skill_concept_id": "langchain",
+      "extraction_coverage": {
+        "total": 3,
+        "completed": 3
+      },
+      "supporting_posting_version_ids": [
+        "10ff9402-87b9-49dc-9c95-abe2fa2c565f",
+        "6842f5cb-0ee4-4cd6-be2a-73b52c53f025"
+      ],
+      "denominator_posting_version_ids": [
+        "10ff9402-87b9-49dc-9c95-abe2fa2c565f",
+        "6842f5cb-0ee4-4cd6-be2a-73b52c53f025"
+      ]
+    },
+    {
+      "ratio": 0.5,
+      "numerator": 1,
+      "denominator": 2,
+      "skill_concept_id": "python",
+      "extraction_coverage": {
+        "total": 3,
+        "completed": 3
+      },
+      "supporting_posting_version_ids": [
+        "6842f5cb-0ee4-4cd6-be2a-73b52c53f025"
+      ],
+      "denominator_posting_version_ids": [
+        "10ff9402-87b9-49dc-9c95-abe2fa2c565f",
+        "6842f5cb-0ee4-4cd6-be2a-73b52c53f025"
+      ]
+    },
+    {
+      "ratio": 0.5,
+      "numerator": 1,
+      "denominator": 2,
+      "skill_concept_id": "rag",
+      "extraction_coverage": {
+        "total": 3,
+        "completed": 3
+      },
+      "supporting_posting_version_ids": [
+        "6842f5cb-0ee4-4cd6-be2a-73b52c53f025"
+      ],
+      "denominator_posting_version_ids": [
+        "10ff9402-87b9-49dc-9c95-abe2fa2c565f",
+        "6842f5cb-0ee4-4cd6-be2a-73b52c53f025"
+      ]
+    },
+    {
+      "ratio": 0.5,
+      "numerator": 1,
+      "denominator": 2,
+      "skill_concept_id": "workflow_state",
+      "extraction_coverage": {
+        "total": 3,
+        "completed": 3
+      },
+      "supporting_posting_version_ids": [
+        "10ff9402-87b9-49dc-9c95-abe2fa2c565f"
+      ],
+      "denominator_posting_version_ids": [
+        "10ff9402-87b9-49dc-9c95-abe2fa2c565f",
+        "6842f5cb-0ee4-4cd6-be2a-73b52c53f025"
+      ]
+    }
+  ],
+  "posting_summaries": [
+    {
+      "title": "Agent应用开发实习（J105397）",
+      "regions": [
+        "北京"
+      ],
+      "job_type": "internship",
+      "source_id": "14b714df-a88b-4bd8-935e-1c229d8d2c7d",
+      "experience": null,
+      "published_at": null,
+      "posting_version_id": "10ff9402-87b9-49dc-9c95-abe2fa2c565f",
+      "source_snapshot_id": "2ebb0090-d8f8-4bd1-92f6-4f1314fbd9dc",
+      "extraction_limitations": [
+        "离线规则仅提取字典命中项，不能替代完整语义提取。"
+      ],
+      "published_at_precision": "unknown"
+    },
+    {
+      "title": "智能体应用开发实习生（J99649）",
+      "regions": [
+        "上海",
+        "北京"
+      ],
+      "job_type": "internship",
+      "source_id": "de4f5c39-fa8e-43a3-9644-c63b7501f324",
+      "experience": null,
+      "published_at": null,
+      "posting_version_id": "6842f5cb-0ee4-4cd6-be2a-73b52c53f025",
+      "source_snapshot_id": "a128c6d8-48f4-41ae-8c94-522623cc647a",
+      "extraction_limitations": [
+        "离线规则仅提取字典命中项，不能替代完整语义提取。"
+      ],
+      "published_at_precision": "unknown"
+    },
+    {
+      "title": "伐谋-Agent研发工程师（J99560）",
+      "regions": [
+        "北京"
+      ],
+      "job_type": null,
+      "source_id": "f7721e5b-2f8f-40d5-a880-532c39f1865f",
+      "experience": null,
+      "published_at": null,
+      "posting_version_id": "a7380454-7293-418f-86cd-522c79c2b76c",
+      "source_snapshot_id": "f9c3808f-df76-44ef-ba98-a664f9311c44",
+      "extraction_limitations": [
+        "离线规则仅提取字典命中项，不能替代完整语义提取。"
+      ],
+      "published_at_precision": "unknown"
+    }
+  ],
+  "config_fingerprint": "e43bd58f916e24a6bc1222e2ba6c6d2dd9f2b7e665fb65716c84528afd7f7bc7",
+  "dictionary_version": "skills-v1",
+  "unresolved_sources": [],
+  "generated_by_run_id": "c5719b77-a734-42e7-8b03-5d0f54d9cabd",
+  "source_snapshot_ids": [
+    "2ebb0090-d8f8-4bd1-92f6-4f1314fbd9dc",
+    "a128c6d8-48f4-41ae-8c94-522623cc647a",
+    "f9c3808f-df76-44ef-ba98-a664f9311c44",
+    "971d723d-da6b-424f-b5cf-a3405f4633b0"
+  ],
+  "job_posting_version_ids": [
+    "10ff9402-87b9-49dc-9c95-abe2fa2c565f",
+    "6842f5cb-0ee4-4cd6-be2a-73b52c53f025",
+    "a7380454-7293-418f-86cd-522c79c2b76c"
+  ],
+  "regional_posting_groups": {
+    "上海": [
+      "6842f5cb-0ee4-4cd6-be2a-73b52c53f025"
+    ],
+    "北京": [
+      "10ff9402-87b9-49dc-9c95-abe2fa2c565f",
+      "6842f5cb-0ee4-4cd6-be2a-73b52c53f025"
+    ]
+  },
+  "eligible_posting_version_ids": [
+    "10ff9402-87b9-49dc-9c95-abe2fa2c565f",
+    "6842f5cb-0ee4-4cd6-be2a-73b52c53f025"
+  ],
+  "requirement_collection_versions": [
+    [
+      "06c6bdbf-55ee-4e8e-9fbe-8068fa32c612",
+      1
+    ],
+    [
+      "84049f02-5d88-4bec-8b3c-6db32af166bb",
+      1
+    ],
+    [
+      "fe2af585-d60d-4fd0-b1ec-073f14e3b9cb",
+      1
+    ]
+  ]
+}

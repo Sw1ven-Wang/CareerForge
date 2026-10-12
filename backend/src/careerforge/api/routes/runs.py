@@ -77,7 +77,16 @@ def result(db: Session, run: AgentRun) -> dict[str, Any]:
         "waiting_input": waiting,
         "stage_summary": [{"stage_key": a.stage_key, "status": "completed"} for a in stages],
         "output_refs": [
-            {"stage_artifact_id": str(a.id)} for a in stages if a.stage_key == "result"
+            {
+                "stage_artifact_id": str(a.id),
+                **(
+                    {"market_report_id": a.payload["market_report_id"]}
+                    if "market_report_id" in a.payload
+                    else {}
+                ),
+            }
+            for a in stages
+            if a.stage_key == "result"
         ],
         "usage": {"call_limit": run.call_budget, "calls_reserved": run.calls_reserved},
         "error_summary": None,

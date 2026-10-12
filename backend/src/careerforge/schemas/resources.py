@@ -50,14 +50,20 @@ class SourceImport(InputModel):
     source_type: SourceType
     title: str | None = Field(default=None, max_length=500)
     source_url: str | None = Field(default=None, max_length=4000)
-    import_mode: Literal["text", "link_clue"] = "text"
+    import_mode: Literal["text", "attachment", "link_clue"] = "text"
     content: str | None = None
+    attachment_id: UUID | None = None
     published_at: datetime | None = None
     published_at_precision: Precision = "unknown"
     declared_provenance: str | None = Field(default=None, max_length=2000)
 
     @model_validator(mode="after")
     def validate_content(self) -> "SourceImport":
+        if self.import_mode == "attachment":
+            if self.attachment_id is None or self.content is not None:
+                raise ValueError("附件导入只接受 attachment_id")
+        elif self.attachment_id is not None:
+            raise ValueError("非附件模式不能提供 attachment_id")
         if self.import_mode == "text" and (not self.content or not self.content.strip()):
             raise ValueError("正文不能为空")
         if self.import_mode == "link_clue" and (not self.source_url or self.content is not None):
@@ -85,12 +91,16 @@ class SnapshotInput(InputModel):
     change_reason: str = Field(min_length=1, max_length=2000)
     content: str | None = None
     base_snapshot_id: UUID | None = None
+    attachment_id: UUID | None = None
     metadata_overrides: MetadataOverride = Field(default_factory=MetadataOverride)
 
     @model_validator(mode="after")
     def validate_selection(self) -> "SnapshotInput":
-        if (self.content is None) == (self.base_snapshot_id is None):
-            raise ValueError("content 与 base_snapshot_id 必须恰选一项")
+        if (
+            sum(v is not None for v in [self.content, self.base_snapshot_id, self.attachment_id])
+            != 1
+        ):
+            raise ValueError("content、base_snapshot_id、attachment_id 必须恰选一项")
         if self.content is not None and not self.content.strip():
             raise ValueError("正文不能为空")
         return self

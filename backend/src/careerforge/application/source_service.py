@@ -4,7 +4,9 @@ from uuid import UUID
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
+from careerforge.application.attachment_service import attachment_text, available, bind
 from careerforge.application.common import check_revision, digest, fingerprint, idempotency
+from careerforge.application.import_service import materialize_job
 from careerforge.config.settings import get_settings
 from careerforge.domain.errors import BusinessError, not_found
 from careerforge.infrastructure.db.models import Citation, Deletion, Source, SourceSnapshot
@@ -34,6 +36,8 @@ def get_snapshot(db: Session, owner: UUID, source_id: UUID, snapshot_id: UUID) -
     ).first()
     if result is None:
         raise not_found()
+    if result.attachment_id is not None:
+        available(db, owner, result.attachment_id)
     return result
 
 
@@ -68,9 +72,13 @@ def snapshot_result(
 def import_source(db: Session, owner: UUID, value: SourceImport, key: str | None) -> dict[str, Any]:
     record = idempotency(db, owner, "sources.import", key, value.model_dump(mode="json"))
     if record.response_summary is not None:
-        get_source(db, owner, UUID(record.response_summary["source_id"]))
+        source_id = UUID(record.response_summary["source_id"])
+        get_source(db, owner, source_id)
+        if record.response_summary.get("source_snapshot_id"):
+            get_snapshot(db, owner, source_id, UUID(record.response_summary["source_snapshot_id"]))
         return record.response_summary
-    content = normalize(value.content) if value.content is not None else None
+    raw = attachment_text(db, owner, value.attachment_id) if value.attachment_id else value.content
+    content = normalize(raw) if raw is not None else None
     metadata = value.model_dump(mode="json", exclude={"content", "import_mode", "source_url"})
     identity_hash = digest(value.source_url or content or "")
     # Serialize natural source identity across different idempotency keys.
@@ -97,6 +105,8 @@ def import_source(db: Session, owner: UUID, value: SourceImport, key: str | None
         )
         db.add(source)
         db.flush()
+    if value.attachment_id is not None:
+        bind(db, owner, value.attachment_id, source.id)
     if content is None:
         result = snapshot_result(source, None)
     elif (
@@ -115,12 +125,14 @@ def import_source(db: Session, owner: UUID, value: SourceImport, key: str | None
             source_id=source.id,
             version_no=(existing.version_no + 1) if existing else 1,
             content=content,
+            attachment_id=value.attachment_id,
             content_hash=digest(content),
             metadata_hash=fingerprint(metadata),
             metadata_values=metadata,
         )
         db.add(snapshot)
         db.flush()
+        materialize_job(db, snapshot)
         result = snapshot_result(source, snapshot)
     record.response_summary = result
     return result
@@ -134,6 +146,7 @@ def new_snapshot(
     )
     source = get_source(db, owner, source_id, lock=True)
     if record.response_summary is not None:
+        get_snapshot(db, owner, source_id, UUID(record.response_summary["source_snapshot_id"]))
         return record.response_summary
     check_revision(source.revision, value.expected_version)
     previous = latest(db, source)
@@ -143,7 +156,13 @@ def new_snapshot(
         else previous
     )
     content = normalize(
-        value.content if value.content is not None else base.content if base else ""
+        attachment_text(db, owner, value.attachment_id)
+        if value.attachment_id
+        else value.content
+        if value.content is not None
+        else base.content
+        if base
+        else ""
     )
     metadata = (
         dict(base.metadata_values)
@@ -161,7 +180,13 @@ def new_snapshot(
         raise BusinessError(422, "INVALID_METADATA", "材料类型不能为空。")
     if metadata.get("published_at") is None and metadata.get("published_at_precision") != "unknown":
         raise BusinessError(422, "INVALID_METADATA", "缺失日期的精度应为 unknown。")
+    attachment_id = value.attachment_id or (
+        base.attachment_id if value.base_snapshot_id and base else None
+    )
+    if attachment_id:
+        bind(db, owner, attachment_id, source_id)
     snapshot = SourceSnapshot(
+        attachment_id=attachment_id,
         owner_id=owner,
         source_id=source_id,
         version_no=previous.version_no + 1 if previous else 1,
@@ -176,6 +201,7 @@ def new_snapshot(
     source.source_type = str(metadata["source_type"])
     source.title = metadata.get("title")
     db.flush()
+    materialize_job(db, snapshot)
     result = snapshot_result(source, snapshot)
     record.response_summary = result
     return result
@@ -218,7 +244,7 @@ def create_citation(
     ).first()
     if snapshot is None:
         raise not_found()
-    get_source(db, owner, snapshot.source_id)
+    get_snapshot(db, owner, snapshot.source_id, snapshot.id)
     if record.response_summary is not None:
         return record.response_summary
     if not 0 <= value.char_start < value.char_end <= len(snapshot.content):

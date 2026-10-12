@@ -192,3 +192,57 @@ def test_publish_success_mark_failure_redelivers_without_duplicate(monkeypatch):
             )
             == 1
         )
+
+
+def test_s03_real_queue_builds_one_report_after_duplicate_delivery():
+    from uuid import UUID
+
+    from careerforge.application.goal_service import save_goal
+    from careerforge.application.market_report_service import start
+    from careerforge.application.source_service import import_source
+    from careerforge.infrastructure.db.models import MarketReport
+    from careerforge.schemas.job_extraction import MarketRunInput
+    from careerforge.schemas.resources import GoalInput, SourceImport
+
+    with Session(get_engine()) as db, db.begin():
+        owner = User(
+            email=f"market-queue-{uuid4()}@example.test", password_hash="synthetic-not-login"
+        )
+        db.add(owner)
+        db.flush()
+        goal = save_goal(
+            db, owner.id, GoalInput(role_direction="Agent开发", job_type="internship"), str(uuid4())
+        )
+        source = import_source(
+            db,
+            owner.id,
+            SourceImport(
+                source_type="job_posting",
+                title="Queue JD",
+                content="实习 北京\n任职要求：\n- Python 开发",
+            ),
+            str(uuid4()),
+        )
+        result = start(
+            db,
+            owner.id,
+            MarketRunInput(
+                goal_version_id=goal["goal_version_id"],
+                source_snapshot_ids=[source["source_snapshot_id"]],
+            ),
+            str(uuid4()),
+        )
+        run_id = UUID(result["run_id"])
+    dispatch_once(only_run_id=run_id)
+    app.send_task("careerforge.execute_run", args=[str(run_id)])
+    wait_status(run_id, "succeeded")
+    with Session(get_engine()) as db:
+        report = db.scalar(select(MarketReport).where(MarketReport.run_id == run_id))
+        assert report.payload["skill_statistics"][0]["numerator"] == 1
+        assert db.get(AgentRun, run_id).calls_reserved == 1
+        assert (
+            db.scalar(
+                select(func.count()).select_from(MarketReport).where(MarketReport.run_id == run_id)
+            )
+            == 1
+        )

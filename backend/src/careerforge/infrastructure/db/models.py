@@ -8,6 +8,7 @@ from sqlalchemy import (
     ForeignKey,
     ForeignKeyConstraint,
     Integer,
+    LargeBinary,
     String,
     Text,
     UniqueConstraint,
@@ -97,6 +98,7 @@ class SourceSnapshot(Timestamped, Base):
     source_id: Mapped[UUID]
     owner_id: Mapped[UUID]
     version_no: Mapped[int]
+    attachment_id: Mapped[UUID | None] = mapped_column(ForeignKey("attachments.id"))
     content: Mapped[str] = mapped_column(Text)
     content_hash: Mapped[str] = mapped_column(String(64))
     metadata_hash: Mapped[str] = mapped_column(String(64))
@@ -136,7 +138,8 @@ class Deletion(Timestamped, Base):
     __tablename__ = "deletions"
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
-    source_id: Mapped[UUID] = mapped_column(ForeignKey("sources.id"))
+    source_id: Mapped[UUID | None] = mapped_column(ForeignKey("sources.id"))
+    attachment_id: Mapped[UUID | None] = mapped_column(ForeignKey("attachments.id"))
     status: Mapped[str] = mapped_column(String(20), default="revoked")
 
 
@@ -250,3 +253,89 @@ class ModelCallReceipt(Timestamped, Base):
     request_hash: Mapped[str] = mapped_column(String(64))
     status: Mapped[str] = mapped_column(String(30), default="reserved")
     usage: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+
+
+class Attachment(Timestamped, Base):
+    __tablename__ = "attachments"
+    __table_args__ = (
+        ForeignKeyConstraint(["source_id", "owner_id"], ["sources.id", "sources.owner_id"]),
+    )
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    source_id: Mapped[UUID | None]
+    name: Mapped[str] = mapped_column(String(200))
+    mime: Mapped[str] = mapped_column(String(100))
+    purpose: Mapped[str] = mapped_column(String(40))
+    content_hash: Mapped[str] = mapped_column(String(64))
+    body: Mapped[bytes | None] = mapped_column(LargeBinary)
+    size: Mapped[int]
+    revision: Mapped[int] = mapped_column(default=1)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class JobPostingVersion(Timestamped, Base):
+    __tablename__ = "job_posting_versions"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["snapshot_id", "source_id", "owner_id"],
+            ["source_snapshots.id", "source_snapshots.source_id", "source_snapshots.owner_id"],
+        ),
+        UniqueConstraint("snapshot_id"),
+        UniqueConstraint("id", "owner_id"),
+    )
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID]
+    source_id: Mapped[UUID]
+    snapshot_id: Mapped[UUID]
+
+
+class RequirementCollection(Timestamped, Base):
+    __tablename__ = "requirement_collections"
+    __table_args__ = (UniqueConstraint("posting_version_id", "extractor_version"),)
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    posting_version_id: Mapped[UUID] = mapped_column(ForeignKey("job_posting_versions.id"))
+    extractor_version: Mapped[str] = mapped_column(String(80))
+    revision: Mapped[int] = mapped_column(default=1)
+
+
+class Requirement(Timestamped, Base):
+    __tablename__ = "requirements"
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    collection_id: Mapped[UUID] = mapped_column(ForeignKey("requirement_collections.id"))
+    collection_version: Mapped[int]
+    supersedes_id: Mapped[UUID | None] = mapped_column(ForeignKey("requirements.id"))
+    citation_id: Mapped[UUID] = mapped_column(ForeignKey("citations.id"))
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+
+
+class DuplicateCandidate(Timestamped, Base):
+    __tablename__ = "duplicate_candidates"
+    __table_args__ = (UniqueConstraint("goal_version_id", "left_id", "right_id"),)
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
+    goal_version_id: Mapped[UUID] = mapped_column(ForeignKey("career_goal_versions.id"))
+    run_id: Mapped[UUID] = mapped_column(ForeignKey("agent_runs.id"))
+    left_id: Mapped[UUID] = mapped_column(ForeignKey("job_posting_versions.id"))
+    right_id: Mapped[UUID] = mapped_column(ForeignKey("job_posting_versions.id"))
+    revision: Mapped[int] = mapped_column(default=1)
+    reason: Mapped[str] = mapped_column(String(100))
+
+
+class DedupDecision(Timestamped, Base):
+    __tablename__ = "dedup_decisions"
+    __table_args__ = (UniqueConstraint("candidate_id", "version_no"),)
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    candidate_id: Mapped[UUID] = mapped_column(ForeignKey("duplicate_candidates.id"))
+    version_no: Mapped[int]
+    decision: Mapped[str] = mapped_column(String(20))
+    reason: Mapped[str] = mapped_column(Text)
+
+
+class MarketReport(Timestamped, Base):
+    __tablename__ = "market_reports"
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    goal_version_id: Mapped[UUID] = mapped_column(ForeignKey("career_goal_versions.id"))
+    run_id: Mapped[UUID] = mapped_column(ForeignKey("agent_runs.id"), unique=True)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
