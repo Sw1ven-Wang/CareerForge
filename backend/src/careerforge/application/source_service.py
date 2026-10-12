@@ -77,6 +77,9 @@ def import_source(db: Session, owner: UUID, value: SourceImport, key: str | None
         if record.response_summary.get("source_snapshot_id"):
             get_snapshot(db, owner, source_id, UUID(record.response_summary["source_snapshot_id"]))
         return record.response_summary
+    from careerforge.application.source_library_service import assign, lock_library
+
+    lock_library(db, owner)
     raw = attachment_text(db, owner, value.attachment_id) if value.attachment_id else value.content
     content = normalize(raw) if raw is not None else None
     metadata = value.model_dump(mode="json", exclude={"content", "import_mode", "source_url"})
@@ -140,6 +143,7 @@ def import_source(db: Session, owner: UUID, value: SourceImport, key: str | None
 
             from_legacy(db, owner, source, snapshot, raw=raw)
         result = snapshot_result(source, snapshot)
+    assign(db, owner, source, value.job_category, value.source_category)
     record.response_summary = result
     return result
 

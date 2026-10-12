@@ -74,7 +74,14 @@ class CareerGoalVersion(Timestamped, Base):
 
 class Source(Timestamped, Base):
     __tablename__ = "sources"
-    __table_args__ = (UniqueConstraint("id", "owner_id"),)
+    __table_args__ = (
+        UniqueConstraint("id", "owner_id"),
+        ForeignKeyConstraint(
+            ["library_category_id", "owner_id"],
+            ["source_library_categories.id", "source_library_categories.owner_id"],
+            name="fk_sources_library_category_owner",
+        ),
+    )
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
     identity_hash: Mapped[str] = mapped_column(String(64), index=True)
@@ -82,6 +89,7 @@ class Source(Timestamped, Base):
     import_mode: Mapped[str] = mapped_column(String(20))
     source_type: Mapped[str] = mapped_column(String(40))
     title: Mapped[str | None] = mapped_column(Text)
+    library_category_id: Mapped[UUID | None]
     revision: Mapped[int] = mapped_column(default=1)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
@@ -785,3 +793,20 @@ class JobContractArtifact(Timestamped, Base):
     run_id: Mapped[UUID | None] = mapped_column(ForeignKey("agent_runs.id"))
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
     raw_bytes: Mapped[bytes | None] = mapped_column(LargeBinary)
+
+
+class SourceLibraryCategory(Timestamped, Base):
+    __tablename__ = "source_library_categories"
+    __table_args__ = (
+        UniqueConstraint("id", "owner_id"),
+        UniqueConstraint("owner_id", "parent_id", "name"),
+        ForeignKeyConstraint(
+            ["parent_id", "owner_id"],
+            ["source_library_categories.id", "source_library_categories.owner_id"],
+        ),
+    )
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    parent_id: Mapped[UUID | None]
+    name: Mapped[str] = mapped_column(String(100))
+    revision: Mapped[int] = mapped_column(default=1)

@@ -259,6 +259,9 @@ def import_capture(db, owner, value, key):
     if record.response_summary:
         read(db, owner, UUID(record.response_summary["contract_artifact_id"]))
         return record.response_summary
+    from careerforge.application.source_library_service import assign, lock_library
+
+    lock_library(db, owner)
     try:
         job, body, external, url, _ = adapt(
             value.provider, value.raw_payload, value.title, value.employer_name
@@ -333,6 +336,7 @@ def import_capture(db, owner, value, key):
 
     materialize_job(db, snapshot)
     row = add_capture(db, owner, source, snapshot, value.raw_payload, value)
+    assign(db, owner, source, value.job_category, value.source_category)
     record.response_summary = result(row)
     return record.response_summary
 

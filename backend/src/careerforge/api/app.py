@@ -402,6 +402,9 @@ def sources(
             {
                 "source_id": str(row.id),
                 "source_type": row.source_type,
+                "library_category_id": str(row.library_category_id)
+                if row.library_category_id
+                else None,
                 "source_url": row.source_url,
                 "job_category": metadata.get(row.id, {}).get("job_category"),
                 "source_category": metadata.get(row.id, {}).get("source_category"),
@@ -430,6 +433,9 @@ def source_detail(
         request,
         {
             "source_id": str(source.id),
+            "library_category_id": str(source.library_category_id)
+            if source.library_category_id
+            else None,
             "source_url": source.source_url,
             "source_type": source.source_type,
             "title": source.title,
@@ -599,3 +605,8 @@ app.include_router(learning_router)
 from careerforge.api.routes.job_data import router as job_data_router  # noqa: E402
 
 app.include_router(job_data_router)
+
+
+from careerforge.api.routes.source_library import router as source_library_router  # noqa: E402
+
+app.include_router(source_library_router)
