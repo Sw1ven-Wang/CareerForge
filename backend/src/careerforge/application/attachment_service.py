@@ -73,7 +73,19 @@ def available(db: Session, owner: UUID, attachment_id: UUID, *, lock: bool = Fal
     row = db.scalar(stmt)
     if row is None or row.body is None:
         raise not_found()
-    if row.source_id is None:
+    if row.evidence_id is not None:
+        from careerforge.infrastructure.db.models import PersonalEvidence
+
+        root_evidence = db.get(PersonalEvidence, row.evidence_id)
+        if (
+            root_evidence is None
+            or root_evidence.owner_id != owner
+            or root_evidence.revoked_at is not None
+        ):
+            raise not_found()
+    elif row.submission_id is not None:
+        pass  # Immutable submission binding remains available until explicit revocation.
+    elif row.source_id is None:
         if row.expires_at <= db_now(db):
             raise not_found()
     else:

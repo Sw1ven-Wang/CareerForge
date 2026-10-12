@@ -34,3 +34,21 @@ from careerforge.application.market_report_service import VERSION as MARKET_VERS
 from careerforge.workflows.market_research.workflow import execute as execute_market  # noqa: E402
 
 WORKFLOWS[("market_research", MARKET_VERSION)] = execute_market
+
+from careerforge.application.planning_service import VERSION as ALIGNMENT_VERSION  # noqa: E402
+from careerforge.workflows.alignment.workflow import execute as execute_alignment  # noqa: E402
+
+WORKFLOWS[("alignment", ALIGNMENT_VERSION)] = execute_alignment
+
+from careerforge.application.repository_service import VERSION as PROJECTS_VERSION  # noqa: E402
+from careerforge.workflows.project_research.workflow import execute as execute_projects  # noqa: E402
+
+WORKFLOWS[("project_research", PROJECTS_VERSION)] = execute_projects
+
+from careerforge.application.build_service import VERSION as ASSESSMENT_VERSION  # noqa: E402
+from careerforge.application.learning_service import VERSION as LEARNING_VERSION  # noqa: E402
+from careerforge.workflows.assessment.workflow import execute as execute_assessment  # noqa: E402
+from careerforge.workflows.learning_path.workflow import execute as execute_learning  # noqa: E402
+
+WORKFLOWS[("learning_path", LEARNING_VERSION)] = execute_learning
+WORKFLOWS[("assessment", ASSESSMENT_VERSION)] = execute_assessment

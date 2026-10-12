@@ -79,17 +79,28 @@ def result(db: Session, run: AgentRun) -> dict[str, Any]:
         "output_refs": [
             {
                 "stage_artifact_id": str(a.id),
-                **(
-                    {"market_report_id": a.payload["market_report_id"]}
-                    if "market_report_id" in a.payload
-                    else {}
-                ),
+                **{
+                    k: v
+                    for k, v in a.payload.items()
+                    if k
+                    in {
+                        "market_report_id",
+                        "alignment_report_id",
+                        "plan_id",
+                        "plan_version_id",
+                        "recommendation_ids",
+                        "learning_unit_id",
+                        "assessment_id",
+                    }
+                },
             }
             for a in stages
             if a.stage_key == "result"
         ],
         "usage": {"call_limit": run.call_budget, "calls_reserved": run.calls_reserved},
-        "error_summary": None,
+        "error_summary": {"code": "INPUT_REVOKED", "message": "输入已撤销，历史正文不可用"}
+        if run.input_manifest.get("_revoked")
+        else None,
     }
 
 

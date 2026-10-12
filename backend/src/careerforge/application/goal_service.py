@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from careerforge.application.common import check_revision, fingerprint, idempotency
 from careerforge.domain.errors import not_found
-from careerforge.infrastructure.db.models import CareerGoal, CareerGoalVersion
+from careerforge.infrastructure.db.models import CareerGoal, CareerGoalVersion, LearningPlan
 from careerforge.schemas.resources import GoalInput, GoalRevision
 
 
@@ -30,11 +30,18 @@ def goal_result(db: Session, goal: CareerGoal) -> dict[str, Any]:
     # Limit explicitly because every immutable version is retained.
     if version is None:
         raise not_found()
+    plan = db.scalar(
+        select(LearningPlan).where(
+            LearningPlan.goal_id == goal.id, LearningPlan.owner_id == goal.owner_id
+        )
+    )
     return {
         "goal_id": str(goal.id),
         "goal_version_id": str(version.id),
         "version": goal.revision,
-        "active_plan_version_id": None,
+        "active_plan_version_id": str(plan.active_version_id)
+        if plan and plan.active_version_id
+        else None,
         **version.payload,
     }
 

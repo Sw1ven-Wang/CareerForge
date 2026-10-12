@@ -499,9 +499,17 @@ def source_delete(
 def deletion_detail(
     deletion_id: UUID, request: Request, user: Authenticated, db: Database
 ) -> dict[str, Any]:
-    job = db.scalars(
+    job: Any = db.scalars(
         select(Deletion).where(Deletion.id == deletion_id, Deletion.owner_id == user.id)
     ).first()
+    if job is None:
+        from careerforge.infrastructure.db.models import EvidenceDeletion
+
+        job = db.scalar(
+            select(EvidenceDeletion).where(
+                EvidenceDeletion.id == deletion_id, EvidenceDeletion.owner_id == user.id
+            )
+        )
     if job is None:
         raise not_found()
     return envelope(request, {"deletion_id": str(job.id), "status": job.status})
@@ -530,7 +538,11 @@ def citation_detail(
         select(Citation).where(Citation.id == citation_id, Citation.owner_id == user.id)
     ).first()
     if value is None:
-        raise not_found()
+        from careerforge.application.repository_service import (
+            citation_detail as code_citation_detail,
+        )
+
+        return envelope(request, code_citation_detail(db, user.id, citation_id))
     snapshot = get_snapshot(db, user.id, value.source_id, value.snapshot_id)
     return envelope(
         request,
@@ -556,3 +568,17 @@ app.include_router(attachments_router)
 from careerforge.api.routes.market_reports import router as market_router  # noqa: E402
 
 app.include_router(market_router)
+
+from careerforge.api.routes.planning import router as planning_router  # noqa: E402
+
+app.include_router(planning_router)
+
+from careerforge.api.routes.projects import router as projects_router  # noqa: E402
+
+app.include_router(projects_router)
+
+from careerforge.api.routes.builds import router as builds_router  # noqa: E402
+from careerforge.api.routes.learning import router as learning_router  # noqa: E402
+
+app.include_router(learning_router)
+app.include_router(builds_router)

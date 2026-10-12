@@ -33,7 +33,7 @@ export function mutation() {
   }
 }
 
-export async function uploadAttachment(file: File, purpose = 'source', key = crypto.randomUUID()) {
+export async function uploadAttachment(file: File, purpose = 'source', key: string = crypto.randomUUID()) {
   const data = new FormData(); data.append('file', file); data.append('purpose', purpose)
   const response = await fetch('/api/v1/attachments', {method:'POST', credentials:'same-origin',
     headers:{'X-CSRF-Token':csrfToken,'Idempotency-Key':key}, body:data})

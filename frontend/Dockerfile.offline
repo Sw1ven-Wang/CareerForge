@@ -1,0 +1,5 @@
+FROM careerforge-api:latest
+WORKDIR /srv
+COPY dist ./static
+COPY static_server.py ./static_server.py
+CMD ["python", "static_server.py"]

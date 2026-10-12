@@ -41,7 +41,39 @@ def idempotency(
     ).one()
     if row.request_hash != hashed:
         raise BusinessError(409, "IDEMPOTENCY_CONFLICT", "同一幂等键不能使用不同内容。")
+    if row.response_summary and row.response_summary.get("_revoked"):
+        raise BusinessError(404, "NOT_FOUND", "原请求引用的材料已撤销。")
+    if row.response_summary and not operation.endswith(".delete"):
+        replay_guard(db, owner, row.response_summary)
     return row
+
+
+def replay_guard(db: Session, owner: UUID, summary: dict[str, Any]) -> None:
+    """Reauthorize persisted response identities before any service can replay private text."""
+    from careerforge.application import (
+        build_service,
+        learning_service,
+        planning_service,
+        repository_service,
+    )
+
+    if summary.get("evidence_version_id"):
+        planning_service.evidence_version(db, owner, UUID(summary["evidence_version_id"]))
+    if summary.get("current_task_version_id"):
+        build_service.task_version(db, owner, UUID(summary["current_task_version_id"]))
+    if summary.get("submission_id"):
+        build_service.submission(db, owner, UUID(summary["submission_id"]))
+    if summary.get("assessment_id"):
+        build_service.assessment(db, owner, UUID(summary["assessment_id"]))
+    if summary.get("learning_unit_id"):
+        learning_service.unit(db, owner, UUID(summary["learning_unit_id"]))
+    if summary.get("recommendation_id"):
+        repository_service.recommendation(db, owner, UUID(summary["recommendation_id"]))
+    if summary.get("run_id"):
+        from careerforge.application.maintenance_service import authorized
+        from careerforge.application.run_service import owned_run
+
+        authorized(db, owned_run(db, owner, UUID(summary["run_id"])))
 
 
 def check_revision(actual: int, expected: int) -> None:

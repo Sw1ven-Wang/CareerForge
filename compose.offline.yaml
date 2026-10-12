@@ -1,0 +1,6 @@
+# Build frontend assets locally first; reuse the already-built Python image.
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.offline

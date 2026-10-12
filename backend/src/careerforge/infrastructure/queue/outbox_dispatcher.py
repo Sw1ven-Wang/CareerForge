@@ -48,9 +48,18 @@ def mark_delivered(message_id: UUID) -> None:
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO)
+    sweep_due = 0.0
     while True:
         try:
             dispatch_once()
+            from careerforge.config.settings import get_settings
+
+            if get_settings().maintenance_enabled and time.monotonic() >= sweep_due:
+                with sessionmaker(get_engine()).begin() as db:
+                    from careerforge.application.maintenance_service import clean_once
+
+                    clean_once(db)
+                sweep_due = time.monotonic() + 60
         except Exception:
             log.exception("Dispatch failed; pending messages retained")
         time.sleep(1)

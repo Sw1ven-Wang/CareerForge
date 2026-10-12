@@ -263,8 +263,10 @@ class Attachment(Timestamped, Base):
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
     source_id: Mapped[UUID | None]
+    evidence_id: Mapped[UUID | None] = mapped_column(ForeignKey("personal_evidence.id"))
     name: Mapped[str] = mapped_column(String(200))
     mime: Mapped[str] = mapped_column(String(100))
+    submission_id: Mapped[UUID | None] = mapped_column(ForeignKey("submissions.id"))
     purpose: Mapped[str] = mapped_column(String(40))
     content_hash: Mapped[str] = mapped_column(String(64))
     body: Mapped[bytes | None] = mapped_column(LargeBinary)
@@ -339,3 +341,411 @@ class MarketReport(Timestamped, Base):
     goal_version_id: Mapped[UUID] = mapped_column(ForeignKey("career_goal_versions.id"))
     run_id: Mapped[UUID] = mapped_column(ForeignKey("agent_runs.id"), unique=True)
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+
+
+class PersonalEvidence(Timestamped, Base):
+    __tablename__ = "personal_evidence"
+    __table_args__ = (UniqueConstraint("id", "owner_id"),)
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    revision: Mapped[int] = mapped_column(default=1)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class PersonalEvidenceVersion(Timestamped, Base):
+    __tablename__ = "personal_evidence_versions"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["evidence_id", "owner_id"], ["personal_evidence.id", "personal_evidence.owner_id"]
+        ),
+        UniqueConstraint("evidence_id", "version_no"),
+        UniqueConstraint("id", "owner_id"),
+    )
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    evidence_id: Mapped[UUID]
+    owner_id: Mapped[UUID]
+    version_no: Mapped[int]
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    content_hash: Mapped[str] = mapped_column(String(64))
+
+
+class LearningObjective(Timestamped, Base):
+    __tablename__ = "learning_objectives"
+    __table_args__ = (UniqueConstraint("id", "owner_id"),)
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    goal_id: Mapped[UUID] = mapped_column(ForeignKey("career_goals.id"))
+    revision: Mapped[int] = mapped_column(default=1)
+
+
+class LearningObjectiveVersion(Timestamped, Base):
+    __tablename__ = "learning_objective_versions"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["objective_id", "owner_id"], ["learning_objectives.id", "learning_objectives.owner_id"]
+        ),
+        ForeignKeyConstraint(
+            ["goal_version_id", "owner_id"],
+            ["career_goal_versions.id", "career_goal_versions.owner_id"],
+        ),
+        UniqueConstraint("objective_id", "version_no"),
+        UniqueConstraint("id", "owner_id"),
+    )
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    objective_id: Mapped[UUID]
+    owner_id: Mapped[UUID]
+    goal_version_id: Mapped[UUID]
+    version_no: Mapped[int]
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    content_hash: Mapped[str] = mapped_column(String(64))
+
+
+class AcceptanceCriterionVersion(Timestamped, Base):
+    __tablename__ = "acceptance_criterion_versions"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["objective_version_id", "owner_id"],
+            ["learning_objective_versions.id", "learning_objective_versions.owner_id"],
+        ),
+        UniqueConstraint("id", "owner_id"),
+    )
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID]
+    objective_version_id: Mapped[UUID]
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+
+
+class AlignmentReport(Timestamped, Base):
+    __tablename__ = "alignment_reports"
+    __table_args__ = (UniqueConstraint("id", "owner_id"),)
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    goal_version_id: Mapped[UUID] = mapped_column(ForeignKey("career_goal_versions.id"))
+    run_id: Mapped[UUID] = mapped_column(ForeignKey("agent_runs.id"), unique=True)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+
+
+class LearningPlan(Timestamped, Base):
+    __tablename__ = "learning_plans"
+    __table_args__ = (UniqueConstraint("id", "owner_id"),)
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    goal_id: Mapped[UUID] = mapped_column(ForeignKey("career_goals.id"), unique=True)
+    revision: Mapped[int] = mapped_column(default=1)
+    active_version_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("learning_plan_versions.id", use_alter=True, name="fk_plan_active_version")
+    )
+
+
+class LearningPlanVersion(Timestamped, Base):
+    __tablename__ = "learning_plan_versions"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["plan_id", "owner_id"], ["learning_plans.id", "learning_plans.owner_id"]
+        ),
+        ForeignKeyConstraint(
+            ["goal_version_id", "owner_id"],
+            ["career_goal_versions.id", "career_goal_versions.owner_id"],
+        ),
+        UniqueConstraint("plan_id", "version_no"),
+        UniqueConstraint("id", "owner_id"),
+    )
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID]
+    plan_id: Mapped[UUID]
+    goal_version_id: Mapped[UUID]
+    version_no: Mapped[int]
+    kind: Mapped[str] = mapped_column(String(20))
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    alignment_report_id: Mapped[UUID | None] = mapped_column(ForeignKey("alignment_reports.id"))
+
+
+class PlanMembership(Base):
+    __tablename__ = "plan_memberships"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["plan_version_id", "owner_id"],
+            ["learning_plan_versions.id", "learning_plan_versions.owner_id"],
+        ),
+        ForeignKeyConstraint(
+            ["objective_version_id", "owner_id"],
+            ["learning_objective_versions.id", "learning_objective_versions.owner_id"],
+        ),
+        UniqueConstraint("plan_version_id", "position"),
+    )
+    plan_version_id: Mapped[UUID] = mapped_column(primary_key=True)
+    objective_version_id: Mapped[UUID] = mapped_column(primary_key=True)
+    owner_id: Mapped[UUID]
+    position: Mapped[int]
+
+
+class ArtifactDependency(Base):
+    __tablename__ = "artifact_dependencies"
+    owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    consumer_kind: Mapped[str] = mapped_column(String(50), primary_key=True)
+    consumer_id: Mapped[UUID] = mapped_column(primary_key=True)
+    input_kind: Mapped[str] = mapped_column(String(50), primary_key=True)
+    input_id: Mapped[UUID] = mapped_column(primary_key=True)
+    needs_review: Mapped[bool] = mapped_column(default=False)
+
+
+class EvidenceDeletion(Timestamped, Base):
+    __tablename__ = "evidence_deletions"
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
+    evidence_id: Mapped[UUID] = mapped_column(ForeignKey("personal_evidence.id"))
+    status: Mapped[str] = mapped_column(String(20), default="revoked")
+
+
+class Repository(Timestamped, Base):
+    __tablename__ = "repositories"
+    __table_args__ = (
+        UniqueConstraint("id", "owner_id"),
+        UniqueConstraint("owner_id", "github_url", "requested_ref"),
+    )
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    github_url: Mapped[str] = mapped_column(String(500))
+    requested_ref: Mapped[str] = mapped_column(String(200))
+    revision: Mapped[int] = mapped_column(default=1)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class RepositorySnapshot(Timestamped, Base):
+    __tablename__ = "repository_snapshots"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["repository_id", "owner_id"], ["repositories.id", "repositories.owner_id"]
+        ),
+        UniqueConstraint("id", "owner_id"),
+        UniqueConstraint("repository_id", "commit_sha", "manifest_hash"),
+    )
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID]
+    repository_id: Mapped[UUID]
+    commit_sha: Mapped[str] = mapped_column(String(40))
+    manifest_hash: Mapped[str] = mapped_column(String(64))
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+
+
+class RepositoryFile(Base):
+    __tablename__ = "repository_files"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["snapshot_id", "owner_id"],
+            ["repository_snapshots.id", "repository_snapshots.owner_id"],
+        ),
+        UniqueConstraint("snapshot_id", "path"),
+    )
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID]
+    snapshot_id: Mapped[UUID]
+    path: Mapped[str] = mapped_column(String(1000))
+    content: Mapped[str] = mapped_column(Text)
+    content_hash: Mapped[str] = mapped_column(String(64))
+    size: Mapped[int]
+    parse_status: Mapped[str] = mapped_column(String(30), default="not_indexed")
+
+
+class CodeCitation(Timestamped, Base):
+    __tablename__ = "code_citations"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["snapshot_id", "owner_id"],
+            ["repository_snapshots.id", "repository_snapshots.owner_id"],
+        ),
+    )
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID]
+    snapshot_id: Mapped[UUID]
+    path: Mapped[str] = mapped_column(String(1000))
+    start_line: Mapped[int]
+    end_line: Mapped[int]
+    content_hash: Mapped[str] = mapped_column(String(64))
+
+
+class ProjectRecommendation(Timestamped, Base):
+    __tablename__ = "project_recommendations"
+    __table_args__ = (
+        UniqueConstraint("id", "owner_id"),
+        ForeignKeyConstraint(
+            ["snapshot_id", "owner_id"],
+            ["repository_snapshots.id", "repository_snapshots.owner_id"],
+        ),
+    )
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID]
+    run_id: Mapped[UUID] = mapped_column(ForeignKey("agent_runs.id"), index=True)
+    goal_version_id: Mapped[UUID] = mapped_column(ForeignKey("career_goal_versions.id"))
+    snapshot_id: Mapped[UUID]
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+
+
+class ProjectSelection(Timestamped, Base):
+    __tablename__ = "project_selections"
+    __table_args__ = (
+        UniqueConstraint("id", "owner_id"),
+        ForeignKeyConstraint(
+            ["recommendation_id", "owner_id"],
+            ["project_recommendations.id", "project_recommendations.owner_id"],
+        ),
+    )
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID]
+    recommendation_id: Mapped[UUID]
+    snapshot_id: Mapped[UUID] = mapped_column(ForeignKey("repository_snapshots.id"))
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+
+
+class ArtifactFeedback(Timestamped, Base):
+    __tablename__ = "artifact_feedback"
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    artifact_kind: Mapped[str] = mapped_column(String(50))
+    artifact_id: Mapped[UUID]
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+
+
+class LearningUnit(Timestamped, Base):
+    __tablename__ = "learning_units"
+    __table_args__ = (UniqueConstraint("id", "owner_id"),)
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    run_id: Mapped[UUID] = mapped_column(ForeignKey("agent_runs.id"), unique=True)
+    selection_id: Mapped[UUID] = mapped_column(ForeignKey("project_selections.id"))
+    objective_version_id: Mapped[UUID] = mapped_column(ForeignKey("learning_objective_versions.id"))
+    snapshot_id: Mapped[UUID] = mapped_column(ForeignKey("repository_snapshots.id"))
+    supersedes_unit_id: Mapped[UUID | None] = mapped_column(ForeignKey("learning_units.id"))
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+
+
+class LearningProgress(Base):
+    __tablename__ = "learning_progress"
+    unit_id: Mapped[UUID] = mapped_column(ForeignKey("learning_units.id"), primary_key=True)
+    owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
+    revision: Mapped[int] = mapped_column(default=1)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+
+
+class TaskDraft(Timestamped, Base):
+    __tablename__ = "task_drafts"
+    __table_args__ = (UniqueConstraint("id", "owner_id"),)
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
+    unit_id: Mapped[UUID] = mapped_column(ForeignKey("learning_units.id"))
+    objective_version_id: Mapped[UUID] = mapped_column(ForeignKey("learning_objective_versions.id"))
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+
+
+class BuildProject(Timestamped, Base):
+    __tablename__ = "build_projects"
+    __table_args__ = (UniqueConstraint("id", "owner_id"),)
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+
+
+class BuildTask(Timestamped, Base):
+    __tablename__ = "build_tasks"
+    __table_args__ = (
+        UniqueConstraint("id", "owner_id"),
+        UniqueConstraint("project_id", "task_draft_id"),
+        ForeignKeyConstraint(
+            ["project_id", "owner_id"], ["build_projects.id", "build_projects.owner_id"]
+        ),
+        CheckConstraint(
+            "status IN ('todo','in_progress','submitted','needs_revision','accepted','cancelled')"
+        ),
+    )
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID]
+    project_id: Mapped[UUID]
+    task_draft_id: Mapped[UUID | None] = mapped_column(ForeignKey("task_drafts.id"))
+    revision: Mapped[int] = mapped_column(default=1)
+    status: Mapped[str] = mapped_column(String(30), default="todo")
+    current_task_version_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("build_task_versions.id", use_alter=True, name="fk_task_current_version")
+    )
+    current_submission_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("submissions.id", use_alter=True, name="fk_task_current_submission")
+    )
+    effective_confirmation_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("assessment_confirmations.id", use_alter=True, name="fk_task_confirmation")
+    )
+
+
+class BuildTaskVersion(Timestamped, Base):
+    __tablename__ = "build_task_versions"
+    __table_args__ = (
+        ForeignKeyConstraint(["task_id", "owner_id"], ["build_tasks.id", "build_tasks.owner_id"]),
+        UniqueConstraint("id", "owner_id"),
+        UniqueConstraint("task_id", "version_no"),
+    )
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID]
+    task_id: Mapped[UUID]
+    version_no: Mapped[int]
+    objective_version_id: Mapped[UUID] = mapped_column(ForeignKey("learning_objective_versions.id"))
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+
+
+class Submission(Timestamped, Base):
+    __tablename__ = "submissions"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["task_version_id", "owner_id"],
+            ["build_task_versions.id", "build_task_versions.owner_id"],
+        ),
+        UniqueConstraint("id", "owner_id"),
+        UniqueConstraint("task_id", "version_no"),
+    )
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID]
+    task_id: Mapped[UUID] = mapped_column(ForeignKey("build_tasks.id"))
+    task_version_id: Mapped[UUID]
+    version_no: Mapped[int]
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+
+
+class Assessment(Timestamped, Base):
+    __tablename__ = "assessments"
+    __table_args__ = (UniqueConstraint("id", "owner_id"),)
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    submission_id: Mapped[UUID] = mapped_column(ForeignKey("submissions.id"))
+    run_id: Mapped[UUID] = mapped_column(ForeignKey("agent_runs.id"), unique=True)
+    revision: Mapped[int] = mapped_column(default=1)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+
+
+class AssessmentReview(Timestamped, Base):
+    __tablename__ = "assessment_reviews"
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
+    assessment_id: Mapped[UUID] = mapped_column(ForeignKey("assessments.id"))
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+
+
+class AssessmentConfirmation(Timestamped, Base):
+    __tablename__ = "assessment_confirmations"
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
+    assessment_id: Mapped[UUID] = mapped_column(ForeignKey("assessments.id"))
+    review_id: Mapped[UUID] = mapped_column(ForeignKey("assessment_reviews.id"), unique=True)
+    decision: Mapped[str] = mapped_column(String(30))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revocation_reason: Mapped[str | None] = mapped_column(Text)
+
+
+class PlanDeltaProposal(Timestamped, Base):
+    __tablename__ = "plan_delta_proposals"
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
+    assessment_id: Mapped[UUID] = mapped_column(ForeignKey("assessments.id"), unique=True)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+
+
+class MaintenanceCursor(Base):
+    __tablename__ = "maintenance_cursors"
+    name: Mapped[str] = mapped_column(String(100), primary_key=True)
+    last_id: Mapped[UUID | None]

@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     session_hours: int = Field(default=24, ge=1, le=168)
     max_source_chars: int = Field(default=100000, ge=1)
     auth_mode: str = "session"
+    maintenance_enabled: bool = False
     redis_url: SecretStr = SecretStr("redis://127.0.0.1:56379/0")
 
 
