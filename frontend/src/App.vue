@@ -38,7 +38,7 @@ async function logout() {
   </main>
   <div v-else class="app-shell">
     <aside class="sidebar"><div class="brand"><span class="brand-mark">C</span> CareerForge</div><p class="sidebar-caption">职业实践工作台</p>
-      <nav><router-link to="/">◈ 当前工作台</router-link><router-link to="/sources">▤ 岗位资料与来源</router-link><router-link to="/market">▥ 岗位要求分析</router-link><router-link to="/planning">◇ 证据与学习计划</router-link><router-link to="/projects">⌘ 项目与代码学习</router-link><router-link to="/build">□ 自主构建</router-link><router-link to="/runs">◷ 运行记录</router-link></nav>
+      <nav><router-link to="/">◈ 当前工作台</router-link><router-link to="/sources">▤ 岗位资料与来源</router-link><router-link to="/market">▥ 岗位要求分析</router-link><router-link to="/mock-research">▧ 模拟调研与计划</router-link><router-link to="/planning">◇ 证据与学习计划</router-link><router-link to="/projects">⌘ 项目与代码学习</router-link><router-link to="/build">□ 自主构建</router-link><router-link to="/runs">◷ 运行记录</router-link></nav>
       <div class="sidebar-bottom"><span class="status-dot"></span> 个人空间<br><small>{{ session.user.email }}</small><el-button link @click="logout">退出登录</el-button></div>
     </aside>
     <main class="main-content"><header class="topbar"><span>把学习变成可以核查的成果</span><el-tag type="info" effect="plain">开发预览 · V1</el-tag></header><router-view /></main>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useRoute } from 'vue-router'
 import { api, apiPage, mutation, uploadAttachment } from '../api/client'
 import RunPanel from '../components/RunPanel.vue'
 type Goal={goal_version_id:string;role_direction:string}
@@ -34,7 +35,8 @@ async function saveDraft(){if(!plan.value)return;try{plan.value=await write<Plan
 function openObjective(row:Objective|null){editing.value=row;Object.assign(objectiveForm,{title:row?.title??'',target_behavior:row?.target_behavior??'',scope:row?.scope??'',deliverables:row?.deliverables.join('\n')??'',prerequisite_objective_ids:row?.prerequisite_objective_ids??[],estimate:!!row?.effort_hours,min:row?.effort_hours?.min??1,max:row?.effort_hours?.max??4,criteria:row?(JSON.parse(JSON.stringify(row.criteria)) as Criterion[]).map(c=>({dimension:c.dimension,scenario:c.scenario,expected_behavior:c.expected_behavior,pass_rule:c.pass_rule,fail_rule:c.fail_rule,unknown_rule:c.unknown_rule,critical:c.critical,allowed_methods:c.allowed_methods,required_artifact_types:c.required_artifact_types,limitations:c.limitations})):[blankCriterion()],scope_confirmed:false});objectiveDialog.value=true}
 async function saveObjective(){try{const body={goal_version_id:goalId.value,title:objectiveForm.title,target_behavior:objectiveForm.target_behavior,scope:objectiveForm.scope,deliverables:objectiveForm.deliverables.split('\n').filter(Boolean),prerequisite_objective_ids:objectiveForm.prerequisite_objective_ids,effort_hours:objectiveForm.estimate?{min:objectiveForm.min,max:objectiveForm.max,is_estimate:true}:null,criteria:objectiveForm.criteria,scope_confirmed:objectiveForm.scope_confirmed,...(editing.value?{expected_version:editing.value.version,change_reason:'用户核对并调整目标与条件'}:{})};await write(editing.value?`/learning-objectives/${editing.value.objective_id}/versions`:'/learning-objectives','POST',body);objectiveDialog.value=false;await load();ElMessage.success('目标与完整条件已保存为新版本。')}catch(e){ElMessage.error(String(e))}}
 function move(index:number,delta:number){const next=index+delta;if(next<0||next>=selected.value.length)return;const a=selected.value[index]!,b=selected.value[next]!;selected.value[index]=b;selected.value[next]=a}
-onMounted(load)
+const route=useRoute()
+onMounted(async()=>{await load();if(typeof route.query.plan==='string'){try{const saved=await api<Plan>('/plans/'+encodeURIComponent(route.query.plan));showPlan(saved);const hours=(saved as Plan & {user_constraints?:{available_hours:number|null}}).user_constraints?.available_hours;availableHours.value=hours??null}catch(e){ElMessage.error(String(e))}}})
 </script>
 <template>
 <section class="page-heading"><div><span class="eyebrow">证据 → 目标 → 可采纳计划</span><h1>证据与学习计划</h1><p>缺材料保留未知。每个目标都有可检查的条件，采纳计划与创建任务分别进行。</p></div><el-button @click="load">刷新</el-button></section>
