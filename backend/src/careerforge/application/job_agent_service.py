@@ -87,11 +87,20 @@ def snapshot_for_run(db, run):
 
 
 def strict_schema(value):
+    """Translate discriminated Pydantic unions to the provider's strict subset.
+
+    Requirement branches have disjoint literal `type` values, so anyOf retains
+    their meaning. Pydantic still validates the discriminated union locally.
+    """
     if isinstance(value, list):
         return [strict_schema(v) for v in value]
     if not isinstance(value, dict):
         return value
-    result = {k: strict_schema(v) for k, v in value.items() if k not in {"default", "title"}}
+    result = {
+        ("anyOf" if k == "oneOf" else k): strict_schema(v)
+        for k, v in value.items()
+        if k not in {"default", "title", "discriminator"}
+    }
     if result.get("type") == "object":
         result["additionalProperties"] = False
         result["required"] = list(result.get("properties", {}))

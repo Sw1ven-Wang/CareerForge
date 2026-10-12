@@ -80,10 +80,24 @@ def test_model_quote_is_validated_and_never_confirmed():
 
 
 def test_strict_schema_requires_all_properties_and_request_is_bounded():
-    schema = strict_schema(AgentExtraction.model_json_schema())
+    original = AgentExtraction.model_json_schema()
+    schema = strict_schema(original)
+    # The actual vendor rejected the union nested in expression, including
+    # recursive children under $defs. Test the real model schema, not a toy one.
+    assert "oneOf" in original["$defs"]["AgentCandidate"]["properties"]["expression"]
+    union = schema["$defs"]["AgentCandidate"]["properties"]["expression"]["anyOf"]
+    assert {branch["$ref"] for branch in union} == {
+        "#/$defs/ConceptExpr",
+        "#/$defs/ConstraintExpr",
+        "#/$defs/BooleanExpr",
+    }
+    assert schema["$defs"]["BooleanExpr"]["properties"]["children"]["items"]["anyOf"] == union
+    assert schema["$defs"]["ConceptExpr"]["properties"]["type"]["const"] == "concept"
+    assert schema["$defs"]["ConstraintExpr"]["properties"]["type"]["const"] == "constraint"
 
     def check(value):
         if isinstance(value, dict):
+            assert "oneOf" not in value and "discriminator" not in value
             if value.get("type") == "object":
                 assert value["additionalProperties"] is False
                 assert set(value["required"]) == set(value["properties"])
@@ -96,3 +110,5 @@ def test_strict_schema_requires_all_properties_and_request_is_bounded():
     check(schema)
     request = request_for(snapshot(), {"model": "gpt-6.1-sol", "max_output_tokens": 2048})
     assert request.reasoning_effort == "low" and request.max_output_tokens == 2048
+    assert request.response_schema == schema
+    AgentExtraction.model_validate(candidate("熟悉 Python 或 Go"))
