@@ -6,6 +6,7 @@ export type LearningReport = {
   guide?: { status: string; summary: string; points: LearningPoint[]; reading_order: string[]; practice: string[]; questions: string[]; limitations: string[] }
   sources?: { citation_id: string; path: string; start_line: number; end_line: number; commit: string; context_truncated?: boolean }[]
   trace?: { tool: string; arguments: Record<string,unknown>; status: string; candidate_count: number; path?: string; start_line?: number; end_line?: number }[]
+  compatibility_repairs?: {field:string;action:string}[]; recovery?: {method:string;original_status:string;extra_model_calls:number}; budget_warning?: {requested_output_tokens:number;reported_output_tokens:number}
   usage?: { calls?: number; input_tokens: number|null; output_tokens: number|null; status?: string }
 }
 const props = defineProps<{ report: LearningReport }>()
@@ -17,6 +18,8 @@ const states: Record<string,string> = { queued: '排队中', running: '检索与
 <template>
   <section class="learning-explanation">
     <div class="report-heading"><strong>学习说明</strong><el-tag v-if="report.synthetic" size="small" type="warning">离线模拟</el-tag><el-tag v-if="report.guide" size="small" :type="report.guide.status==='grounded'?'success':'info'">{{report.guide.status==='grounded'?'原文依据已校验':'依据不足'}}</el-tag><el-tag v-else size="small">{{states[report.status] ?? report.status}}</el-tag></div>
+    <el-alert v-if="report.recovery" title="原任务格式校验失败；已使用保存结果补齐显示标题并重新核验原文，没有追加模型调用。" type="info" :closable="false"/><el-alert v-if="report.budget_warning" :title="`供应商报告输出 ${report.budget_warning.reported_output_tokens} token，超过请求上限 ${report.budget_warning.requested_output_tokens}；本次额度兼容性验证未通过。`" type="warning" :closable="false"/>
+    <small v-if="report.compatibility_repairs?.length" class="muted">学习点标题由系统补齐，解释与原文摘录保留模型原始内容。</small>
     <p v-if="report.objective_title" class="objective-title">目标：{{report.objective_title}}</p>
     <p v-if="!report.guide">{{report.instruction}}</p>
     <template v-if="report.guide"><p class="summary">{{report.guide.summary}}</p>

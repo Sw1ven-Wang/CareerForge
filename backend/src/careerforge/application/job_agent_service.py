@@ -96,11 +96,18 @@ def strict_schema(value):
         return [strict_schema(v) for v in value]
     if not isinstance(value, dict):
         return value
-    result = {
-        ("anyOf" if k == "oneOf" else k): strict_schema(v)
-        for k, v in value.items()
-        if k not in {"default", "title", "discriminator"}
-    }
+    result = {}
+    for key, item in value.items():
+        if key in {"default", "title", "discriminator"}:
+            continue
+        if key in {"properties", "$defs", "definitions", "patternProperties"}:
+            # These maps contain user-defined names, not schema metadata.
+            # In particular, a property named "title" must survive conversion.
+            result[key] = {name: strict_schema(schema) for name, schema in item.items()}
+        elif key in {"enum", "const", "examples"}:
+            result[key] = item
+        else:
+            result["anyOf" if key == "oneOf" else key] = strict_schema(item)
     if result.get("type") == "object":
         result["additionalProperties"] = False
         result["required"] = list(result.get("properties", {}))

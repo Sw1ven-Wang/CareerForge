@@ -1,6 +1,7 @@
 """Read-only, bounded learning research with verified code evidence."""
 
 import json
+from copy import deepcopy
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
@@ -219,6 +220,22 @@ def read_source(db, owner, item, start=None, end=None):
     }
 
 
+def parse_guide(structured):
+    """Only repair missing presentation labels; never alter facts or quotations."""
+    from careerforge.schemas.studio import LearningGuide
+
+    value = deepcopy(structured)
+    repairs = []
+    if isinstance(value, dict) and isinstance(value.get("points"), list):
+        for index, point in enumerate(value["points"]):
+            if isinstance(point, dict) and "title" not in point:
+                point["title"] = f"学习点 {index + 1}"
+                repairs.append(
+                    {"field": f"points.{index}.title", "action": "generated_display_label"}
+                )
+    return LearningGuide.model_validate(value), repairs
+
+
 def validate_guide(db, owner, guide, sources):
     allowed = {item["citation_id"]: item for item in sources}
     if guide.status == "grounded" and not guide.points:
@@ -268,7 +285,7 @@ def usage(db, run_id):
     }
 
 
-def save(db, run, guide, sources, trace, synthetic=False, generated_by="model"):
+def save(db, run, guide, sources, trace, synthetic=False, generated_by="model", repairs=None):
     validate_inputs(db, run)
     points, used = validate_guide(db, run.owner_id, guide, sources)
     workspace = owned(
@@ -295,6 +312,7 @@ def save(db, run, guide, sources, trace, synthetic=False, generated_by="model"):
             "usage": usage(db, run.id),
             "synthetic": synthetic,
             "generated_by": generated_by,
+            "compatibility_repairs": repairs or [],
             "review_required": True,
             "executed": False,
         },

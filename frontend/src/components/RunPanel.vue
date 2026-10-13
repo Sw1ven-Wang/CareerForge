@@ -15,12 +15,14 @@ const eventNames: Record<string, string> = {
   'run.created': '任务已创建', 'run.started': '开始执行', 'stage.completed': '阶段结果已保存',
   'run.waiting_user': '等待你的决定', 'wait.requested': '已保存待确认问题',
   'run.resumed': '已接受决定，准备继续', 'run.recovering': '正在恢复执行',
+  'learning.result_recovered': '已修复保存结果，原始失败记录保留',
   'knowledge.search': '已检索知识库', 'knowledge.read': '已读取代码原文', 'knowledge.related': '已查询结构候选',
   'stage.failed': '阶段失败，未自动重试',
   'run.finished': '本次运行已结束', 'run.cancelled': '运行已取消',
 }
 const failureNames: Record<string,string> = {
   INVALID_LEARNING_EVIDENCE: '学习说明格式或原文引用未通过校验',
+  PROVIDER_OUTPUT_OVER_LIMIT: '供应商返回用量超过请求上限，已停止后续调用',
   MODEL_RESULT_UNCERTAIN: '上次调用结果未保存，已停止自动重试',
   rejected: '模型供应商拒绝了请求', authentication: '模型服务认证失败',
   timeout: '模型请求超时，未自动重试', output_limit: '模型输出不完整，未发布说明',

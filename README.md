@@ -82,3 +82,5 @@ docker compose -f compose.yaml -f compose.offline.yaml --profile app up -d --no-
 代码学习库第一阶段已提供：访问 `/knowledge` 导入固定版本的公开项目、检索代码并关联已有学习目标。已真实导入 smolagents 的 177 个文件 / 1,916 个片段；范围与后续语义检索计划见 [代码学习库说明](docs/progress/CODE_KNOWLEDGE_LIBRARY.md)。
 
 知识库检索已接入内置 Agent：在 `/studio` 选择“学习说明 · 自主检索”，可根据当前目标自主检索、读取与追踪代码，生成带原文摘录及行号的说明。每轮最多 4 次模型调用，使用方式及验证边界见 [知识库学习 Agent](docs/progress/KNOWLEDGE_AGENT_LEARNING.md)。
+
+知识库学习 Agent 已进行一次真实验证：自主检索与原文说明可用，显示标题字段已修复；供应商报告输出超过请求上限，严格额度验证尚未通过。结果与用量见 [真实验证记录](docs/progress/REAL_KNOWLEDGE_AGENT_VERIFICATION.md)。

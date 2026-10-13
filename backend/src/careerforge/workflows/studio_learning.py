@@ -74,6 +74,16 @@ def tool_definitions():
     ]
 
 
+def require_output_budget(result, request):
+    reported = result.usage.output_tokens
+    if reported is not None and reported > request.max_output_tokens:
+        raise BusinessError(
+            422,
+            "PROVIDER_OUTPUT_OVER_LIMIT",
+            "供应商报告的输出用量超过请求上限，停止后续模型调用。",
+        )
+
+
 class Learner:
     def __init__(self, run_id, epoch, worker, manifest):
         self.run_id, self.epoch, self.worker, self.manifest = run_id, epoch, worker, manifest
@@ -233,6 +243,7 @@ reading_order 只放已读引用 ID；practice 给出小型迁移练习，questi
             if old:
                 result = ModelResult.model_validate(old.payload)
                 self.synthetic = self.synthetic or result.synthetic
+                require_output_budget(result, request)
                 return result
             if artifact(db, run, "attempted:" + key, service.VERSION):
                 raise BusinessError(
@@ -267,6 +278,7 @@ reading_order 只放已读引用 ID；practice 给出小型迁移练习，questi
                 result.model_dump(mode="json"),
             )
         self.synthetic = self.synthetic or result.synthetic
+        require_output_budget(result, request)
         return result
 
     async def research(self):
@@ -311,9 +323,10 @@ reading_order 只放已读引用 ID；practice 给出小型迁移练习，questi
                 return
             if result.finish_reason != "stop" or result.tool_calls:
                 raise ModelError("invalid_response", retryable=False)
-            guide = LearningGuide.model_validate(result.structured)
+            guide, repairs = service.parse_guide(result.structured)
             generated_by = "model"
         else:
+            repairs = []
             guide = LearningGuide(
                 status="insufficient_evidence",
                 summary="本轮未读取到足以支持当前目标的代码，未生成实现解释。",
@@ -334,6 +347,7 @@ reading_order 只放已读引用 ID；practice 给出小型迁移练习，questi
                 self.trace,
                 self.synthetic,
                 generated_by,
+                repairs,
             )
             commit_stage(
                 db, self.run_id, self.epoch, self.worker, "result", service.VERSION, output
