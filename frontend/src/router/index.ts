@@ -9,7 +9,8 @@ import MockResearchView from '../views/MockResearchView.vue'
 import RunsView from '../views/RunsView.vue'
 import SourceLibraryView from '../views/SourceLibraryView.vue'
 export default createRouter({ history: createWebHistory(), routes: [
-  { path: '/', component: WorkbenchView },
+  { path: '/', redirect: '/studio' },
+  { path: '/goals', component: WorkbenchView },
   { path: '/build', redirect: '/planning' },
   { path: '/knowledge', component: KnowledgeLibraryView },
   { path: '/studio', component: LearningStudioView },

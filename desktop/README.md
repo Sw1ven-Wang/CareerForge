@@ -1,6 +1,6 @@
 # CareerForge 桌面版（Windows x64）
 
-保留现有 Docker 后端及无网络执行沙箱。双击项目根目录 `CareerForge.lnk` 或 `desktop/release/CareerForge.exe`。启动先显示本地服务中心，检查并启动已有服务；全部就绪后自动打开现有工作台。可通过原生窗口菜单“服务状态”返回。首次使用桌面版需正常登录，账号数据与网页版共用，登录 Cookie 独立保存。
+保留现有 Docker 后端及无网络执行沙箱。双击项目根目录 `CareerForge.lnk` 或 `desktop/release/CareerForge-0.2.0.exe`。启动先显示本地服务中心，检查并启动已有服务；全部就绪后自动打开现有工作台。可通过原生窗口菜单“服务状态”返回。首次使用桌面版需正常登录，账号数据与网页版共用，登录 Cookie 独立保存。
 
 ## 使用边界
 
@@ -26,7 +26,21 @@ powershell -NoProfile -ExecutionPolicy Bypass -File desktop/build.ps1
 只读诊断（不启动服务、不执行代码、不调用模型）：
 
 ```powershell
-& desktop/release/CareerForge.exe --diagnose "$env:TEMP/careerforge-status.json"
+& desktop/release/CareerForge-0.2.0.exe --diagnose "$env:TEMP/careerforge-status.json"
 ```
 
 参考：[Tauri Windows 交叉编译](https://v2.tauri.app/distribute/windows-installer/#build-windows-apps-on-linux-and-macos)、[能力权限](https://v2.tauri.app/security/capabilities/)。
+
+## 本机 IDE 与两类资料（2026-10-13 更新）
+
+主导航收敛为学习工作台、需求资料、开源项目。需求由用户粘贴正文或上传文本文件，支持岗位、技术资料、文档与笔记；不再新建招聘采集/调研任务。选择需求和已导入开源项目，Agent 分析需求后自主查找代码，展示需求原文与实现位置的对应。计划、岗位统计与运行记录放入次级入口。
+
+在学习工作台切换“自己的 IDE → 本机项目”，使用原生目录选择器授权具体目录。可打开、新建与直接保存 UTF-8 源码文本；单文件最多 100 KB，列表最多 1000 项，超限时提示缩小目录。拒绝私密/依赖目录、设备路径、越界、symlink/junction 与硬链接。磁盘内容被其他编辑器改变时拒绝覆盖，需重新读取。
+
+Agent 只接收明确选择的最多 3 个已保存文件，发送前展示文件清单。内容以一次明确操作复制到本机后端快照，不扫描或上传整个目录。补丁先在网页审阅差异，再经原生确认写入选定目录；所有文件先检查旧正文和磁盘哈希，再备份后写入。保存保留已有 UTF-8 BOM 和 CRLF；备份清单与原始字节放在应用数据目录 code-backups 中，可据清单手动恢复。此版不通过 Agent 删除本机文件。
+
+多文件写入不是跨文件崩溃原子事务：写入错误会尝试恢复，进程/断电中断时使用写入前备份核对。若本机写入成功但后端记录同步失败，界面明确显示待同步，允许重试记录，避免再次写文件。
+
+运行命令仍逐条确认，只执行明确选择的文件快照，使用原有无网络 Docker 沙箱。未提供宿主 Shell、任意本机命令、依赖安装、自动执行或完整 VS Code/LSP 功能。目录授权与工作区绑定限当前桌面会话；重启或退出后需重新选择目录，不自动恢复本机读写权限。
+
+旧桌面窗口正在使用时，构建发布为新的版本文件，不强行退出或覆盖旧程序。保存未完成编辑后从菜单退出旧版，再双击根目录快捷方式进入新版。

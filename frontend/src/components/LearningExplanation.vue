@@ -3,7 +3,7 @@ import { computed } from 'vue'
 export type LearningPoint = { title: string; explanation: string; citation_id: string; quote: string; path: string; commit: string; quote_start_line: number; quote_end_line: number }
 export type LearningReport = {
   id: string; kind: string; status: string; objective_title?: string; objective_version_id?: string; instruction?: string; run_id?: string; synthetic?: boolean; generated_by?: string
-  guide?: { status: string; summary: string; points: LearningPoint[]; reading_order: string[]; practice: string[]; questions: string[]; limitations: string[] }
+  guide?: { status: string; summary: string; requirement_links?: {source_snapshot_id:string;source_title:string;quote:string;citation_id:string;explanation:string}[]; points: LearningPoint[]; reading_order: string[]; practice: string[]; questions: string[]; limitations: string[] }
   sources?: { citation_id: string; path: string; start_line: number; end_line: number; commit: string; context_truncated?: boolean }[]
   trace?: { tool: string; arguments: Record<string,unknown>; status: string; candidate_count: number; path?: string; start_line?: number; end_line?: number }[]
   compatibility_repairs?: {field:string;action:string}[]; recovery?: {method:string;original_status:string;extra_model_calls:number}; budget_warning?: {requested_output_tokens:number;reported_output_tokens:number}
@@ -23,6 +23,7 @@ const states: Record<string,string> = { queued: '排队中', running: '检索与
     <p v-if="report.objective_title" class="objective-title">目标：{{report.objective_title}}</p>
     <p v-if="!report.guide">{{report.instruction}}</p>
     <template v-if="report.guide"><p class="summary">{{report.guide.summary}}</p>
+      <article v-for="(link,i) in report.guide.requirement_links" :key="'requirement-'+i" class="learning-point"><h4>需求 → 开源实现</h4><small>{{link.source_title}}</small><pre>{{link.quote}}</pre><p>{{link.explanation}}</p><el-button link @click="emit('open',link.citation_id)">查看对应代码：{{sourceLabels[link.citation_id]}}</el-button></article>
       <article v-for="(point,i) in report.guide.points" :key="i" class="learning-point"><h4>{{i+1}}. {{point.title}}</h4><p>{{point.explanation}}</p><pre>{{point.quote}}</pre><el-button link @click="emit('point',point)">{{point.path}}:{{point.quote_start_line}}–{{point.quote_end_line}} · 定位原文</el-button><small>commit {{point.commit.slice(0,12)}}</small></article>
       <template v-if="report.guide.reading_order.length"><h4>建议阅读顺序</h4><ol><li v-for="id in report.guide.reading_order" :key="id"><el-button link @click="emit('open',id)">{{sourceLabels[id] ?? '查看代码依据'}}</el-button></li></ol></template>
       <template v-if="report.guide.practice.length"><h4>迁移练习</h4><ul><li v-for="(item,index) in report.guide.practice" :key="index">{{item}}<el-button v-if="report.guide.status==='grounded' && report.status!=='unavailable'" size="small" plain @click="emit('practice',index)">在自己的 IDE 中练习</el-button></li></ul></template>

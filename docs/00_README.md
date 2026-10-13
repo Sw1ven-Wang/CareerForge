@@ -118,3 +118,5 @@ R0 是 S00；R1 是 S01—S07 的完整 MVP；R2 是 S08 的可靠版本；R3 �
 ## 本机桌面入口（2026-10-13）
 
 现有工作台提供 Tauri Windows 桌面版，保留 Docker 后端与执行沙箱；入口、构建和使用见 [desktop/README.md](../desktop/README.md)，实现与验证记录见 [TAURI_DESKTOP.md](progress/TAURI_DESKTOP.md)。
+
+当前产品以人工导入的需求资料和开源项目为两类核心输入，Agent 负责分析需求并查找对应代码，不再新建岗位采集任务；桌面 IDE 支持用户选择目录后直接编辑与审阅补丁，命令仍在确认后于原沙箱运行。见 [最新实现记录](progress/MANUAL_REQUIREMENTS_LOCAL_IDE.md)。

@@ -1,4 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+mod local_commands;
+mod local_project;
 mod services;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
@@ -74,6 +76,7 @@ fn main() {
         return;
     }
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(window) = app.get_webview_window("manager") {
                 let _ = window.show();
@@ -83,7 +86,15 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             desktop_status,
             start_services,
-            open_workspace
+            open_workspace,
+            local_commands::local_project_pick,
+            local_commands::local_project_tree,
+            local_commands::local_project_read,
+            local_commands::local_project_snapshot,
+            local_commands::local_project_write,
+            local_commands::local_project_patch,
+            local_commands::local_project_close,
+            local_commands::local_project_capabilities
         ])
         .on_page_load(|webview, payload| {
             if payload.event() == tauri::webview::PageLoadEvent::Finished {
@@ -92,6 +103,9 @@ fn main() {
         })
         .setup(|app| {
             services::record("desktop.start", "manager");
+            app.manage(local_project::LocalProjects::new(
+                app.path().app_data_dir()?.join("code-backups"),
+            ));
             let menu = tauri::menu::MenuBuilder::new(app)
                 .text("status", "服务状态")
                 .text("workspace", "学习工作台")

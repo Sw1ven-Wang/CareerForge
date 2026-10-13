@@ -18,6 +18,7 @@ from careerforge.schemas.studio import (
     PracticeSubmissionInput,
     StudioAgentInput,
     WorkspaceInput,
+    WorkspaceSnapshotInput,
 )
 
 router = APIRouter(prefix="/api/v1/studio", tags=["learning-studio"])
@@ -51,6 +52,18 @@ def detail(identifier: UUID, request: Request, db: Database, user: Authenticated
 @router.put("/workspaces/{identifier}/file", response_model=Envelope)
 def save(identifier: UUID, body: FileInput, request: Request, db: Database, user: Authenticated):
     return wrap(request, service.save_file(db, user.id, identifier, body))
+
+
+@router.put("/workspaces/{identifier}/snapshot", response_model=Envelope)
+def sync_snapshot(
+    identifier: UUID,
+    body: WorkspaceSnapshotInput,
+    request: Request,
+    db: Database,
+    user: Authenticated,
+    key: IdempotencyKey,
+):
+    return wrap(request, service.sync_snapshot(db, user.id, identifier, body, key))
 
 
 @router.post("/workspaces/{identifier}/agent-runs", response_model=Envelope, status_code=202)

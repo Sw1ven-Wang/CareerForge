@@ -42,7 +42,9 @@ class GoalRevision(GoalInput):
     change_reason: str = Field(min_length=1, max_length=2000)
 
 
-SourceType = Literal["job_posting", "interview_experience", "official_doc", "user_note"]
+SourceType = Literal[
+    "job_posting", "interview_experience", "official_doc", "user_note", "technical_material"
+]
 Precision = Literal["exact", "date_only", "approximate", "unknown"]
 
 

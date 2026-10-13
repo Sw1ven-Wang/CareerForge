@@ -8,7 +8,7 @@ from sqlalchemy import select
 
 from careerforge.application import knowledge_service as knowledge
 from careerforge.application import repository_service as repositories
-from careerforge.application.common import fingerprint, idempotency
+from careerforge.application.common import digest, fingerprint, idempotency
 from careerforge.application.ownership import owned
 from careerforge.application.planning_service import objective_version
 from careerforge.application.run_service import create_run
@@ -29,13 +29,84 @@ SOURCE_LIMIT = 4
 SOURCE_CHARS = 3500
 
 
+def read_requirements(db, owner, identifiers):
+    from careerforge.application.source_service import get_snapshot, get_source
+    from careerforge.infrastructure.db.models import SourceSnapshot
+
+    values = []
+    for identifier in dict.fromkeys(identifiers):
+        row = owned(db, SourceSnapshot, owner, UUID(str(identifier)))
+        source = get_source(db, owner, row.source_id)
+        row = get_snapshot(db, owner, source.id, row.id)
+        if digest(row.content) != row.content_hash:
+            raise BusinessError(409, "REQUIREMENT_CONTENT_CHANGED", "需求正文哈希不一致。")
+        if not row.content.strip() or len(row.content) > 6000:
+            raise BusinessError(
+                413,
+                "REQUIREMENT_SCOPE_TOO_LARGE",
+                "请选择非空且不超过 6000 字符的需求正文；长文可先导入需要学习的片段。",
+            )
+        values.append(
+            {
+                "source_snapshot_id": str(row.id),
+                "content_hash": row.content_hash,
+                "title": source.title or "需求资料",
+                "source_type": source.source_type,
+                "content": row.content,
+            }
+        )
+    return values
+
+
+def validate_requirements(db, owner, requirements):
+    current = read_requirements(db, owner, [r["source_snapshot_id"] for r in requirements])
+    if [(r["source_snapshot_id"], r["content_hash"]) for r in current] != [
+        (r["source_snapshot_id"], r["content_hash"]) for r in requirements
+    ]:
+        raise BusinessError(409, "REQUIREMENT_CONTENT_CHANGED", "冻结需求已变化。")
+
+
+def requirement_links(guide, requirements, code_sources):
+    allowed = {r["source_snapshot_id"]: r for r in requirements}
+    citations = {r["citation_id"] for r in code_sources}
+    if requirements and guide.status == "grounded" and not guide.requirement_links:
+        raise ValueError("grounded requirement research needs requirement-to-code links")
+    links = []
+    for item in guide.requirement_links:
+        source = allowed.get(item.source_snapshot_id)
+        if (
+            source is None
+            or item.citation_id not in citations
+            or source["content"].count(item.quote) != 1
+        ):
+            raise ValueError("invented or ambiguous requirement link")
+        offset = source["content"].index(item.quote)
+        links.append(
+            {
+                **item.model_dump(),
+                "source_title": source["title"],
+                "content_hash": source["content_hash"],
+                "quote_start": offset,
+                "quote_end": offset + len(item.quote),
+            }
+        )
+    return links
+
+
 def start(db, owner, workspace_id, body, key):
     workspace = owned(db, LearningWorkspace, owner, workspace_id)
-    if not body.objective_version_id:
+    if not body.objective_version_id and not body.source_snapshot_ids:
         raise BusinessError(
-            422, "LEARNING_OBJECTIVE_REQUIRED", "请选择已有学习目标，再生成学习说明。"
+            422,
+            "LEARNING_OBJECTIVE_REQUIRED",
+            "请选择需求资料或已有学习目标，再让 Agent 查找对应实现。",
         )
-    objective = objective_version(db, owner, body.objective_version_id)
+    objective = (
+        objective_version(db, owner, body.objective_version_id)
+        if body.objective_version_id
+        else None
+    )
+    requirements = read_requirements(db, owner, body.source_snapshot_ids)
     record = idempotency(
         db, owner, f"studio.learn:{workspace_id}", key, body.model_dump(mode="json")
     )
@@ -95,22 +166,31 @@ def start(db, owner, workspace_id, body, key):
             }
         )
     context = {
-        "objective": {
-            k: objective.payload.get(k)
-            for k in ("title", "target_behavior", "scope", "deliverables")
-        },
+        "objective": (
+            {
+                k: objective.payload.get(k)
+                for k in ("title", "target_behavior", "scope", "deliverables")
+            }
+            if objective
+            else {
+                "title": " / ".join(r["title"] for r in requirements)[:150],
+                "target_behavior": "分析需求并找到开源项目中对应的实现",
+                "scope": "本轮选择的需求正文与开源版本",
+            }
+        ),
+        "requirements_untrusted": requirements,
         "instruction": body.instruction,
     }
-    if len(json.dumps(context, ensure_ascii=False)) > 10000:
+    if len(json.dumps(context, ensure_ascii=False)) > 24000:
         raise BusinessError(
-            413, "LEARNING_CONTEXT_TOO_LARGE", "目标与请求超过 10,000 字符，请缩小学习范围。"
+            413, "LEARNING_CONTEXT_TOO_LARGE", "需求、目标与请求超过 24,000 字符，请缩小学习范围。"
         )
     pending_id = str(uuid4())
     manifest = {
         "pending_action_id": pending_id,
         "workspace_id": str(workspace_id),
-        "objective_version_id": str(objective.id),
-        "objective_hash": fingerprint(objective.payload),
+        "objective_version_id": str(objective.id) if objective else None,
+        "objective_hash": fingerprint(objective.payload) if objective else None,
         "scope": scope,
         "context": context,
         "model": settings.model_name,
@@ -128,7 +208,7 @@ def start(db, owner, workspace_id, body, key):
         VERSION,
         manifest,
         call_budget=body.model_call_limit,
-        goal_version_id=objective.goal_version_id,
+        goal_version_id=objective.goal_version_id if objective else None,
     )
     from careerforge.application.studio_service import append
 
@@ -139,7 +219,7 @@ def start(db, owner, workspace_id, body, key):
             "kind": "learning_run",
             "status": "queued",
             "run_id": str(run.id),
-            "objective_version_id": str(objective.id),
+            "objective_version_id": str(objective.id) if objective else None,
             "objective_title": context["objective"].get("title", ""),
             "instruction": body.instruction,
         },
@@ -151,9 +231,11 @@ def start(db, owner, workspace_id, body, key):
 def validate_inputs(db, run):
     data = run.input_manifest
     workspace = owned(db, LearningWorkspace, run.owner_id, UUID(data["workspace_id"]))
-    objective = objective_version(db, run.owner_id, UUID(data["objective_version_id"]))
-    if fingerprint(objective.payload) != data["objective_hash"]:
-        raise BusinessError(409, "LEARNING_OBJECTIVE_CHANGED", "冻结学习目标已变化。")
+    if data["objective_version_id"]:
+        objective = objective_version(db, run.owner_id, UUID(data["objective_version_id"]))
+        if fingerprint(objective.payload) != data["objective_hash"]:
+            raise BusinessError(409, "LEARNING_OBJECTIVE_CHANGED", "冻结学习目标已变化。")
+    validate_requirements(db, run.owner_id, data["context"].get("requirements_untrusted", []))
     for item in data["scope"]:
         snapshot = repositories.snapshot(db, run.owner_id, UUID(item["snapshot_id"]))
         if snapshot.manifest_hash != item["manifest_hash"]:
@@ -288,6 +370,8 @@ def usage(db, run_id):
 def save(db, run, guide, sources, trace, synthetic=False, generated_by="model", repairs=None):
     validate_inputs(db, run)
     points, used = validate_guide(db, run.owner_id, guide, sources)
+    requirements = run.input_manifest["context"].get("requirements_untrusted", [])
+    links = requirement_links(guide, requirements, used)
     workspace = owned(
         db, LearningWorkspace, run.owner_id, UUID(run.input_manifest["workspace_id"]), lock=True
     )
@@ -304,7 +388,8 @@ def save(db, run, guide, sources, trace, synthetic=False, generated_by="model", 
             "objective_version_id": run.input_manifest["objective_version_id"],
             "objective_title": run.input_manifest["context"]["objective"].get("title", ""),
             "instruction": run.input_manifest["context"]["instruction"],
-            "guide": {**guide.model_dump(), "points": points},
+            "guide": {**guide.model_dump(), "points": points, "requirement_links": links},
+            "requirements": [{k: v for k, v in r.items() if k != "content"} for r in requirements],
             "sources": used,
             "trace": trace,
             "run_id": str(run.id),
@@ -329,7 +414,9 @@ def save(db, run, guide, sources, trace, synthetic=False, generated_by="model", 
 
 def visible_action(db, owner, item):
     try:
-        objective_version(db, owner, UUID(item["objective_version_id"]))
+        if item.get("objective_version_id"):
+            objective_version(db, owner, UUID(item["objective_version_id"]))
+        validate_requirements(db, owner, item.get("requirements", []))
         for source in item.get("sources", []):
             repositories.citation_detail(db, owner, UUID(source["citation_id"]))
     except (BusinessError, ValueError):

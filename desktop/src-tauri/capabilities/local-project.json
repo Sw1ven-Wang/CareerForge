@@ -1,0 +1,24 @@
+{
+  "identifier": "local-project",
+  "description": "Selected-root editing only from the local study page. Native picker required; no shell or global filesystem permissions.",
+  "windows": [
+    "workspace"
+  ],
+  "local": false,
+  "remote": {
+    "urls": [
+      "http://127.0.0.1:8080/studio",
+      "http://127.0.0.1:8080/studio?*"
+    ]
+  },
+  "permissions": [
+    "allow-local-project-pick",
+    "allow-local-project-tree",
+    "allow-local-project-read",
+    "allow-local-project-snapshot",
+    "allow-local-project-write",
+    "allow-local-project-patch",
+    "allow-local-project-close",
+    "allow-local-project-capabilities"
+  ]
+}

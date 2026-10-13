@@ -37,26 +37,21 @@ async function logout() {
     </section>
   </main>
   <div v-else class="app-shell">
-    <aside class="sidebar"><div class="brand"><span class="brand-mark">C</span> CareerForge</div><p class="sidebar-caption">职业实践工作台</p>
+    <aside class="sidebar"><div class="brand"><span class="brand-mark">C</span> CareerForge</div><p class="sidebar-caption">从需求找到开源实现</p>
       <nav aria-label="工作台导航">
-        <router-link to="/">◈ 当前工作台</router-link>
-        <router-link to="/sources">▤ 岗位资料与来源</router-link>
-        <details class="sidebar-group" open>
-          <summary>▥ 要求分析与计划</summary>
-          <div class="sidebar-group-links">
-            <router-link to="/market">岗位要求分析</router-link>
-            <router-link to="/planning">证据与学习计划</router-link>
-            <router-link to="/mock-research">模拟调研与计划</router-link>
-          </div>
-        </details>
-        <router-link to="/knowledge">▧ 代码学习库</router-link>
-        <router-link to="/studio">▣ 学习工作台 · IDE</router-link>
-        <router-link to="/projects">⌘ 项目与代码学习</router-link>
-        <router-link to="/runs">◷ 运行记录</router-link>
+        <router-link to="/studio">◈ 学习工作台</router-link>
+        <router-link to="/sources">▤ 需求资料</router-link>
+        <router-link to="/knowledge">▧ 开源项目</router-link>
+        <details class="sidebar-group"><summary>更多</summary><div class="sidebar-group-links">
+          <router-link to="/planning">学习计划</router-link>
+          <router-link to="/market">岗位统计与分析</router-link>
+          <router-link to="/goals">学习方向设置</router-link>
+          <router-link to="/runs">运行记录</router-link>
+        </div></details>
       </nav>
       <div class="sidebar-bottom"><span class="status-dot"></span> 个人空间<br><small>{{ session.user.email }}</small><el-button link @click="logout">退出登录</el-button></div>
     </aside>
-    <main class="main-content"><header class="topbar"><span>把学习变成可以核查的成果</span><el-tag type="info" effect="plain">开发预览 · V1</el-tag></header><router-view /></main>
+    <main class="main-content"><header class="topbar"><span>人工导入需求 · Agent 匹配开源实现</span><el-tag type="info" effect="plain">本机学习工作台</el-tag></header><router-view /></main>
   </div>
 </template>
 

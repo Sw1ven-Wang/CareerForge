@@ -26,6 +26,7 @@ class StudioAgentInput(InputModel):
     paths: list[str] = Field(default_factory=list, max_length=3)
     practice_id: UUID | None = None
     mode: Literal["assist", "learn"] = "assist"
+    source_snapshot_ids: list[UUID] = Field(default_factory=list, max_length=3)
     knowledge_snapshot_ids: list[UUID] = Field(default_factory=list, max_length=10)
     model_call_limit: int = Field(default=4, ge=2, le=4)
 
@@ -84,9 +85,17 @@ class LearningPoint(InputModel):
     quote: str = Field(min_length=8, max_length=1000)
 
 
+class RequirementCodeLink(InputModel):
+    source_snapshot_id: str = Field(min_length=1, max_length=40)
+    quote: str = Field(min_length=8, max_length=1000)
+    citation_id: str = Field(min_length=1, max_length=40)
+    explanation: str = Field(min_length=1, max_length=1200)
+
+
 class LearningGuide(InputModel):
     status: Literal["grounded", "insufficient_evidence"]
     summary: str = Field(min_length=1, max_length=2000)
+    requirement_links: list[RequirementCodeLink] = Field(default_factory=list, max_length=4)
     points: list[LearningPoint] = Field(max_length=4)
     reading_order: list[str] = Field(max_length=4)
     practice: list[str] = Field(max_length=3)
@@ -122,3 +131,8 @@ class PracticePlanUpdateInput(InputModel):
     base_plan_version_id: UUID
     reason: str = Field(min_length=1, max_length=4000)
     scope_acknowledged: Literal[True]
+
+
+class WorkspaceSnapshotInput(InputModel):
+    expected_revision: int = Field(ge=1)
+    files: dict[str, str] = Field(max_length=100)

@@ -11,11 +11,14 @@ $taskDesktopDir = (Resolve-Path $PSScriptRoot).Path
 if ($LASTEXITCODE -ne 0) { throw 'Desktop compilation failed.' }
 $taskReleaseDir = Join-Path $PSScriptRoot 'release'
 New-Item -ItemType Directory -Force $taskReleaseDir | Out-Null
-Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'src-tauri/target/x86_64-pc-windows-msvc/release/careerforge-desktop.exe') -Destination (Join-Path $taskReleaseDir 'CareerForge.exe') -Force
+$taskVersion = (Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot 'src-tauri/tauri.conf.json') | ConvertFrom-Json).version
+$taskExecutable = Join-Path $taskReleaseDir ('CareerForge-' + $taskVersion + '.exe')
+if (Get-Process | Where-Object { $_.Path -eq $taskExecutable }) { throw 'This version is running. Close its desktop windows before publishing; backend services stay running.' }
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'src-tauri/target/x86_64-pc-windows-msvc/release/careerforge-desktop.exe') -Destination $taskExecutable -Force
 $taskShell = New-Object -ComObject WScript.Shell
 $taskShortcut = $taskShell.CreateShortcut((Join-Path $taskProjectRoot 'CareerForge.lnk'))
-$taskShortcut.TargetPath = Join-Path $taskReleaseDir 'CareerForge.exe'
+$taskShortcut.TargetPath = $taskExecutable
 $taskShortcut.WorkingDirectory = $taskProjectRoot
 $taskShortcut.Description = 'CareerForge desktop workbench'
 $taskShortcut.Save()
-Write-Output "Desktop ready: $taskReleaseDir\CareerForge.exe"
+Write-Output "Desktop ready: $taskExecutable"

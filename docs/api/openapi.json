@@ -5467,6 +5467,75 @@
         }
       }
     },
+    "/api/v1/studio/workspaces/{identifier}/snapshot": {
+      "put": {
+        "tags": [
+          "learning-studio"
+        ],
+        "summary": "Sync Snapshot",
+        "operationId": "sync_snapshot_api_v1_studio_workspaces__identifier__snapshot_put",
+        "parameters": [
+          {
+            "name": "identifier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Identifier"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceSnapshotInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/studio/workspaces/{identifier}/agent-runs": {
       "post": {
         "tags": [
@@ -8632,7 +8701,8 @@
               "job_posting",
               "interview_experience",
               "official_doc",
-              "user_note"
+              "user_note",
+              "technical_material"
             ],
             "title": "Source Type"
           },
@@ -8750,7 +8820,8 @@
                   "job_posting",
                   "interview_experience",
                   "official_doc",
-                  "user_note"
+                  "user_note",
+                  "technical_material"
                 ]
               },
               {
@@ -9836,7 +9907,8 @@
               "job_posting",
               "interview_experience",
               "official_doc",
-              "user_note"
+              "user_note",
+              "technical_material"
             ],
             "title": "Source Type"
           },
@@ -10003,6 +10075,15 @@
             "title": "Mode",
             "default": "assist"
           },
+          "source_snapshot_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 3,
+            "title": "Source Snapshot Ids"
+          },
           "knowledge_snapshot_ids": {
             "items": {
               "type": "string",
@@ -10145,6 +10226,30 @@
           "name"
         ],
         "title": "WorkspaceInput"
+      },
+      "WorkspaceSnapshotInput": {
+        "properties": {
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Revision"
+          },
+          "files": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "maxProperties": 100,
+            "title": "Files"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected_revision",
+          "files"
+        ],
+        "title": "WorkspaceSnapshotInput"
       },
       "careerforge__schemas__job_contract__UserConstraints": {
         "properties": {

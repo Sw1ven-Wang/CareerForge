@@ -4,6 +4,7 @@ from fastapi import APIRouter, Request
 
 from careerforge.api.dependencies import Authenticated, Database, IdempotencyKey
 from careerforge.application import collection_service as service
+from careerforge.domain.errors import BusinessError
 from careerforge.schemas.collection import CollectionInput
 from careerforge.schemas.resources import Envelope
 from careerforge.workflows.job_collection import tool_definitions
@@ -40,7 +41,9 @@ def start(
     db: Database,
     idempotency_key: IdempotencyKey = None,
 ):
-    return envelope(request, service.start(db, user.id, value, idempotency_key))
+    raise BusinessError(
+        410, "MANUAL_REQUIREMENTS_ONLY", "需求资料改为人工导入，不再新建自动采集或调研任务。"
+    )
 
 
 @router.get("/runs", response_model=Envelope)

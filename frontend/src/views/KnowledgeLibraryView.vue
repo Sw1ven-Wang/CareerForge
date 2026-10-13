@@ -66,7 +66,7 @@ function open(citationId: string) { void router.push({ path: '/studio', query: {
 onMounted(load)
 </script>
 <template>
-  <section class="page-heading"><div><span class="eyebrow">开源实现 · 固定版本 · 可追溯定位</span><h1>代码学习库</h1><p>检索学习主题，找到具体实现，再关联到自己的学习计划。</p></div><div><el-button @click="load">刷新</el-button><el-button type="primary" @click="importDialog=true">导入开源项目</el-button></div></section>
+  <section class="page-heading"><div><span class="eyebrow">开源实现 · 固定版本 · 可追溯定位</span><h1>开源项目</h1><p>导入参考项目，供 Agent 根据需求查找具体代码，也可以手动检索。</p></div><div><el-button @click="load">刷新</el-button><el-button type="primary" @click="importDialog=true">导入开源项目</el-button></div></section>
   <div class="library-layout">
     <aside class="library-card"><h2>项目版本</h2><el-button link @click="snapshotId=''">检索全部已索引项目</el-button><el-empty v-if="!projects.length" description="导入第一个参考项目"/>
       <article v-for="project in projects" :key="project.repository_snapshot_id" class="project" :class="{ active: snapshotId === project.repository_snapshot_id }"><button @click="snapshotId=project.repository_snapshot_id"><strong>{{ project.name }}</strong><small>{{ project.commit.slice(0,12) }}</small><span>{{ project.indexed ? `${project.file_count} 文件 · ${project.chunk_count} 片段` : '尚未索引' }}</span></button><el-tag size="small" :type="project.commit_verified ? 'success' : 'info'">{{ project.commit_verified ? 'GitHub 固定版本' : '预存 / 用户声明版本' }}</el-tag><el-button v-if="!project.indexed" link :loading="busy" @click="index(project)">建立索引</el-button></article>

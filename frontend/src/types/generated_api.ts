@@ -1494,6 +1494,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/studio/workspaces/{identifier}/snapshot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Sync Snapshot */
+        put: operations["sync_snapshot_api_v1_studio_workspaces__identifier__snapshot_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/studio/workspaces/{identifier}/agent-runs": {
         parameters: {
             query?: never;
@@ -2505,7 +2522,7 @@ export interface components {
              * Source Type
              * @enum {string}
              */
-            source_type: "job_posting" | "interview_experience" | "official_doc" | "user_note";
+            source_type: "job_posting" | "interview_experience" | "official_doc" | "user_note" | "technical_material";
             /**
              * Category Id
              * Format: uuid
@@ -2551,7 +2568,7 @@ export interface components {
             /** Source Category */
             source_category?: string | null;
             /** Source Type */
-            source_type?: ("job_posting" | "interview_experience" | "official_doc" | "user_note") | null;
+            source_type?: ("job_posting" | "interview_experience" | "official_doc" | "user_note" | "technical_material") | null;
             /** Title */
             title?: string | null;
             /** Source Name */
@@ -2928,7 +2945,7 @@ export interface components {
              * Source Type
              * @enum {string}
              */
-            source_type: "job_posting" | "interview_experience" | "official_doc" | "user_note";
+            source_type: "job_posting" | "interview_experience" | "official_doc" | "user_note" | "technical_material";
             /** Title */
             title?: string | null;
             /** Source Url */
@@ -2974,6 +2991,8 @@ export interface components {
              * @enum {string}
              */
             mode: "assist" | "learn";
+            /** Source Snapshot Ids */
+            source_snapshot_ids?: string[];
             /** Knowledge Snapshot Ids */
             knowledge_snapshot_ids?: string[];
             /**
@@ -3018,6 +3037,15 @@ export interface components {
             name: string;
             /** Files */
             files?: {
+                [key: string]: string;
+            };
+        };
+        /** WorkspaceSnapshotInput */
+        WorkspaceSnapshotInput: {
+            /** Expected Revision */
+            expected_revision: number;
+            /** Files */
+            files: {
                 [key: string]: string;
             };
         };
@@ -6210,6 +6238,43 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["FileInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sync_snapshot_api_v1_studio_workspaces__identifier__snapshot_put: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string | null;
+            };
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkspaceSnapshotInput"];
             };
         };
         responses: {

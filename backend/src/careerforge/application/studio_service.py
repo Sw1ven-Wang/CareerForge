@@ -104,6 +104,38 @@ def save_file(db, owner, identifier, body):
     return detail(row, db)
 
 
+def sync_snapshot(db, owner, identifier, body, key):
+    row = workspace(db, owner, identifier, True)
+    record = idempotency(
+        db, owner, f"studio.snapshot:{identifier}", key, body.model_dump(mode="json")
+    )
+    if record.response_summary:
+        return detail(row, db)
+    revision(row, body.expected_revision)
+    from sqlalchemy import select
+
+    from careerforge.infrastructure.db.models import AgentRun
+
+    active = db.scalar(
+        select(AgentRun.id)
+        .where(
+            AgentRun.owner_id == owner,
+            AgentRun.input_manifest["workspace_id"].astext == str(identifier),
+            AgentRun.status.in_(["queued", "running", "waiting_user"]),
+        )
+        .limit(1)
+    )
+    if active or any(
+        a["kind"] == "command" and a["status"] == "running" for a in row.payload["actions"]
+    ):
+        raise BusinessError(409, "WORKSPACE_BUSY", "任务执行中，不能替换输入快照。")
+    validate_files(body.files)
+    row.payload = {**row.payload, "files": body.files, "selected_files_only": True}
+    row.revision += 1
+    record.response_summary = {"revision": row.revision}
+    return detail(row, db)
+
+
 def action(row, identifier):
     item = next((a for a in row.payload["actions"] if a["id"] == str(identifier)), None)
     if not item:
@@ -243,6 +275,8 @@ def start_agent(db, owner, identifier, body, key):
         "instruction": body.instruction,
         "practice": practice_context,
     }
+    if row.payload.get("selected_files_only"):
+        context["recent_actions"] = []
     if len(json.dumps(context, ensure_ascii=False)) > 24000:
         raise BusinessError(
             413, "STUDIO_CONTEXT_TOO_LARGE", "上下文超过 24,000 字符，请选择更少文件。"
