@@ -39,3 +39,5 @@ Agent 的解释、补丁和命令建议均关联练习 ID。应用补丁仍核�
 页面截图：`C:/Users/sw/.codex/visualizations/2026/10/12/01a12e3e-f79a-76a0-87d3-210a136aa0c5/studio-practice-handoff.png`。
 
 2026-10-13 已完成一次真实小型编码闭环验证：1 次真实模型调用生成两份原始代码，审阅应用后，经用户确认在隔离容器执行 1 条命令，6 项断言通过、退出码 0；结果已保存到练习笔记，未自动确认学习目标。详见 [真实编码验证](REAL_CODING_CLOSED_LOOP_VERIFICATION.md)。
+
+下一阶段已把 IDE 练习成果接到完整条件人工验收和已有计划新草稿，见 [成果提交与计划更新](STUDIO_DELIVERY_REVIEW_PLAN.md)。

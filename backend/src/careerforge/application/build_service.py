@@ -318,6 +318,10 @@ def submission(db: Session, owner: UUID, identifier: UUID) -> Submission:
     if version.task_id != row.task_id:
         raise BusinessError(409, "SUBMISSION_VERSION_MISMATCH", "提交版本关系无效。")
     frozen_criteria(db, owner, version)
+    if row.payload.get("workspace_snapshot"):
+        from careerforge.application.studio_delivery_service import validate_snapshot
+
+        validate_snapshot(db, owner, row)
     for i in row.payload["attachment_ids"]:
         attachment_service.available(db, owner, UUID(i))
     return row
@@ -468,7 +472,7 @@ def materials(saved: Submission, criterion_id: UUID | None = None) -> set[str]:
         result.add("explanation_answer")
     if data.get("transfer_notes"):
         result.add("transfer_note")
-    if data["code_commit"] and data["attachment_ids"]:
+    if (data["code_commit"] or data.get("workspace_snapshot")) and data["attachment_ids"]:
         result.add("code_artifact")
     return result
 
@@ -531,9 +535,13 @@ def confirm(
                 trace.get(k, "").strip()
                 for k in ("procedure", "observed", "environment", "code_version")
             )
-            if traced and trace["code_version"] != saved.payload.get("code_commit"):
+            from careerforge.application.studio_delivery_service import code_version
+
+            if traced and trace["code_version"] != code_version(saved):
                 raise BusinessError(
-                    422, "SELF_REVIEW_VERSION_MISMATCH", "自验代码版本须对应本次提交的固定 commit。"
+                    422,
+                    "SELF_REVIEW_VERSION_MISMATCH",
+                    "自验代码版本须对应本次提交的固定 commit 或 IDE 快照哈希。",
                 )
             if c.payload["critical"] and original[str(c.id)]["verdict"] == "unknown" and not traced:
                 raise BusinessError(

@@ -6,7 +6,7 @@ export type Practice = {
 }
 type Related = { id: string; kind: string; status: string; practice_id?: string; exit_code?: number; argv?: string[] }
 const props=defineProps<{practice:Practice;actions:Related[];selected:boolean;busy:boolean}>()
-const emit=defineEmits<{resume:[];save:[note:string];open:[id:string]}>()
+const emit=defineEmits<{resume:[];save:[note:string];open:[id:string];delivery:[]}>()
 const note=ref(props.practice.note??'')
 watch(()=>props.practice.note,value=>{note.value=value??''})
 const related=computed(()=>props.actions.filter(a=>a.practice_id===props.practice.id&&a.kind!=='practice'))
@@ -23,6 +23,7 @@ const commands=computed(()=>related.value.filter(a=>a.kind==='command'))
     <el-button v-for="(id,i) in practice.citation_ids" :key="id" link @click="emit('open',id)">代码依据 {{i+1}}</el-button>
     <p class="record">建议 {{related.filter(a=>a.kind==='message').length}} 次 · 补丁 {{patches.length}} 组（已应用 {{patches.filter(a=>a.status==='applied').length}}） · 命令 {{commands.length}} 条</p>
     <details v-if="commands.length"><summary>命令记录</summary><p v-for="c in commands" :key="c.id">{{JSON.stringify(c.argv)}} · {{c.status==='pending'?'待确认':c.status==='running'?'执行中':c.exit_code===undefined?'执行失败':'退出码 '+c.exit_code}}</p></details>
+    <el-button :disabled="busy" @click="emit('delivery')">提交成果 / 人工验收</el-button>
     <label>练习笔记</label><el-input v-model="note" type="textarea" :rows="3" maxlength="4000" show-word-limit placeholder="记录自己的理解、执行观察和待解决问题…"/>
     <el-button size="small" :disabled="busy||note===(practice.note??'')" @click="emit('save',note)">保存笔记</el-button>
     <small>笔记、补丁和退出码只记录过程，不自动确认目标完成或个人能力。</small>

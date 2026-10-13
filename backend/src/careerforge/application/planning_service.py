@@ -385,8 +385,15 @@ def plan_result(db: Session, owner: UUID, row: LearningPlanVersion) -> dict[str,
     if row.alignment_report_id:
         alignment_report(db, owner, row.alignment_report_id)
     root = owned(db, LearningPlan, owner, row.plan_id)
+    from careerforge.application.studio_delivery_service import effective_outcome
+
+    outcomes = {
+        k: effective_outcome(db, owner, v)
+        for k, v in row.payload.get("practice_outcomes", {}).items()
+    }
     return {
         **row.payload,
+        "practice_outcomes": outcomes,
         "plan_id": str(root.id),
         "plan_version_id": str(row.id),
         "kind": row.kind,
@@ -435,7 +442,8 @@ def edit_plan(
             **{
                 k: v
                 for k, v in source.payload.items()
-                if k in {"planning_context_id", "eligibility_checks", "warnings"}
+                if k
+                in {"planning_context_id", "eligibility_checks", "warnings", "practice_outcomes"}
             },
             "adjustment_reason": body.adjustment_reason,
             "deferred": body.deferred,

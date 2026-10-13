@@ -40,3 +40,5 @@ API 与独立 `workspace-sandbox` 容器通过专用 Docker volume 邮箱通信�
 下一阶段已接通说明中的迁移练习与自己的 IDE，支持练习草稿、原文上下文交接、关联补丁/命令和笔记；见 [迁移练习交接](STUDIO_PRACTICE_HANDOFF.md)。
 
 2026-10-13 已完成一次真实小型编码闭环验证：1 次真实模型调用生成两份原始代码，审阅应用后，经用户确认在隔离容器执行 1 条命令，6 项断言通过、退出码 0；结果已保存到练习笔记，未自动确认学习目标。详见 [真实编码验证](REAL_CODING_CLOSED_LOOP_VERIFICATION.md)。
+
+下一阶段已把 IDE 练习成果接到完整条件人工验收和已有计划新草稿，见 [成果提交与计划更新](STUDIO_DELIVERY_REVIEW_PLAN.md)。

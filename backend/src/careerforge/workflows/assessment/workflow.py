@@ -1,6 +1,9 @@
 from typing import Any
 from uuid import UUID
 
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from careerforge.application import build_service as service
 from careerforge.application.ownership import owned
 from careerforge.application.planning_service import exact_ids, objective_version
@@ -12,8 +15,6 @@ from careerforge.infrastructure.db.models import (
     PlanDeltaProposal,
 )
 from careerforge.workflows.shared.pure import execute_pure
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 
 def validate(db: Session, run: AgentRun) -> dict[str, Any]:
@@ -30,7 +31,6 @@ def produce(db: Session, run: AgentRun) -> dict[str, Any]:
     saved = service.submission(db, run.owner_id, UUID(run.input_manifest["submission_id"]))
     version = service.task_version(db, run.owner_id, saved.task_version_id)
     full = service.frozen_criteria(db, run.owner_id, version)
-    available = service.materials(saved)
     items = [
         {
             "criterion_version_id": str(c.id),
@@ -43,7 +43,7 @@ def produce(db: Session, run: AgentRun) -> dict[str, Any]:
                 *[
                     f"缺少材料：{kind}"
                     for kind in c.payload["required_artifact_types"]
-                    if kind not in available
+                    if kind not in service.materials(saved, c.id)
                 ],
             ],
         }

@@ -1613,6 +1613,91 @@ export interface paths {
         patch: operations["save_practice_note_api_v1_studio_workspaces__identifier__practices__practice_id__note_patch"];
         trace?: never;
     };
+    "/api/v1/studio/workspaces/{identifier}/practices/{practice_id}/delivery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Practice Delivery */
+        get: operations["practice_delivery_api_v1_studio_workspaces__identifier__practices__practice_id__delivery_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/studio/workspaces/{identifier}/practices/{practice_id}/submissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit Practice */
+        post: operations["submit_practice_api_v1_studio_workspaces__identifier__practices__practice_id__submissions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/studio/workspaces/{identifier}/practices/{practice_id}/assessments/{assessment_id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Review Practice */
+        post: operations["review_practice_api_v1_studio_workspaces__identifier__practices__practice_id__assessments__assessment_id__confirm_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/studio/workspaces/{identifier}/practices/{practice_id}/assessments/{assessment_id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke Practice Review */
+        post: operations["revoke_practice_review_api_v1_studio_workspaces__identifier__practices__practice_id__assessments__assessment_id__revoke_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/studio/workspaces/{identifier}/practices/{practice_id}/plan-updates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Update Practice Plan */
+        post: operations["update_practice_plan_api_v1_studio_workspaces__identifier__practices__practice_id__plan_updates_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/knowledge/projects": {
         parameters: {
             query?: never;
@@ -1997,6 +2082,27 @@ export interface components {
              */
             confirmation: "APPLY" | "RUN";
         };
+        /** ConfirmationInput */
+        ConfirmationInput: {
+            /** Expected Version */
+            expected_version: number;
+            /** Expected Task Version */
+            expected_task_version: number;
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "accept" | "request_revision";
+            /** Criterion Decisions */
+            criterion_decisions: components["schemas"]["CriterionDecision"][];
+            /** Supplementary Evidence Ids */
+            supplementary_evidence_ids?: string[];
+            /**
+             * Scope Acknowledged
+             * @constant
+             */
+            scope_acknowledged: true;
+        };
         /** ConstraintExpr */
         ConstraintExpr: {
             /**
@@ -2034,6 +2140,32 @@ export interface components {
             email: string;
             /** Password */
             password: string;
+        };
+        /** CriterionDecision */
+        CriterionDecision: {
+            /**
+             * Criterion Version Id
+             * Format: uuid
+             */
+            criterion_version_id: string;
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "pass" | "fail" | "unknown";
+            /**
+             * Method
+             * @enum {string}
+             */
+            method: "model_review" | "user_reported" | "human_review";
+            /** Evidence Refs */
+            evidence_refs?: string[];
+            /** Reason */
+            reason: string;
+            /** Self Review Record */
+            self_review_record?: {
+                [key: string]: string;
+            } | null;
         };
         /** CriterionInput */
         CriterionInput: {
@@ -2178,6 +2310,15 @@ export interface components {
             end: number;
             /** Quote */
             quote: string;
+        };
+        /** ExplanationAnswer */
+        ExplanationAnswer: {
+            /** Question */
+            question: string;
+            /** Answer */
+            answer: string;
+            /** Criterion Version Ids */
+            criterion_version_ids: string[];
         };
         /** ExtractionRunInput */
         ExtractionRunInput: {
@@ -2537,6 +2678,43 @@ export interface components {
             /** Note */
             note: string;
         };
+        /** PracticePlanUpdateInput */
+        PracticePlanUpdateInput: {
+            /** Expected Plan Version */
+            expected_plan_version: number;
+            /**
+             * Plan Id
+             * Format: uuid
+             */
+            plan_id: string;
+            /**
+             * Base Plan Version Id
+             * Format: uuid
+             */
+            base_plan_version_id: string;
+            /** Reason */
+            reason: string;
+            /**
+             * Scope Acknowledged
+             * @constant
+             */
+            scope_acknowledged: true;
+        };
+        /** PracticeSubmissionInput */
+        PracticeSubmissionInput: {
+            /** Expected Revision */
+            expected_revision: number;
+            /** Summary */
+            summary: string;
+            /** Command Ids */
+            command_ids?: string[];
+            /** Explanation Answers */
+            explanation_answers?: components["schemas"]["ExplanationAnswer"][];
+            /** Transfer Notes */
+            transfer_notes?: string[];
+            /** Actual Minutes */
+            actual_minutes?: number | null;
+        };
         /** ProgressInput */
         ProgressInput: {
             /** Expected Version */
@@ -2701,6 +2879,15 @@ export interface components {
             response: {
                 [key: string]: unknown;
             };
+        };
+        /** RevocationInput */
+        RevocationInput: {
+            /** Expected Version */
+            expected_version: number;
+            /** Expected Task Version */
+            expected_task_version: number;
+            /** Reason */
+            reason: string;
         };
         /** SelectionInput */
         SelectionInput: {
@@ -6283,6 +6470,194 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    practice_delivery_api_v1_studio_workspaces__identifier__practices__practice_id__delivery_get: {
+        parameters: {
+            query?: {
+                submission_id?: string | null;
+            };
+            header?: never;
+            path: {
+                identifier: string;
+                practice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_practice_api_v1_studio_workspaces__identifier__practices__practice_id__submissions_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string | null;
+            };
+            path: {
+                identifier: string;
+                practice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PracticeSubmissionInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    review_practice_api_v1_studio_workspaces__identifier__practices__practice_id__assessments__assessment_id__confirm_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string | null;
+            };
+            path: {
+                identifier: string;
+                practice_id: string;
+                assessment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmationInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_practice_review_api_v1_studio_workspaces__identifier__practices__practice_id__assessments__assessment_id__revoke_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string | null;
+            };
+            path: {
+                identifier: string;
+                practice_id: string;
+                assessment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevocationInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_practice_plan_api_v1_studio_workspaces__identifier__practices__practice_id__plan_updates_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string | null;
+            };
+            path: {
+                identifier: string;
+                practice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PracticePlanUpdateInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };

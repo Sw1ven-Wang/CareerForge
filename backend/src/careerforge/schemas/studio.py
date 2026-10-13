@@ -3,6 +3,7 @@ from uuid import UUID
 
 from pydantic import Field
 
+from careerforge.schemas.builds import ExplanationAnswer
 from careerforge.schemas.resources import InputModel
 
 
@@ -104,3 +105,20 @@ class KnowledgeChunkArgs(InputModel):
 class KnowledgeReadArgs(KnowledgeChunkArgs):
     start_line: int | None = Field(default=None, ge=1)
     end_line: int | None = Field(default=None, ge=1)
+
+
+class PracticeSubmissionInput(InputModel):
+    expected_revision: int = Field(ge=1)
+    summary: str = Field(min_length=1, max_length=8000)
+    command_ids: list[UUID] = Field(default_factory=list, max_length=10)
+    explanation_answers: list[ExplanationAnswer] = Field(default_factory=list, max_length=30)
+    transfer_notes: list[str] = Field(default_factory=list, max_length=30)
+    actual_minutes: int | None = Field(default=None, ge=0, le=100000)
+
+
+class PracticePlanUpdateInput(InputModel):
+    expected_plan_version: int = Field(ge=1)
+    plan_id: UUID
+    base_plan_version_id: UUID
+    reason: str = Field(min_length=1, max_length=4000)
+    scope_acknowledged: Literal[True]

@@ -8,7 +8,7 @@ from careerforge.application.common import fingerprint, idempotency
 from careerforge.application.ownership import owned
 from careerforge.application.planning_service import objective_version
 from careerforge.application.repository_service import citation_detail
-from careerforge.application.run_service import create_run
+from careerforge.application.run_service import create_run, db_now
 from careerforge.config.settings import get_settings
 from careerforge.domain.errors import BusinessError, not_found
 from careerforge.infrastructure.db.models import LearningWorkspace
@@ -374,7 +374,20 @@ def execute_command(db, owner, identifier, action_id, body):
             raise BusinessError(422, "ACTION_LIMIT", "请创建新的练习工作区。")
         files = dict(row.payload["files"])
         argv = command_argv(item["argv"])
-        update_action(row, action_id, {"status": "running"})
+        update_action(
+            row,
+            action_id,
+            {
+                "status": "running",
+                "execution_input_hash": fingerprint(files),
+                "execution_started_at": db_now(stage).isoformat(),
+                "execution_environment": {
+                    "runner_contract": "careerforge-workspace-sandbox-v1",
+                    "network_policy": "none",
+                    "timeout_seconds": 30,
+                },
+            },
+        )
     try:
         output = run(files, argv)
     except BusinessError as error:
@@ -385,7 +398,11 @@ def execute_command(db, owner, identifier, action_id, body):
     with factory.begin() as stage:
         row = workspace(stage, owner, identifier, True)
         result_files = output.pop("result_files")
-        update_action(row, action_id, {"status": "completed", **output})
+        update_action(
+            row,
+            action_id,
+            {"status": "completed", **output, "execution_finished_at": db_now(stage).isoformat()},
+        )
         try:
             require_practice(stage, owner, row, item)
             source_available = True

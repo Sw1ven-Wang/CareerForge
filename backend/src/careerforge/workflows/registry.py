@@ -80,3 +80,9 @@ from careerforge.application.studio_learning_service import VERSION as STUDIO_LE
 from careerforge.workflows.studio_learning import execute as execute_studio_learning  # noqa: E402
 
 WORKFLOWS[("project_research", STUDIO_LEARNING_VERSION)] = execute_studio_learning
+
+
+from careerforge.application.build_service import VERSION as ASSESSMENT_VERSION  # noqa: E402
+from careerforge.workflows.assessment.workflow import execute as execute_assessment  # noqa: E402
+
+WORKFLOWS[("assessment", ASSESSMENT_VERSION)] = execute_assessment

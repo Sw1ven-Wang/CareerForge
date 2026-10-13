@@ -457,3 +457,8 @@ CodeCitation：citation_id、repository_snapshot_id、commit_sha、path、start_
 `POST /studio/workspaces/{id}/learning-reports/{report_id}/practices` 使用 `expected_revision` / `exercise_index` 和幂等键创建草稿，返回 `practice_id` / `workspace`；`PATCH /studio/workspaces/{id}/practices/{practice_id}/note` 使用 `expected_revision` / `note` 保存笔记。两者遵循已有认证、CSRF 和工作区归属。来源失效返回 `PRACTICE_SOURCE_UNAVAILABLE`，目标不匹配返回 `PRACTICE_OBJECTIVE_MISMATCH`。
 
 现有编码 Agent 请求与手动命令输入增加可选 `practice_id`；练习引用与目标由后端解析。message / patch / command actions 带相同 ID；命令派生补丁另带 `command_id`。相关输出读取和副作用前重校验来源，失效时隐藏输出并阻止继续；不自动完成练习。详见 `progress/STUDIO_PRACTICE_HANDOFF.md`，所有路由仍使用 `/api/v1` 前缀。
+
+
+## 2026-10-13 增量：练习提交与人工验收
+
+IDE 练习新增 delivery、submissions、assessments confirm/revoke、plan-updates 路由，复用 S07 完整条件与确认规则。IDE 代码快照采用服务端 workspace SHA-256，Git commit 为空；运行记录须匹配提交代码。更新已有计划保存新草稿，确认撤销后计划读取显示待复核。字段与边界见 [练习交付链路](progress/STUDIO_DELIVERY_REVIEW_PLAN.md)，精确接口以更新后的 OpenAPI 为准。

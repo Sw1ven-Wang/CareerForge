@@ -14,6 +14,8 @@ from careerforge.schemas.studio import (
     FileInput,
     PracticeInput,
     PracticeNoteInput,
+    PracticePlanUpdateInput,
+    PracticeSubmissionInput,
     StudioAgentInput,
     WorkspaceInput,
 )
@@ -140,3 +142,91 @@ def save_practice_note(
     from careerforge.application.studio_practice_service import note
 
     return wrap(request, note(db, user.id, identifier, practice_id, body))
+
+
+from careerforge.application import studio_delivery_service as delivery  # noqa: E402
+from careerforge.schemas.builds import ConfirmationInput, RevocationInput  # noqa: E402
+
+
+@router.get("/workspaces/{identifier}/practices/{practice_id}/delivery", response_model=Envelope)
+def practice_delivery(
+    identifier: UUID,
+    practice_id: UUID,
+    request: Request,
+    db: Database,
+    user: Authenticated,
+    submission_id: UUID | None = None,
+):
+    return wrap(request, delivery.detail(db, user.id, identifier, practice_id, submission_id))
+
+
+@router.post(
+    "/workspaces/{identifier}/practices/{practice_id}/submissions",
+    response_model=Envelope,
+    status_code=201,
+)
+def submit_practice(
+    identifier: UUID,
+    practice_id: UUID,
+    body: PracticeSubmissionInput,
+    request: Request,
+    db: Database,
+    user: Authenticated,
+    key: IdempotencyKey,
+):
+    return wrap(request, delivery.submit(db, user.id, identifier, practice_id, body, key))
+
+
+@router.post(
+    "/workspaces/{identifier}/practices/{practice_id}/assessments/{assessment_id}/confirm",
+    response_model=Envelope,
+)
+def review_practice(
+    identifier: UUID,
+    practice_id: UUID,
+    assessment_id: UUID,
+    body: ConfirmationInput,
+    request: Request,
+    db: Database,
+    user: Authenticated,
+    key: IdempotencyKey,
+):
+    return wrap(
+        request, delivery.review(db, user.id, identifier, practice_id, assessment_id, body, key)
+    )
+
+
+@router.post(
+    "/workspaces/{identifier}/practices/{practice_id}/assessments/{assessment_id}/revoke",
+    response_model=Envelope,
+)
+def revoke_practice_review(
+    identifier: UUID,
+    practice_id: UUID,
+    assessment_id: UUID,
+    body: RevocationInput,
+    request: Request,
+    db: Database,
+    user: Authenticated,
+    key: IdempotencyKey,
+):
+    return wrap(
+        request, delivery.revoke(db, user.id, identifier, practice_id, assessment_id, body, key)
+    )
+
+
+@router.post(
+    "/workspaces/{identifier}/practices/{practice_id}/plan-updates",
+    response_model=Envelope,
+    status_code=201,
+)
+def update_practice_plan(
+    identifier: UUID,
+    practice_id: UUID,
+    body: PracticePlanUpdateInput,
+    request: Request,
+    db: Database,
+    user: Authenticated,
+    key: IdempotencyKey,
+):
+    return wrap(request, delivery.update_plan(db, user.id, identifier, practice_id, body, key))
