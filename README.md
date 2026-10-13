@@ -76,3 +76,5 @@ docker compose -f compose.yaml -f compose.offline.yaml --profile app up -d --no-
 资料库现可点击 **下一步：岗位要求分析** 选择正文并带入固定版本；报告可继续带入现有学习计划。操作与边界见 [资料库衔接说明](docs/progress/SOURCE_ANALYSIS_HANDOFF.md)。
 
 岗位要求分析已接入真实 Agent（单份真实岗位报告与原文依据验证通过）：[接入说明](docs/progress/REAL_MARKET_ANALYSIS.md)。
+
+同页学习工作台与内置 IDE 已提供：访问 `/studio`，见 [功能与运行限制](docs/progress/LEARNING_STUDIO.md)。

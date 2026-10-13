@@ -141,6 +141,7 @@ def files(
                 {
                     "path": r.path,
                     "size": r.size,
+                    "line_count": len(r.content.splitlines()),
                     "content_hash": r.content_hash,
                     "parse_status": r.parse_status,
                 }

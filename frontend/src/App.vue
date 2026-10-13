@@ -49,6 +49,7 @@ async function logout() {
             <router-link to="/mock-research">模拟调研与计划</router-link>
           </div>
         </details>
+        <router-link to="/studio">▣ 学习工作台 · IDE</router-link>
         <router-link to="/projects">⌘ 项目与代码学习</router-link>
         <router-link to="/runs">◷ 运行记录</router-link>
       </nav>

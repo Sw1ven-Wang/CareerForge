@@ -810,3 +810,12 @@ class SourceLibraryCategory(Timestamped, Base):
     parent_id: Mapped[UUID | None]
     name: Mapped[str] = mapped_column(String(100))
     revision: Mapped[int] = mapped_column(default=1)
+
+
+class LearningWorkspace(Timestamped, Base):
+    __tablename__ = "learning_workspaces"
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    name: Mapped[str] = mapped_column(String(100))
+    revision: Mapped[int] = mapped_column(default=1)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)

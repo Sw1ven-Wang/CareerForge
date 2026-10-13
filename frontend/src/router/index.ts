@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import LearningStudioView from '../views/LearningStudioView.vue'
 import WorkbenchView from '../views/WorkbenchView.vue'
 import MarketResearchView from '../views/MarketResearchView.vue'
 import ProjectLearningView from '../views/ProjectLearningView.vue'
@@ -9,6 +10,7 @@ import SourceLibraryView from '../views/SourceLibraryView.vue'
 export default createRouter({ history: createWebHistory(), routes: [
   { path: '/', component: WorkbenchView },
   { path: '/build', redirect: '/planning' },
+  { path: '/studio', component: LearningStudioView },
   { path: '/projects', component: ProjectLearningView },
   { path: '/planning', component: PlanningView },
   { path: '/mock-research', component: MockResearchView },

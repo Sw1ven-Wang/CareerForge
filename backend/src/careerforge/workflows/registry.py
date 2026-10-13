@@ -70,3 +70,8 @@ from careerforge.application.market_agent_service import VERSION as MARKET_AGENT
 from careerforge.workflows.market_agent import execute as execute_market_agent  # noqa: E402
 
 WORKFLOWS[("market_research", MARKET_AGENT_VERSION)] = execute_market_agent
+
+from careerforge.application.studio_service import VERSION as STUDIO_VERSION  # noqa: E402
+from careerforge.workflows.studio_agent import execute as execute_studio  # noqa: E402
+
+WORKFLOWS[("project_research", STUDIO_VERSION)] = execute_studio

@@ -1,0 +1,22 @@
+# No Docker socket is exposed. API and runner share only the private mailbox.
+services:
+  api:
+    volumes: ["ide_mailbox:/mailbox"]
+  workspace-sandbox:
+    image: careerforge-api:latest
+    user: "0:0"
+    command: ["python", "-m", "careerforge.infrastructure.workspace_sandbox"]
+    network_mode: none
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [SETUID, SETGID, KILL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 64
+    mem_limit: 256m
+    cpus: 1
+    tmpfs: ["/workspace:rw,size=64m,mode=1777", "/tmp:rw,size=16m,mode=1777"]
+    volumes: ["ide_mailbox:/mailbox"]
+    restart: always
+    profiles: [app]
+volumes:
+  ide_mailbox:
