@@ -23,6 +23,7 @@ class StudioAgentInput(InputModel):
     objective_version_id: UUID | None = None
     citation_ids: list[UUID] = Field(default_factory=list, max_length=3)
     paths: list[str] = Field(default_factory=list, max_length=3)
+    practice_id: UUID | None = None
     mode: Literal["assist", "learn"] = "assist"
     knowledge_snapshot_ids: list[UUID] = Field(default_factory=list, max_length=10)
     model_call_limit: int = Field(default=4, ge=2, le=4)
@@ -54,6 +55,17 @@ class ConfirmInput(InputModel):
 
 class CommandInput(SuggestedCommand):
     expected_revision: int = Field(ge=1)
+    practice_id: UUID | None = None
+
+
+class PracticeInput(InputModel):
+    expected_revision: int = Field(ge=1)
+    exercise_index: int = Field(ge=0, le=2)
+
+
+class PracticeNoteInput(InputModel):
+    expected_revision: int = Field(ge=1)
+    note: str = Field(max_length=4000)
 
 
 class ReferenceLinkInput(InputModel):

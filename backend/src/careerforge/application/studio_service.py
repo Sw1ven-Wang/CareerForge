@@ -66,6 +66,10 @@ def detail(row, db=None):
                     **item,
                     "status": run.status if run and run.owner_id == row.owner_id else "unavailable",
                 }
+            if item["kind"] == "practice" or item.get("practice_id"):
+                from careerforge.application.studio_practice_service import visible
+
+                item = visible(db, row.owner_id, row, item)
             actions.append(item)
         value["actions"] = actions
     return value
@@ -132,9 +136,17 @@ def command_argv(argv):
     return argv
 
 
+def require_practice(db, owner, row, item):
+    if item.get("practice_id"):
+        from careerforge.application.studio_practice_service import validate
+
+        validate(db, owner, row, item["practice_id"])
+
+
 def propose_command(db, owner, identifier, body):
     row = workspace(db, owner, identifier, True)
     revision(row, body.expected_revision)
+    require_practice(db, owner, row, {"practice_id": body.practice_id})
     append(
         row,
         {
@@ -143,6 +155,7 @@ def propose_command(db, owner, identifier, body):
             "status": "pending",
             "argv": command_argv(body.argv),
             "reason": body.reason,
+            "practice_id": str(body.practice_id) if body.practice_id else None,
             "revision": row.revision,
         },
     )
@@ -154,6 +167,7 @@ def apply(db, owner, identifier, action_id, body):
     item = action(row, action_id)
     if item["kind"] != "patch" or body.confirmation != "APPLY":
         raise BusinessError(422, "PATCH_CONFIRMATION_REQUIRED", "请审阅并确认应用补丁。")
+    require_practice(db, owner, row, item)
     if item["status"] == "applied":
         return detail(row, db)
     revision(row, body.expected_revision)
@@ -175,10 +189,12 @@ def apply(db, owner, identifier, action_id, body):
 
 def start_agent(db, owner, identifier, body, key):
     if body.mode == "learn":
+        if body.practice_id:
+            raise BusinessError(422, "PRACTICE_MODE_REQUIRED", "请用代码补丁助手继续已有练习。")
         from careerforge.application.studio_learning_service import start
 
         return start(db, owner, identifier, body, key)
-    row = workspace(db, owner, identifier)
+    row = workspace(db, owner, identifier, True)
     record = idempotency(db, owner, f"studio.agent:{identifier}", key, body.model_dump(mode="json"))
     if record.response_summary:
         return record.response_summary
@@ -193,6 +209,14 @@ def start_agent(db, owner, identifier, body, key):
             raise not_found()
         files[name] = row.payload["files"][name]
     references = [citation_detail(db, owner, i) for i in body.citation_ids]
+    practice = None
+    practice_context = None
+    if body.practice_id:
+        from careerforge.application.studio_practice_service import context as practice_inputs
+
+        practice, references, practice_context = practice_inputs(db, owner, row, body.practice_id)
+        if str(body.objective_version_id) != practice["objective_version_id"]:
+            raise BusinessError(422, "PRACTICE_OBJECTIVE_MISMATCH", "请选择此练习对应的学习目标。")
     objective = (
         objective_version(db, owner, body.objective_version_id)
         if body.objective_version_id
@@ -206,10 +230,18 @@ def start_agent(db, owner, identifier, body, key):
         "recent_actions": [
             {"kind": "learning_report", "summary": item["guide"]["summary"]}
             if item["kind"] == "learning_report"
+            else {
+                "kind": "practice",
+                "exercise": item.get("exercise", ""),
+                "note": item.get("note", ""),
+                "status": item["status"],
+            }
+            if item["kind"] == "practice"
             else item
             for item in detail(row, db)["actions"][-4:]
         ],
         "instruction": body.instruction,
+        "practice": practice_context,
     }
     if len(json.dumps(context, ensure_ascii=False)) > 24000:
         raise BusinessError(
@@ -222,7 +254,9 @@ def start_agent(db, owner, identifier, body, key):
         "objective_version_id": str(body.objective_version_id)
         if body.objective_version_id
         else None,
-        "citation_ids": [str(i) for i in body.citation_ids],
+        "citation_ids": [i["citation_id"] for i in references],
+        "practice_id": practice["id"] if practice else None,
+        "practice_source_hash": practice["source_hash"] if practice else None,
         "files_hash": fingerprint(row.payload["files"]),
         "model": settings.model_name,
         "base_url": settings.openai_base_url,
@@ -234,9 +268,15 @@ def start_agent(db, owner, identifier, body, key):
 
 
 def validate_context(db, run):
-    row = workspace(db, run.owner_id, UUID(run.input_manifest["workspace_id"]))
+    row = workspace(db, run.owner_id, UUID(run.input_manifest["workspace_id"]), True)
     if fingerprint(row.payload["files"]) != run.input_manifest["files_hash"]:
         raise BusinessError(409, "WORKSPACE_CHANGED", "工作区已变化，请重新发起 Agent 请求。")
+    if run.input_manifest.get("practice_id"):
+        from careerforge.application.studio_practice_service import validate
+
+        practice, _ = validate(db, run.owner_id, row, run.input_manifest["practice_id"])
+        if practice["source_hash"] != run.input_manifest["practice_source_hash"]:
+            raise BusinessError(409, "PRACTICE_CHANGED", "练习依据已变化。")
     for i in run.input_manifest["citation_ids"]:
         citation_detail(db, run.owner_id, UUID(i))
     if run.input_manifest["objective_version_id"]:
@@ -249,6 +289,8 @@ def save_reply(db, run, result):
     reply = AgentReply.model_validate(result.structured)
     if not set(reply.citation_ids).issubset(run.input_manifest["citation_ids"]):
         raise ValueError("invented reference")
+    if run.input_manifest.get("practice_id") and not reply.citation_ids:
+        raise ValueError("practice reply requires a source reference")
     seen = set()
     for edit in reply.edits:
         name = path(edit.path)
@@ -271,6 +313,7 @@ def save_reply(db, run, result):
         {
             "id": str(uuid4()),
             "kind": "message",
+            "practice_id": run.input_manifest.get("practice_id"),
             "status": "completed",
             "instruction": run.input_manifest["context"]["instruction"],
             "answer": reply.answer,
@@ -287,6 +330,7 @@ def save_reply(db, run, result):
             {
                 "id": str(uuid4()),
                 "kind": "patch",
+                "practice_id": run.input_manifest.get("practice_id"),
                 "status": "pending",
                 "edits": [e.model_dump() for e in reply.edits],
                 "revision": row.revision,
@@ -298,6 +342,7 @@ def save_reply(db, run, result):
             {
                 "id": str(uuid4()),
                 "kind": "command",
+                "practice_id": run.input_manifest.get("practice_id"),
                 "status": "pending",
                 "argv": argv,
                 "reason": cmd.reason,
@@ -321,6 +366,7 @@ def execute_command(db, owner, identifier, action_id, body):
         item = action(row, action_id)
         if item["kind"] != "command":
             raise not_found()
+        require_practice(stage, owner, row, item)
         if item["status"] != "pending":
             return detail(row, db)
         revision(row, body.expected_revision)
@@ -340,7 +386,12 @@ def execute_command(db, owner, identifier, action_id, body):
         row = workspace(stage, owner, identifier, True)
         result_files = output.pop("result_files")
         update_action(row, action_id, {"status": "completed", **output})
-        if output["files_captured"]:
+        try:
+            require_practice(stage, owner, row, item)
+            source_available = True
+        except BusinessError:
+            source_available = False
+        if output["files_captured"] and source_available:
             edits = []
             for name in sorted(set(files) | set(result_files)):
                 try:
@@ -362,6 +413,8 @@ def execute_command(db, owner, identifier, action_id, body):
                     {
                         "id": str(uuid4()),
                         "kind": "patch",
+                        "practice_id": item.get("practice_id"),
+                        "command_id": str(action_id),
                         "status": "pending",
                         "edits": edits,
                         "revision": body.expected_revision,

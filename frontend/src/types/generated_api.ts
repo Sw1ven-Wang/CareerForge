@@ -1579,6 +1579,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/studio/workspaces/{identifier}/learning-reports/{report_id}/practices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Practice */
+        post: operations["create_practice_api_v1_studio_workspaces__identifier__learning_reports__report_id__practices_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/studio/workspaces/{identifier}/practices/{practice_id}/note": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Save Practice Note */
+        patch: operations["save_practice_note_api_v1_studio_workspaces__identifier__practices__practice_id__note_patch"];
+        trace?: never;
+    };
     "/api/v1/knowledge/projects": {
         parameters: {
             query?: never;
@@ -1935,6 +1969,8 @@ export interface components {
             reason: string;
             /** Expected Revision */
             expected_revision: number;
+            /** Practice Id */
+            practice_id?: string | null;
         };
         /** ConceptExpr */
         ConceptExpr: {
@@ -2487,6 +2523,20 @@ export interface components {
             deferred?: string[];
             user_constraints?: components["schemas"]["careerforge__schemas__planning__UserConstraints"];
         };
+        /** PracticeInput */
+        PracticeInput: {
+            /** Expected Revision */
+            expected_revision: number;
+            /** Exercise Index */
+            exercise_index: number;
+        };
+        /** PracticeNoteInput */
+        PracticeNoteInput: {
+            /** Expected Revision */
+            expected_revision: number;
+            /** Note */
+            note: string;
+        };
         /** ProgressInput */
         ProgressInput: {
             /** Expected Version */
@@ -2729,6 +2779,8 @@ export interface components {
             citation_ids?: string[];
             /** Paths */
             paths?: string[];
+            /** Practice Id */
+            practice_id?: string | null;
             /**
              * Mode
              * @default assist
@@ -6157,6 +6209,80 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_practice_api_v1_studio_workspaces__identifier__learning_reports__report_id__practices_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string | null;
+            };
+            path: {
+                identifier: string;
+                report_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PracticeInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_practice_note_api_v1_studio_workspaces__identifier__practices__practice_id__note_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                identifier: string;
+                practice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PracticeNoteInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

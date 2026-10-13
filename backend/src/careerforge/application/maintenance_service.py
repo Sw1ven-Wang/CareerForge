@@ -69,7 +69,11 @@ def authorized(db: Session, run: AgentRun) -> None:
         elif run.workflow_version == "learning-studio-agent-1.0":
             from careerforge.application.studio_service import workspace
 
-            workspace(db, run.owner_id, UUID(data["workspace_id"]))
+            row = workspace(db, run.owner_id, UUID(data["workspace_id"]))
+            if data.get("practice_id"):
+                from careerforge.application.studio_practice_service import validate
+
+                validate(db, run.owner_id, row, data["practice_id"])
             for identifier in data["citation_ids"]:
                 repository_service.citation_detail(db, run.owner_id, UUID(identifier))
             if data.get("objective_version_id"):

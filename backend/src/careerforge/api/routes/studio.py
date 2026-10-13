@@ -12,6 +12,8 @@ from careerforge.schemas.studio import (
     CommandInput,
     ConfirmInput,
     FileInput,
+    PracticeInput,
+    PracticeNoteInput,
     StudioAgentInput,
     WorkspaceInput,
 )
@@ -105,3 +107,36 @@ def bind_reference(
     key: IdempotencyKey,
 ):
     return wrap(request, service.bind_reference(db, user.id, identifier, body, key))
+
+
+@router.post(
+    "/workspaces/{identifier}/learning-reports/{report_id}/practices",
+    response_model=Envelope,
+    status_code=201,
+)
+def create_practice(
+    identifier: UUID,
+    report_id: UUID,
+    body: PracticeInput,
+    request: Request,
+    db: Database,
+    user: Authenticated,
+    key: IdempotencyKey,
+):
+    from careerforge.application.studio_practice_service import create
+
+    return wrap(request, create(db, user.id, identifier, report_id, body, key))
+
+
+@router.patch("/workspaces/{identifier}/practices/{practice_id}/note", response_model=Envelope)
+def save_practice_note(
+    identifier: UUID,
+    practice_id: UUID,
+    body: PracticeNoteInput,
+    request: Request,
+    db: Database,
+    user: Authenticated,
+):
+    from careerforge.application.studio_practice_service import note
+
+    return wrap(request, note(db, user.id, identifier, practice_id, body))

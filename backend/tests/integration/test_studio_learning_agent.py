@@ -162,7 +162,9 @@ def test_agent_discovers_reads_and_saves_verified_explanation(clients, monkeypat
     monkeypatch.setattr(OpenAICompatibleProvider, "complete", complete)
     execute(rid, "offline-study")
     execute(rid, "duplicate-delivery")
-    assert len(calls) == 4 and all(c.max_output_tokens <= 2048 for c in calls)
+    assert len(calls) == 4 and all(
+        c.max_output_tokens == get_settings().model_max_output_tokens for c in calls
+    )
     data = a.get(f"/api/v1/studio/workspaces/{wid}").json()["data"]
     assert data["files"] == workspace["files"]
     assert len(data["actions"]) == 1 and data["actions"][0]["kind"] == "learning_report"

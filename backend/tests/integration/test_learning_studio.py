@@ -61,7 +61,7 @@ def test_reviewed_patch_and_confirmed_command(clients, monkeypatch):
     rid = UUID(response.json()["data"]["run_id"])
     execute(rid, "studio-mock")
     execute(rid, "redelivery")
-    assert len(calls) == 1 and calls[0].max_output_tokens <= 2048
+    assert len(calls) == 1 and calls[0].max_output_tokens == settings.model_max_output_tokens
     w = a.get(f"/api/v1/studio/workspaces/{wid}").json()["data"]
     assert w["files"]["main.py"] == "print(1)\n"
     patch = next(x for x in w["actions"] if x["kind"] == "patch")
