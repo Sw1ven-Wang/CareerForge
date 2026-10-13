@@ -33,6 +33,7 @@ def configuration():
     return {
         "channels": catalog(),
         "model": s.model_name,
+        "max_output_tokens": s.model_max_output_tokens,
         "agent_available": s.real_agent_enabled and bool(s.openai_api_key.get_secret_value()),
         "search_api_configured": bool(s.tavily_api_key.get_secret_value()),
         "skill": "official-recruitment",
@@ -66,6 +67,7 @@ def start(db, owner, body, key):
     manifest = {
         **body.model_dump(mode="json"),
         "model": settings.model_name,
+        "max_output_tokens": settings.model_max_output_tokens,
         "base_url": settings.openai_base_url,
         "skill_hash": digest(SKILL_PATH.read_text(encoding="utf-8")),
         "adapter_version": ADAPTER_VERSION,

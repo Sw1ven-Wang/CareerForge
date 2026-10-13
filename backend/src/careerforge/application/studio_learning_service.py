@@ -115,7 +115,7 @@ def start(db, owner, workspace_id, body, key):
         "context": context,
         "model": settings.model_name,
         "base_url": settings.openai_base_url,
-        "max_output_tokens": min(2048, settings.model_max_output_tokens),
+        "max_output_tokens": settings.model_max_output_tokens,
         "model_call_limit": body.model_call_limit,
         "tool_limit": TOOL_LIMIT,
         "source_limit": SOURCE_LIMIT,

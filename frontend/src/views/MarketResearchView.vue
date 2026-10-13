@@ -144,7 +144,7 @@ onMounted(load)
 </script>
 <template>
   <section class="page-heading"><div><span class="eyebrow">岗位材料 → 可核查的要求</span><h1>岗位要求分析</h1><p>每项要求都有原文，每个比例都有明确的岗位分母。</p></div></section>
-  <el-alert :title="analysisMode==='real_agent' ? `真实 Agent：${agentConfig?.model ?? '读取配置中'} · low。每份正文最多调用一次，上限 ${agentConfig?.max_output_tokens ?? 2048} 输出 token；失败不自动重试。` : '离线整理：使用已有规则候选与人工确认要求，不调用真实模型。'" type="info" :closable="false" style="margin-bottom:20px"/>
+  <el-alert :title="analysisMode==='real_agent' ? `真实 Agent：${agentConfig?.model ?? '读取配置中'} · low。每份正文最多调用一次，上限 ${agentConfig?.max_output_tokens ?? '读取中'} 输出 token；失败不自动重试。` : '离线整理：使用已有规则候选与人工确认要求，不调用真实模型。'" type="info" :closable="false" style="margin-bottom:20px"/>
   <el-alert v-if="handoffNotice" :title="handoffNotice" type="success" :closable="false" style="margin-bottom:20px"/>
   <section class="table-card" style="padding:24px;margin-bottom:24px">
     <el-form label-position="top">

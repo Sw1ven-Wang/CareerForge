@@ -250,7 +250,7 @@ class Collector:
                     model=self.manifest["model"],
                     prompt=prompt,
                     reasoning_effort="low",
-                    max_output_tokens=2048,
+                    max_output_tokens=self.manifest.get("max_output_tokens", 2048),
                     tools=tool_definitions(self.options.channels),
                 )
                 response = await model_call(

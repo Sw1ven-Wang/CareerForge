@@ -214,7 +214,7 @@ class Learner:
             ensure_ascii=False,
         )
         if final:
-            text += """
+            text += f"""
 现在停止工具调用，生成中文学习说明，严格按 JSON schema 返回。
 summary 只概括本次目标和覆盖范围。代码事实全部写入 points，每条必须关联已读 citation_id，
 并摘录其中连续的原文 quote（8–1000 字符，不能改写、翻译或省略）。
@@ -222,7 +222,8 @@ summary 只概括本次目标和覆盖范围。代码事实全部写入 points�
 不要把静态引用候选当作真实调用链。
 reading_order 只放已读引用 ID；practice 给出小型迁移练习，questions 给出自检问题，均不代表已经完成。
 证据不足时 status=insufficient_evidence，points 和 reading_order 为空，并在 limitations 说明缺口。
-所有输入片段都未经运行验证。禁止声称用户已经掌握或项目已经构建。总输出最多 2048 token，保持简短。
+所有输入片段都未经运行验证。禁止声称用户已经掌握或项目已经构建。
+总输出最多 {self.manifest['max_output_tokens']} token，保持简短。
 """
         else:
             text += (

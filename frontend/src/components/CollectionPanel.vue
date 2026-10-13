@@ -7,7 +7,7 @@ import RunPanel from './RunPanel.vue'
 const props = defineProps<{ jobCategory?: string }>()
 const emit = defineEmits<{ imported: [] }>()
 type Portal = { id: string; name: string; home: string; search_url: string; keyword_query: boolean; query_scope: string; detail_adapter: boolean }
-type Config = { channels: Portal[]; model: string; agent_available: boolean; search_api_configured: boolean }
+type Config = { channels: Portal[]; model: string; max_output_tokens: number; agent_available: boolean; search_api_configured: boolean }
 type Observation = { status: string; title?: string; url?: string; channel?: string; message?: string; source_id?: string; candidates?: {title: string; url: string}[]; browser_url?: string; request_trace?: {url: string; method?: string; status: number}[] }
 type Result = { run_id: string; status: string; query: string; mode: string; observations: Observation[]; http_requests: number; request_limit: number; model_calls: number; model_call_limit: number }
 type History = { run_id: string; status: string; query: string; mode: string; created_at: string }
@@ -88,7 +88,7 @@ function browse(portal: Portal) { return portal.search_url.replace(/Agent/g, enc
       <el-form-item label="本轮岗位上限"><el-input-number v-model="form.limit" :min="1" :max="12"/></el-form-item>
       <el-checkbox v-model="form.refresh_existing">重新抓取已有岗位并保存新版本</el-checkbox>
       <el-checkbox v-model="form.allow_search_api" :disabled="!config?.search_api_configured">启用本轮跨站搜索服务（可能计费）</el-checkbox>
-      <template v-if="form.mode === 'agent'"><el-form-item label="模型调用上限"><el-input-number v-model="form.model_call_limit" :min="1" :max="3"/></el-form-item><el-checkbox v-model="form.allow_model_calls">开启本轮真实模型调用：{{ config?.model }} low，每次最多 2048 输出 token；供应商费用尚未定价</el-checkbox></template>
+      <template v-if="form.mode === 'agent'"><el-form-item label="模型调用上限"><el-input-number v-model="form.model_call_limit" :min="1" :max="3"/></el-form-item><el-checkbox v-model="form.allow_model_calls">开启本轮真实模型调用：{{ config?.model }} low，每次最多 {{ config?.max_output_tokens ?? '读取中' }} 输出 token；供应商费用尚未定价</el-checkbox></template>
     </el-form>
     <template #footer><el-button @click="dialog=false">取消</el-button><el-button type="primary" :loading="busy" @click="start">{{ form.mode==='agent' ? '启动 Agent 调研' : '开始查询 / 采集' }}</el-button></template>
   </el-dialog>
