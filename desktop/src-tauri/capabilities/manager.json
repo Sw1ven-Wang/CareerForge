@@ -1,0 +1,13 @@
+{
+  "identifier": "manager",
+  "description": "Only the bundled service manager may inspect/start the fixed local stack or open the workbench.",
+  "windows": [
+    "manager"
+  ],
+  "local": true,
+  "permissions": [
+    "allow-desktop-status",
+    "allow-start-services",
+    "allow-open-workspace"
+  ]
+}

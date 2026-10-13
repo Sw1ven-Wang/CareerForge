@@ -1,0 +1,8 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CareerForge · 桌面服务中心</title><link rel="stylesheet" href="style.css"><script defer src="app.js"></script></head>
+<body><main><header><div class="brand"><b>C</b><span>CareerForge<small>本机桌面工作台</small></span></div><span class="local">● 本机运行</span></header>
+<section class="intro"><span class="eyebrow">资料 · 学习 · 实践</span><h1>准备好，继续你的学习。</h1><p>桌面窗口连接现有工作台，数据与代码沙箱保留在本机 Docker 中。</p></section>
+<section class="summary"><div><span id="badge" class="badge">正在检查</span><p id="message" role="status">正在读取本机服务状态…</p></div><div class="actions"><button id="refresh">刷新状态</button><button id="start">启动服务</button><button id="open" class="primary" disabled>进入学习工作台 →</button></div></section>
+<section class="checks"><span id="api">业务接口 · 待检查</span><span id="ui">页面连接 · 待检查</span><span id="sandbox">沙箱网络隔离 · 待检查</span></section>
+<section class="grid" id="services" aria-label="服务状态"></section>
+<details><summary>项目位置与使用说明</summary><p id="project"></p><p>首次进入桌面版需要登录；之后登录状态保存在桌面应用自己的 WebView 中。可从窗口菜单随时返回“服务状态”。</p><p>关闭桌面窗口后后台服务继续运行，避免打断 Agent 任务。启动服务不会调用模型、执行练习命令、下载镜像或删除数据。</p><p class="muted">Worker 与 Dispatcher 的“运行中”表示容器进程运行；模型请求、工具与任务结果请在工作台运行记录中查看。</p></details><footer><span id="updated">等待检查</span><span>Tauri 桌面版 · Docker 后端</span></footer></main></body></html>
