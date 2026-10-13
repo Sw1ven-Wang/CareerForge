@@ -78,3 +78,5 @@ docker compose -f compose.yaml -f compose.offline.yaml --profile app up -d --no-
 岗位要求分析已接入真实 Agent（单份真实岗位报告与原文依据验证通过）：[接入说明](docs/progress/REAL_MARKET_ANALYSIS.md)。
 
 同页学习工作台与内置 IDE 已提供：访问 `/studio`，见 [功能与运行限制](docs/progress/LEARNING_STUDIO.md)。
+
+代码学习库第一阶段已提供：访问 `/knowledge` 导入固定版本的公开项目、检索代码并关联已有学习目标。已真实导入 smolagents 的 177 个文件 / 1,916 个片段；范围与后续语义检索计划见 [代码学习库说明](docs/progress/CODE_KNOWLEDGE_LIBRARY.md)。

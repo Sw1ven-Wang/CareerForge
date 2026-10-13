@@ -619,3 +619,7 @@ app.include_router(collection_router)
 from careerforge.api.routes.studio import router as studio_router  # noqa: E402
 
 app.include_router(studio_router)
+
+from careerforge.api.routes.knowledge import router as knowledge_router  # noqa: E402
+
+app.include_router(knowledge_router)

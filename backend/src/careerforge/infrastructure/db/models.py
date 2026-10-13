@@ -819,3 +819,53 @@ class LearningWorkspace(Timestamped, Base):
     name: Mapped[str] = mapped_column(String(100))
     revision: Mapped[int] = mapped_column(default=1)
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+
+
+class CodeKnowledgeIndex(Timestamped, Base):
+    __tablename__ = "code_knowledge_indexes"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["snapshot_id", "owner_id"],
+            ["repository_snapshots.id", "repository_snapshots.owner_id"],
+        ),
+        UniqueConstraint("snapshot_id"),
+    )
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID]
+    snapshot_id: Mapped[UUID]
+    revision: Mapped[int] = mapped_column(default=1)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+
+
+class CodeKnowledgeChunk(Base):
+    __tablename__ = "code_knowledge_chunks"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["snapshot_id", "owner_id"],
+            ["repository_snapshots.id", "repository_snapshots.owner_id"],
+        ),
+        UniqueConstraint("snapshot_id", "ordinal"),
+    )
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID]
+    snapshot_id: Mapped[UUID] = mapped_column(index=True)
+    ordinal: Mapped[int]
+    path: Mapped[str] = mapped_column(String(1000))
+    symbol: Mapped[str] = mapped_column(String(1000))
+    kind: Mapped[str] = mapped_column(String(30))
+    start_line: Mapped[int]
+    end_line: Mapped[int]
+    content: Mapped[str] = mapped_column(Text)
+    content_hash: Mapped[str] = mapped_column(String(64))
+    search_text: Mapped[str] = mapped_column(Text)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+
+
+class CodeLearningLink(Timestamped, Base):
+    __tablename__ = "code_learning_links"
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    objective_version_id: Mapped[UUID] = mapped_column(ForeignKey("learning_objective_versions.id"))
+    citation_id: Mapped[UUID] = mapped_column(ForeignKey("code_citations.id"))
+    note: Mapped[str] = mapped_column(Text)
+    __table_args__ = (UniqueConstraint("owner_id", "objective_version_id", "citation_id"),)
