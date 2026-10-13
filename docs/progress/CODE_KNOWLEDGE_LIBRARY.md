@@ -20,7 +20,7 @@
 - 每次返回代码或创建引用都核对快照文本和哈希；撤销仓库后索引与引用不可继续读取。
 - 引用绑定 commit、文件路径、行范围和内容哈希；现有 IDE Agent 可把打开的知识库引用作为参考上下文。没有引入额外模型调用。
 
-当前 `retrieval_mode=lexical_structure`、`semantic_enabled=false`。这不是向量检索、BM25、模型重排序或完整 GraphRAG；也尚无 Agent 自主多轮检索工具循环。没有添加 LangGraph 依赖。
+当前 `retrieval_mode=lexical_structure`、`semantic_enabled=false`。这不是向量检索、BM25、模型重排序或完整 GraphRAG。Agent 自主多轮检索已由第二阶段提供，见 [知识库学习 Agent](KNOWLEDGE_AGENT_LEARNING.md)。没有添加 LangGraph 依赖。
 
 ## 导入边界
 
@@ -49,6 +49,6 @@
 1. 在同一检索接口增加可选 embedding 适配器与 pgvector，再做关键词 / 向量融合；费用与外发范围需明确。
 2. 扩展多语言结构解析和可解析的 import 关系，降低同名引用歧义。
 3. 按文件哈希复用跨版本索引，并在版本切换时提示旧定位；当前同版本相同内容复用快照，新版本独立索引。
-4. 给 Agent 暴露检索、读取片段和查看关系工具，限制步数与上下文，再接入重排序。现有 Agent 仍以用户选定引用为上下文。
+4. 自主检索、片段读取和关系候选工具已在第二阶段接入；后续按真实效果再引入重排序。
 
 评估以正确代码是否被找到、引用是否准确及更新后是否仍有效为主，不把索引数量当作学习效果。

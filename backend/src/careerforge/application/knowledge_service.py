@@ -273,8 +273,11 @@ def chunk_detail(db, owner, identifier):
     }
 
 
-def search(db, owner, query, snapshot_id=None, limit=20):
+def search(db, owner, query, snapshot_id=None, limit=20, scope_ids=None):
     terms, aliases = query_terms(query)
+    if scope_ids is not None:
+        for identifier in scope_ids:
+            repositories.snapshot(db, owner, identifier)
     if snapshot_id:
         repositories.snapshot(db, owner, snapshot_id)
     if not terms:
@@ -301,6 +304,8 @@ def search(db, owner, query, snapshot_id=None, limit=20):
     )
     if snapshot_id:
         statement = statement.where(CodeKnowledgeChunk.snapshot_id == snapshot_id)
+    if scope_ids is not None:
+        statement = statement.where(CodeKnowledgeChunk.snapshot_id.in_(scope_ids))
     identifier = query.strip().lower()
     exact = (func.lower(CodeKnowledgeChunk.symbol) == identifier) | func.lower(
         CodeKnowledgeChunk.symbol

@@ -2729,6 +2729,19 @@ export interface components {
             citation_ids?: string[];
             /** Paths */
             paths?: string[];
+            /**
+             * Mode
+             * @default assist
+             * @enum {string}
+             */
+            mode: "assist" | "learn";
+            /** Knowledge Snapshot Ids */
+            knowledge_snapshot_ids?: string[];
+            /**
+             * Model Call Limit
+             * @default 4
+             */
+            model_call_limit: number;
         };
         /** TimeBudget */
         TimeBudget: {

@@ -75,3 +75,8 @@ from careerforge.application.studio_service import VERSION as STUDIO_VERSION  # 
 from careerforge.workflows.studio_agent import execute as execute_studio  # noqa: E402
 
 WORKFLOWS[("project_research", STUDIO_VERSION)] = execute_studio
+
+from careerforge.application.studio_learning_service import VERSION as STUDIO_LEARNING_VERSION  # noqa: E402
+from careerforge.workflows.studio_learning import execute as execute_studio_learning  # noqa: E402
+
+WORKFLOWS[("project_research", STUDIO_LEARNING_VERSION)] = execute_studio_learning

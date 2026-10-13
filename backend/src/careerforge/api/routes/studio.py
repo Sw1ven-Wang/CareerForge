@@ -41,7 +41,7 @@ def create(
 
 @router.get("/workspaces/{identifier}", response_model=Envelope)
 def detail(identifier: UUID, request: Request, db: Database, user: Authenticated):
-    return wrap(request, service.detail(service.workspace(db, user.id, identifier)))
+    return wrap(request, service.detail(service.workspace(db, user.id, identifier), db))
 
 
 @router.put("/workspaces/{identifier}/file", response_model=Envelope)

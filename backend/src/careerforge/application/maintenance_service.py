@@ -62,7 +62,22 @@ def authorized(db: Session, run: AgentRun) -> None:
     elif run.workflow_type == "alignment":
         planning_service.validate_alignment(db, run.owner_id, data)
     elif run.workflow_type == "project_research":
-        repository_service.validate_research(db, run.owner_id, data)
+        if run.workflow_version == "learning-studio-research-1.0":
+            from careerforge.application.studio_learning_service import validate_inputs
+
+            validate_inputs(db, run)
+        elif run.workflow_version == "learning-studio-agent-1.0":
+            from careerforge.application.studio_service import workspace
+
+            workspace(db, run.owner_id, UUID(data["workspace_id"]))
+            for identifier in data["citation_ids"]:
+                repository_service.citation_detail(db, run.owner_id, UUID(identifier))
+            if data.get("objective_version_id"):
+                planning_service.objective_version(
+                    db, run.owner_id, UUID(data["objective_version_id"])
+                )
+        else:
+            repository_service.validate_research(db, run.owner_id, data)
     elif run.workflow_type == "learning_path":
         learning_service.validate(db, run.owner_id, data)
     elif run.workflow_type == "assessment":
@@ -112,6 +127,7 @@ def clean_once(db: Session, limit: int = 100) -> dict[str, int]:
     # Invalidate dependent rows before erasing upstream text. Guards are authoritative.
     from careerforge.application.job_contract_service import read as contract_read
     from careerforge.infrastructure.db.models import JobContractArtifact
+
     checks: list[tuple[Any, Any]] = [
         (JobContractArtifact, contract_read),
         (PersonalEvidenceVersion, planning_service.evidence_version),

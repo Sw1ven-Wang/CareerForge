@@ -9095,6 +9095,31 @@
             "type": "array",
             "maxItems": 3,
             "title": "Paths"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "assist",
+              "learn"
+            ],
+            "title": "Mode",
+            "default": "assist"
+          },
+          "knowledge_snapshot_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Knowledge Snapshot Ids"
+          },
+          "model_call_limit": {
+            "type": "integer",
+            "maximum": 4.0,
+            "minimum": 2.0,
+            "title": "Model Call Limit",
+            "default": 4
           }
         },
         "additionalProperties": false,

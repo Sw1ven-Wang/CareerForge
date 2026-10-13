@@ -50,14 +50,31 @@ def workspace(db, owner, identifier, lock=False):
     return owned(db, LearningWorkspace, owner, identifier, lock=lock)
 
 
-def detail(row):
-    return {"workspace_id": str(row.id), "name": row.name, "revision": row.revision, **row.payload}
+def detail(row, db=None):
+    value = {"workspace_id": str(row.id), "name": row.name, "revision": row.revision, **row.payload}
+    if db is not None:
+        from careerforge.application.studio_learning_service import visible_action
+        from careerforge.infrastructure.db.models import AgentRun
+
+        actions = []
+        for item in row.payload["actions"]:
+            if item["kind"] == "learning_report":
+                item = visible_action(db, row.owner_id, item)
+            elif item["kind"] == "learning_run":
+                run = db.get(AgentRun, UUID(item["run_id"]))
+                item = {
+                    **item,
+                    "status": run.status if run and run.owner_id == row.owner_id else "unavailable",
+                }
+            actions.append(item)
+        value["actions"] = actions
+    return value
 
 
 def create(db, owner, body, key):
     record = idempotency(db, owner, "studio.create", key, body.model_dump(mode="json"))
     if record.response_summary:
-        return detail(workspace(db, owner, UUID(record.response_summary["workspace_id"])))
+        return detail(workspace(db, owner, UUID(record.response_summary["workspace_id"])), db)
     validate_files(body.files)
     row = LearningWorkspace(
         owner_id=owner, name=body.name, payload={"files": body.files, "actions": []}
@@ -65,7 +82,7 @@ def create(db, owner, body, key):
     db.add(row)
     db.flush()
     record.response_summary = {"workspace_id": str(row.id)}
-    return detail(row)
+    return detail(row, db)
 
 
 def revision(row, expected):
@@ -80,7 +97,7 @@ def save_file(db, owner, identifier, body):
     validate_files(files)
     row.payload = {**row.payload, "files": files}
     row.revision += 1
-    return detail(row)
+    return detail(row, db)
 
 
 def action(row, identifier):
@@ -129,7 +146,7 @@ def propose_command(db, owner, identifier, body):
             "revision": row.revision,
         },
     )
-    return detail(row)
+    return detail(row, db)
 
 
 def apply(db, owner, identifier, action_id, body):
@@ -138,7 +155,7 @@ def apply(db, owner, identifier, action_id, body):
     if item["kind"] != "patch" or body.confirmation != "APPLY":
         raise BusinessError(422, "PATCH_CONFIRMATION_REQUIRED", "请审阅并确认应用补丁。")
     if item["status"] == "applied":
-        return detail(row)
+        return detail(row, db)
     revision(row, body.expected_revision)
     files = dict(row.payload["files"])
     for edit in item["edits"]:
@@ -153,10 +170,14 @@ def apply(db, owner, identifier, action_id, body):
     row.payload = {**row.payload, "files": files}
     row.revision += 1
     update_action(row, action_id, {"status": "applied"})
-    return detail(row)
+    return detail(row, db)
 
 
 def start_agent(db, owner, identifier, body, key):
+    if body.mode == "learn":
+        from careerforge.application.studio_learning_service import start
+
+        return start(db, owner, identifier, body, key)
     row = workspace(db, owner, identifier)
     record = idempotency(db, owner, f"studio.agent:{identifier}", key, body.model_dump(mode="json"))
     if record.response_summary:
@@ -182,7 +203,12 @@ def start_agent(db, owner, identifier, body, key):
         "file_tree": sorted(row.payload["files"]),
         "references": references,
         "objective": objective.payload if objective else None,
-        "recent_actions": row.payload["actions"][-4:],
+        "recent_actions": [
+            {"kind": "learning_report", "summary": item["guide"]["summary"]}
+            if item["kind"] == "learning_report"
+            else item
+            for item in detail(row, db)["actions"][-4:]
+        ],
         "instruction": body.instruction,
     }
     if len(json.dumps(context, ensure_ascii=False)) > 24000:
@@ -296,7 +322,7 @@ def execute_command(db, owner, identifier, action_id, body):
         if item["kind"] != "command":
             raise not_found()
         if item["status"] != "pending":
-            return detail(row)
+            return detail(row, db)
         revision(row, body.expected_revision)
         if len(row.payload["actions"]) >= 99:
             raise BusinessError(422, "ACTION_LIMIT", "请创建新的练习工作区。")
@@ -341,7 +367,7 @@ def execute_command(db, owner, identifier, action_id, body):
                         "revision": body.expected_revision,
                     },
                 )
-        return detail(row)
+        return detail(row, db)
 
 
 def bind_reference(db, owner, identifier, body, key):
@@ -349,7 +375,7 @@ def bind_reference(db, owner, identifier, body, key):
     objective_version(db, owner, body.objective_version_id)
     record = idempotency(db, owner, f"studio.link:{identifier}", key, body.model_dump(mode="json"))
     if record.response_summary:
-        return detail(row)
+        return detail(row, db)
     from careerforge.application.repository_service import code_citation
 
     citation = code_citation(
@@ -372,4 +398,4 @@ def bind_reference(db, owner, identifier, body, key):
         ],
     }
     record.response_summary = {"citation_id": str(citation.id)}
-    return detail(row)
+    return detail(row, db)
