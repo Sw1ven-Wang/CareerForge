@@ -36,6 +36,7 @@ class ModelResult(ContractModel):
     finish_reason: Literal["stop", "tool_calls", "length", "content_filter"]
     usage: Usage = Field(default_factory=Usage)
     synthetic: bool = False
+    diagnostics: dict[str, Any] | None = None
 
 
 class ModelRequest(ContractModel):

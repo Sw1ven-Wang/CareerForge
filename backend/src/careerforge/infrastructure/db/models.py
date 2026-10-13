@@ -261,6 +261,7 @@ class ModelCallReceipt(Timestamped, Base):
     request_hash: Mapped[str] = mapped_column(String(64))
     status: Mapped[str] = mapped_column(String(30), default="reserved")
     usage: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    diagnostics: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 
 
 class Attachment(Timestamped, Base):

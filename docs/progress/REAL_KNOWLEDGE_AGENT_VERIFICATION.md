@@ -56,3 +56,5 @@
 原始收据、诊断与恢复收据位于 Git 忽略的 `private/knowledge/real_learning_verification_20261013.json`、`real_learning_raw_diagnostic.json` 和 `real_learning_verification_recovered_20261013.json`。原模型结果与调用 receipt 仍保留在数据库。完成了新增 / 修改代码静态检查、前端编译与部署；未运行额外测试或再次调用供应商。
 
 供应商官方接口说明供协议排查参考：[端点选择](https://docs.modelflare.dev/guides/endpoints/)、[OpenAI-compatible 接入](https://modelflare.dev/articles/openai-compatible-api-guide)。文档未为本次请求返回超限给出可核实原因，不能据此宣称 token 上限问题已经解决。
+
+后续无模型调用排查与本地修复见 [供应商输出 token 上限排查](PROVIDER_TOKEN_LIMIT_DIAGNOSIS.md)。原始 wire 与 usage 明细未保存，不能从历史归一结果还原；本次验证记录与用量未重写。

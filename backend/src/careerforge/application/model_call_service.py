@@ -10,7 +10,11 @@ from careerforge.infrastructure.llm.provider import ModelProvider
 from careerforge.schemas.model_io import ModelRequest, ModelResult
 
 
-def settle_receipt(call_id: UUID, usage: dict[str, Any] | None) -> None:
+def settle_receipt(
+    call_id: UUID,
+    usage: dict[str, Any] | None,
+    diagnostics: dict[str, Any] | None = None,
+) -> None:
     """Allow late accounting after cancellation/lease loss, without business effects."""
     factory = sessionmaker(get_engine())
     with factory.begin() as db:
@@ -25,6 +29,8 @@ def settle_receipt(call_id: UUID, usage: dict[str, Any] | None) -> None:
             return
         receipt.status = "completed" if usage is not None else "unknown"
         receipt.usage = usage
+        if diagnostics is not None:
+            receipt.diagnostics = {**(receipt.diagnostics or {}), **diagnostics}
 
 
 async def invoke_model(
@@ -45,14 +51,22 @@ async def invoke_model(
         raise ValueError("At most one transient retry is allowed")
     factory = sessionmaker(get_engine())
     for attempt in range(max_retries + 1):
+        describe = getattr(provider, "request_diagnostics", None)
+        diagnostics = describe(request) if describe is not None else None
         with factory.begin() as db:
             call_id = reserve_call(db, run_id, epoch, worker, request.model_dump(mode="json"))
+            if call_id is not None and diagnostics is not None:
+                db.get(ModelCallReceipt, call_id).diagnostics = diagnostics
         if call_id is None:
             return None
         try:
             result = await provider.complete(request)
         except ModelError as error:
-            settle_receipt(call_id, None)
+            settle_receipt(
+                call_id,
+                error.usage.model_dump() if error.usage is not None else None,
+                error.diagnostics,
+            )
             if not error.retryable or attempt == max_retries:
                 raise
             await asyncio.sleep(0.1 * (attempt + 1))
@@ -60,6 +74,6 @@ async def invoke_model(
         except BaseException:
             settle_receipt(call_id, None)
             raise
-        settle_receipt(call_id, result.usage.model_dump())
+        settle_receipt(call_id, result.usage.model_dump(), result.diagnostics)
         return result
     raise AssertionError("Unreachable bounded retry")

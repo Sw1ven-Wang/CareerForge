@@ -1,6 +1,6 @@
-from typing import Literal, Protocol
+from typing import Any, Literal, Protocol
 
-from careerforge.schemas.model_io import ModelRequest, ModelResult
+from careerforge.schemas.model_io import ModelRequest, ModelResult, Usage
 
 ErrorCode = Literal[
     "authentication",
@@ -15,9 +15,19 @@ ErrorCode = Literal[
 
 
 class ModelError(Exception):
-    """Contains only safe classifications; never raw provider messages or requests."""
+    """Safe classifications and numeric audit data; never raw messages or requests."""
 
-    def __init__(self, code: ErrorCode, *, retryable: bool, usage_unknown: bool = True):
+    def __init__(
+        self,
+        code: ErrorCode,
+        *,
+        retryable: bool,
+        usage_unknown: bool = True,
+        usage: Usage | None = None,
+        diagnostics: dict[str, Any] | None = None,
+    ):
+        self.usage = usage
+        self.diagnostics = diagnostics
         self.code = code
         self.retryable = retryable
         self.usage_unknown = usage_unknown
