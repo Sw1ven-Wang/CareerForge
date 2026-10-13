@@ -68,3 +68,29 @@
 2026-10-13，按用户要求将新任务每次输出上限从 2048 提高到 **4096**。更新本地 `.env`、配置默认值/校验上界、学习工作流冻结上限和提示词，并让界面从配置接口显示实际额度。岗位采集也冻结配置上限，历史缺失该字段的任务仍使用原先 2048；已有其他任务的 manifest 同样不改写。
 
 本次调整不追加模型调用、不运行测试。保留请求诊断与学习工作流的超限停止保护；提高允许额度不等于修复或证明供应商的硬上限行为。上面的 2048 请求、2137/2175 超限证据保持原样。
+
+
+## 4096 上限后的唯一一次真实验证
+
+2026-10-13，用户再次授权一次受限真实验证。仅使用原冻结计划与 smolagents 已读代码输入做最后生成步骤，提示词与请求上限同步改为 4096；没有重新执行自主检索、额外测试或修改旧学习报告。
+
+- run：`30415cbf-4b3d-47d3-a070-7bd6d6f38a01`，receipt：`753a6b9f-2930-423d-a405-b2e0a4457109`。
+- 调用预算 1，实际调用收据 1，重试 0，追加调用 0；诊断 run 状态 succeeded。
+- 实际请求 `/v1/chat/completions`，`gpt-6.1-sol`、`reasoning_effort=low`、`max_completion_tokens=4096`，结构化输出、无工具。
+- 序列化请求 22263 bytes，body SHA-256 `596d606b040ddaf2945b907a01852688dab945d05b571e3880b1f1227a35e5a1`。
+- HTTP 200，`object=chat.completion`、响应模型 `gpt-6.1-sol`、`finish_reason=stop`；JSON response ID `resp_029bbca84dc7653e016acdb7254b84819188baab6d8c59215d`，HTTP request ID 未提供。
+
+| 供应商计量字段 | 实际值 |
+| --- | ---: |
+| prompt_tokens / input_tokens | 6049 / 6049 |
+| completion_tokens / output_tokens | 1091 / 1091 |
+| total_tokens | 7140 |
+| completion_tokens_details.reasoning_tokens | 94 |
+| completion_tokens_details.text_tokens | 0 |
+| prompt_tokens_details.cached_tokens | 5888 |
+
+**本次请求正常完成且未超限：1091 ≤ 4096。** 两套计量别名一致，6049 + 1091 = 7140；没有把推理 token 再加到 completion 总量，也没有从输入用量中再次扣除缓存 token。与上一请求的输入 token 数不同是供应商报告值，不据此推断内部 tokenizer、路由或缓存转换实现。
+
+这次远未触及输出上限，不能证明供应商硬上限执行已修复。诊断仍保留 `provider_enforcement_verified=false` 与 `supplier_internal_forwarding_verified=false`，历史 2048 请求的超限结论不改写。本轮只完成最终生成请求的参数与计量核对，没有再次验证多轮检索链路或将新响应发布为工作台学习报告。
+
+完整模型结果及诊断已保存数据库 StageArtifact 和 receipt；本地存档位于 Git 忽略的 `private/knowledge/provider_token_verification_4096_20261013.json`，对应一次性脚本为 `provider_token_verification_4096_20261013.py`，存档存在时禁止再次执行。授权已用完，不追加模型调用。
