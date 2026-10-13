@@ -31,3 +31,33 @@
 历史最终响应 ID 为 `resp_0d607e71c407852d016acda871290881949517b3d98615f564`。供应商控制台的该请求日志、真实上游路由与实际转发的 token 参数，以及计量明细，才能区分上限转发失效、桥接差异和用量重算问题。[供应商用量说明](https://docs.modelflare.dev/guides/usage-and-cost/) 指向控制台的逐请求日志。
 
 本轮没有登录控制台、发送供应商请求或再次验证协议。以上本地修复通过代码静态检查并部署，不构成真实供应商验证。旧验证的 2175 / 2694 用量、失败状态和 recovered 报告保持原样。
+
+
+## 新增诊断后的唯一一次真实验证
+
+2026-10-13，用户另行明确授权一次真实验证，最多 2048 输出 token，超限停止，无额外测试。使用上次冻结计划与 smolagents 已读代码输入，仅生成最终学习说明，不重新运行检索。schema 已包含上次修复的标题字段，因此不是历史请求字节完全重放。
+
+- 运行 `a690a8ba-ae3f-4a6a-b034-7263e85b97a2`，receipt `d5442a10-c0e2-461f-b2c6-4d36e389e67f`；调用预算 1，实际预留/receipt 均为 1；自动重试 0，追加调用 0。
+- 发送路径 `/v1/chat/completions`，模型 `gpt-6.1-sol`，`reasoning_effort=low`，唯一上限参数 `max_completion_tokens=2048`；没有 `max_tokens` / `max_output_tokens`。请求是结构化输出，无工具。
+- 序列化 body 为 22261 bytes，SHA-256 `aad09bdba7e3bcacb5a15d9e4e58389edfff7c19c7bc2e7f615526afa97235f2`。
+- HTTP 200，响应 `object=chat.completion`、`model=gpt-6.1-sol`、`finish_reason=stop`；HTTP `x-request-id` 未返回，JSON response ID 为 `resp_0fa7bb4650aa5a6d016acdafa4510c8194b42d98e0a92f4f9e`。
+
+| 供应商计量字段 | 实际值 |
+| --- | ---: |
+| prompt_tokens / input_tokens | 10162 / 10162 |
+| completion_tokens / output_tokens | 2137 / 2137 |
+| total_tokens | 12299 |
+| completion_tokens_details.reasoning_tokens | 241 |
+| completion_tokens_details.text_tokens | 0 |
+| completion_tokens_details.audio_tokens / image_tokens | 0 / 0 |
+| prompt_tokens_details.cached_tokens | 0 |
+
+**本次仍然超限：2137 > 2048，超出 89 token（约 4.35%）。** 收据和完整模型结果先保存，随后将运行置为 failed，并记录 `PROVIDER_OUTPUT_OVER_LIMIT`；没有追加模型调用、切换协议、重试或更新旧学习报告。
+
+发送摘要已确认本地输出上限参数未遗漏。供应商两套 usage 别名一致，输入与输出之和等于 total_tokens，项目直接采用 completion_tokens，没有把 reasoning_tokens 再加一遍。因此本次不能归因于项目的重复计数或计量别名选择。
+
+2137 中报告的推理量为 241，算术差为 1896；该差值不能直接认定为可见文本量（供应商同时返回 text_tokens=0），也不能用来把总上限超限判为合规。存在“供应商只对部分输出执行上限”或“上游转发/计量转换不同”等可能，但这次响应仍不包含真实上游请求参数或渠道日志，无法在这些假设间定论。`resp_` 前缀和混合 usage 字段只说明返回形状，不能证明内部协议实现。
+
+诊断结果与原模型结果保存在数据库 StageArtifact 和调用 receipt；本地原始验证存档为 Git 忽略的 `private/knowledge/provider_token_verification_20261013.json`，一次性执行脚本为 `provider_token_verification_20261013.py`，已有存档时拒绝再次执行。独立诊断不发布学习报告，succeeded/failed 只描述本次检查结果。
+
+后续若继续定位，应使用上述 response ID 向供应商查询实际上游上限、路由及计量日志。本轮授权已用完，不再发起请求，也没有运行任何额外测试。
