@@ -135,6 +135,14 @@ class Runner:
             + "\nINPUT_UNTRUSTED_JSON\n"
             + json.dumps(context, ensure_ascii=False)
         )
+        if self.m["role"] == "extract":
+            prompt += (
+                "\n输出只含结构化 JSON，正文目标控制在约2500 token以内，为推理预留余量。"
+                "技术名称和关键词简短，rationale尽量不超过60字，原文摘录保留最短的唯一连续上下文。"
+                "同义技术合并；不能通过降低岗位明确深度或隐瞒覆盖缺口缩短输出。"
+                "加分项表示优先级，不等于降低原文要求的熟悉/掌握深度。"
+                "没有直接出现对应等级词的目标深度必须标inferred。重复句须带上下文使摘录唯一。"
+            )
         if len(prompt) > 47000:
             raise BusinessError(
                 413, "STUDY_CONTEXT_LIMIT", "本轮上下文过长，请缩小技术或项目范围。"
@@ -218,10 +226,12 @@ class Runner:
 
     async def extract(self):
         output = await self.ask("extract", {"sources": self.m["sources"]}, ExtractOutput)
+        output, repairs = validation.normalize_depths(output, self.m["sources"])
         self.store(
             "requirements",
             {
                 "requirements": validation.extracted(output, self.m["sources"]),
+                "normalization_repairs": repairs,
                 "limitations": output.limitations,
                 "sources": [
                     {k: v for k, v in s.items() if k != "content"} for s in self.m["sources"]

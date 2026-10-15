@@ -183,6 +183,81 @@ def visible_review(db, owner, item, accepted_ids):
     }
 
 
+def extraction_preview(db, row, run):
+    """Expose usable saved material as an unpublished preview; never bypass the budget gate."""
+    from pydantic import ValidationError
+
+    from careerforge.application import study_validation as validation
+    from careerforge.infrastructure.db.models import StageArtifact
+    from careerforge.schemas.model_io import ModelResult
+    from careerforge.schemas.study import ExtractOutput
+
+    if (
+        not run
+        or run.owner_id != row.owner_id
+        or run.status != "failed"
+        or run.input_manifest.get("role") != "extract"
+    ):
+        return None
+    saved = db.scalar(
+        select(StageArtifact).where(
+            StageArtifact.run_id == run.id,
+            StageArtifact.stage_key == "extract",
+            StageArtifact.stage_version == run.workflow_version,
+        )
+    )
+    if not saved:
+        return None
+    try:
+        result = ModelResult.model_validate(saved.payload)
+        if result.finish_reason != "stop":
+            return None
+        original = ExtractOutput.model_validate(result.structured)
+        sources = run.input_manifest["sources"]
+        validate_requirements(db, row.owner_id, sources)
+        normalized, repairs = validation.normalize_depths(original, sources)
+        valid, unresolved, seen = [], [], set()
+        for item in normalized.requirements:
+            try:
+                if item.key in seen:
+                    raise ValueError("duplicate requirement key")
+                seen.add(item.key)
+                valid.extend(
+                    validation.extracted(
+                        ExtractOutput(requirements=[item], limitations=[]), sources
+                    )
+                )
+            except ValueError:
+                unresolved.append(
+                    {
+                        "key": item.key,
+                        "technology": item.technology,
+                        "reason": "原文摘录无法唯一定位，未作为有效技术需求发布。",
+                    }
+                )
+        requested = run.input_manifest["max_output_tokens"]
+        reported = result.usage.output_tokens
+        return {
+            "id": str(saved.id),
+            "run_id": str(run.id),
+            "synthetic": result.synthetic,
+            "status": "unpublished",
+            "requirements": valid,
+            "unresolved": unresolved,
+            "normalization_repairs": [r for r in repairs if r["key"] in {v["key"] for v in valid}],
+            "limitations": [
+                *original.limitations,
+                "仅展示已保存结果，不是提取成功；未进入调研、审核或计划链路。",
+            ],
+            "budget_warning": {"requested": requested, "reported": reported}
+            if reported is not None and reported > requested
+            else None,
+            "usage": result.usage.model_dump(),
+        }
+    except (ValueError, ValidationError, KeyError):
+        return None
+
+
 def detail(db, row):
     # Reauthorize before returning derived private text, even on idempotent replay.
     sources = read_requirements(db, row.owner_id, row.payload["source_snapshot_ids"])
@@ -225,6 +300,7 @@ def detail(db, row):
         "target_count": row.payload["target_count"],
         "approved_count": len(accepted),
         "requirements": requirements,
+        "extraction_preview": extraction_preview(db, row, run) if not requirements else None,
         "candidates": candidates,
         "reviews": [visible_review(db, row.owner_id, i, accepted_ids) for i in reviews],
         "approved_projects": [packed(i) for i in accepted],

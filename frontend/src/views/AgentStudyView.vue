@@ -16,6 +16,7 @@ const approved=computed(()=>track.value?.approved_projects??[])
 const ready=computed(()=>!!track.value&&(track.value.approved_count>=track.value.target_count))
 const reviewed=computed(()=>new Map(track.value?.reviews.map(r=>[r.candidate_id,r])??[]))
 const pending=computed(()=>track.value?.candidates.filter(c=>!reviewed.value.has(c.id))??[])
+const displayedRequirements=computed(()=>track.value?.requirements??track.value?.extraction_preview)
 const latestPlan=computed(()=>track.value?.plans.at(-1))
 let timer:ReturnType<typeof setTimeout>|undefined,alive=true,loadNo=0
 async function refresh(){
@@ -85,12 +86,15 @@ function learn(){if(latestPlan.value)void router.push({path:'/studio',query:{tra
 <template v-if="track">
 <div class="flow-strip"><span :class="{done:track.sources.length}">人工需求</span><b>→</b><span :class="{done:track.requirements}">技术要求</span><b>→</b><span :class="{done:track.candidates.length}">研究与审核</span><b>→</b><span :class="{done:ready}">项目库 {{track.approved_count}} / {{track.target_count}}</span><b>→</b><span :class="{done:latestPlan}">模块化学习</span></div>
 <div v-if="track.active_run" class="run-status"><span>{{roleNames[track.active_run.role]}} · {{track.active_run.status}}</span><el-button v-if="running" link @click="cancel">停止本轮</el-button><router-link to="/runs">查看运行记录</router-link></div>
-<el-alert v-if="track.active_run?.status==='failed'" title="本轮未发布结果。请在运行记录查看原因；系统没有自动追加收费重试。" type="warning" :closable="false"/>
+<el-alert v-if="track.active_run?.status==='failed'&&!track.extraction_preview" title="本轮未发布结果。请在运行记录查看原因；系统没有自动追加收费重试。" type="warning" :closable="false"/>
+<el-alert v-if="track.extraction_preview?.budget_warning" :title="`供应商报告输出 ${track.extraction_preview.budget_warning.reported} token，超过请求上限 ${track.extraction_preview.budget_warning.requested}。本轮已停止，以下仅为未发布预览，调研与审核未启动。`" type="warning" :closable="false"/>
 <div class="study-columns">
 <section class="surface study-card"><header><h2>① 技术需求</h2><el-button :disabled="running" :loading="busy" @click="run('extract')">{{track.requirements?'重新提取':'提取需求'}}</el-button></header><p class="muted">了解 / 熟悉 / 掌握是目标深度。推断会单独标注。</p><p class="source-chips"><span v-for="s in track.sources" :key="s.source_snapshot_id">{{s.title}}</span></p>
-<el-empty v-if="!track.requirements" description="尚未提取技术要求"/>
+<el-empty v-if="!displayedRequirements" description="尚未提取技术要求"/><p v-if="track.extraction_preview" class="muted">已校验 {{track.extraction_preview.requirements.length}} 条原文依据；{{track.extraction_preview.unresolved.length}} 条待核对。</p><el-tag v-if="track.extraction_preview" type="warning">未发布预览 · 不进入后续链路</el-tag>
 <el-tag v-if="track.requirements?.synthetic" type="warning">离线模拟</el-tag>
-<article v-for="r in track.requirements?.requirements" :key="r.key" class="requirement"><div><strong>{{r.technology}}</strong><el-tag :type="r.depth==='掌握'?'success':'info'" size="small">{{r.depth}}</el-tag><small>{{r.depth_basis==='explicit'?'原文明确':'模型推断'}}</small></div><p>{{r.rationale}}</p><details><summary>原文依据 · {{r.evidence.length}}</summary><blockquote v-for="(e,i) in r.evidence" :key="i">{{e.quote}}<small>{{e.source_title}}</small></blockquote><small>检索词：{{r.keywords.join('、')}}</small></details></article>
+<article v-for="r in displayedRequirements?.requirements" :key="r.key" class="requirement"><div><strong>{{r.technology}}</strong><el-tag :type="r.depth==='掌握'?'success':'info'" size="small">{{r.depth}}</el-tag><small>{{r.depth_basis==='explicit'?'原文明确':'模型推断'}}</small></div><p>{{r.rationale}}</p><details><summary>原文依据 · {{r.evidence.length}}</summary><blockquote v-for="(e,i) in r.evidence" :key="i">{{e.quote}}<small>{{e.source_title}}</small></blockquote><small>检索词：{{r.keywords.join('、')}}</small></details></article>
+<details v-if="track.extraction_preview?.unresolved.length"><summary>待核对条目</summary><p v-for="item in track.extraction_preview.unresolved" :key="item.key">{{item.technology}}：{{item.reason}}</p></details>
+<details v-if="track.extraction_preview?.normalization_repairs.length"><summary>本地等级校正 · {{track.extraction_preview.normalization_repairs.length}} 项</summary><p v-for="item in track.extraction_preview.normalization_repairs" :key="item.key">{{item.key}}：{{item.original_depth}} / {{item.original_basis}} → {{item.depth}} / {{item.depth_basis}}。{{item.reason}}</p></details>
 </section>
 <section class="surface study-card"><header><h2>② 开源项目研究与审核</h2><el-button type="primary" plain :disabled="!track.requirements||running" :loading="busy" @click="run('discover')">调研并审核一批</el-button></header><p class="muted">先发现候选，再读取固定版本代码审核。强相关且质量条件满足才入库。</p>
 <div class="target-setting"><span>入库目标</span><el-input-number v-model="target" :min="1" :max="10" size="small"/><el-button size="small" :disabled="running||target===track.target_count" @click="settings">保存</el-button><strong>{{track.approved_count}} 个已入库</strong></div>

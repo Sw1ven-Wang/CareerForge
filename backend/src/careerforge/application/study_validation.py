@@ -20,6 +20,49 @@ CODE_SUFFIXES = {
 }
 
 
+def normalize_depths(output, sources):
+    """Repair only depth metadata supported by the already validated literal text."""
+    from careerforge.schemas.study import ExtractOutput
+
+    allowed = {s["source_snapshot_id"]: s["content"] for s in sources}
+    value = output.model_dump()
+    repairs = []
+    for item in value["requirements"]:
+        quotes = [
+            e["quote"]
+            for e in item["evidence"]
+            if allowed.get(e["source_snapshot_id"], "").count(e["quote"]) == 1
+        ]
+        mentioned = {
+            level for level in ("了解", "熟悉", "掌握") if any(level in quote for quote in quotes)
+        }
+        old_depth, old_basis = item["depth"], item["depth_basis"]
+        if item["depth_basis"] == "explicit" and item["depth"] not in mentioned:
+            if len(mentioned) == 1:
+                item["depth"] = next(iter(mentioned))
+                reason = "原文有唯一明确等级，保留原文等级；加分项不等于降低深度。"
+            else:
+                item["depth_basis"] = "inferred"
+                reason = "摘录未明确使用该等级词，目标深度属于模型推断。"
+            repairs.append(
+                {
+                    "key": item["key"],
+                    "original_depth": old_depth,
+                    "original_basis": old_basis,
+                    "depth": item["depth"],
+                    "depth_basis": item["depth_basis"],
+                    "reason": reason,
+                    "original_rationale": item["rationale"],
+                }
+            )
+            item["rationale"] = (
+                reason
+                if item["depth"] != old_depth
+                else reason + " 原模型说明：" + item["rationale"][:450]
+            )
+    return ExtractOutput.model_validate(value), repairs
+
+
 def extracted(output, sources):
     allowed = {s["source_snapshot_id"]: s for s in sources}
     keys = [r.key for r in output.requirements]
