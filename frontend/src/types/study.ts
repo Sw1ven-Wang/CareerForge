@@ -1,0 +1,12 @@
+export type Requirement={key:string;technology:string;keywords:string[];depth:string;depth_basis:string;rationale:string;evidence:{quote:string;source_title:string;source_snapshot_id:string}[]}
+export type Highlight={citation_id:string;requirement_key:string;path:string;start_line:number;end_line:number;quote:string;explanation:string;commit:string}
+export type Candidate={id:string;github_url:string;full_name:string;description:string;stars?:number;license?:string;origin:string}
+export type Review={id:string;candidate_id:string;candidate:Candidate;verdict:string;summary:string;admitted:boolean;available:boolean;technology_stack:string[];quality_notes:string[];limitations:string[];highlights:Highlight[];repository_snapshot_id:string|null;synthetic:boolean}
+export type StudyModule={key:string;parent_key:string|null;title:string;depth:string;requirement_keys:string[];project_review_ids:string[];highlight_ids:string[];prerequisite_keys:string[];steps:string[];deliverable:string;acceptance:string[]}
+export type StudyPlan={id:string;title:string;summary:string;modules:StudyModule[];focus_highlights?:Highlight[];limitations:string[];synthetic:boolean;intent:{kind:string;focus:string};review_ids:string[]}
+export type Block={kind:string;title:string;text:string;nodes:{key:string;label:string}[];edges:{source:string;target:string;label:string}[];columns:string[];rows:string[][]}
+export type Turn={id:string;plan_id:string;module_key:string;question:string;status:string;synthetic:boolean;blocks:Block[];points:{title:string;citation_id:string;quote:string;explanation:string;path:string;quote_start_line:number;quote_end_line:number}[];focus_citation_id:string|null;questions:string[];limitations:string[]}
+export type StudyTrack={track_id:string;name:string;revision:number;target_count:number;approved_count:number;requirements:{id:string;requirements:Requirement[];limitations:string[];synthetic:boolean}|null;candidates:Candidate[];reviews:Review[];approved_projects:Review[];plans:StudyPlan[];turns:Turn[];sources:{title:string;source_snapshot_id:string}[];progress:Record<string,{state:string;note:string}>;active_run:{run_id:string;status:string;role:string;version:number}|null}
+export const intentNames:Record<string,string>={build_project:'学习项目构建',learn_project:'学习整个项目',technical_design:'学习技术设计',function:'学习函数实现'}
+export const roleNames:Record<string,string>={extract:'技术需求提取',discover:'开源项目调研',review:'项目相关性审核',plan:'模块化计划',tutor:'交互导学'}
+export const activeStates=['queued','running','waiting_user']

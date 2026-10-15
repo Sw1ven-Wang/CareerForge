@@ -1886,6 +1886,93 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/study/tracks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listing */
+        get: operations["listing_api_v1_study_tracks_get"];
+        put?: never;
+        /** Create */
+        post: operations["create_api_v1_study_tracks_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/study/tracks/{identifier}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Detail */
+        get: operations["detail_api_v1_study_tracks__identifier__get"];
+        /** Configure */
+        put: operations["configure_api_v1_study_tracks__identifier__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/study/tracks/{identifier}/candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Candidate */
+        post: operations["candidate_api_v1_study_tracks__identifier__candidates_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/study/tracks/{identifier}/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start */
+        post: operations["start_api_v1_study_tracks__identifier__runs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/study/tracks/{identifier}/progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Progress */
+        put: operations["progress_api_v1_study_tracks__identifier__progress_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1942,6 +2029,16 @@ export interface components {
             expected_version: number;
             /** Reason */
             reason?: string | null;
+        };
+        /** CandidateInput */
+        CandidateInput: {
+            /** Expected Revision */
+            expected_revision: number;
+            /**
+             * Repository Snapshot Id
+             * Format: uuid
+             */
+            repository_snapshot_id: string;
         };
         /** CaptureImport */
         CaptureImport: {
@@ -2503,6 +2600,25 @@ export interface components {
              */
             budget_profile: "development_small";
         };
+        /** LearningIntent */
+        LearningIntent: {
+            /** Focus Chunk Id */
+            focus_chunk_id?: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "build_project" | "learn_project" | "technical_design" | "function";
+            /** Requirement Keys */
+            requirement_keys: string[];
+            /** Project Review Ids */
+            project_review_ids: string[];
+            /**
+             * Focus
+             * @default
+             */
+            focus: string;
+        };
         /** LearningQuestion */
         LearningQuestion: {
             /** Question */
@@ -2579,6 +2695,28 @@ export interface components {
             published_at_precision?: ("exact" | "date_only" | "approximate" | "unknown") | null;
             /** Published At Raw */
             published_at_raw?: string | null;
+        };
+        /** ModuleProgress */
+        ModuleProgress: {
+            /** Expected Revision */
+            expected_revision: number;
+            /**
+             * Plan Id
+             * Format: uuid
+             */
+            plan_id: string;
+            /** Module Key */
+            module_key: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "pending" | "learning" | "completed";
+            /**
+             * Note
+             * @default
+             */
+            note: string;
         };
         /** ObjectiveInput */
         ObjectiveInput: {
@@ -2906,6 +3044,43 @@ export interface components {
             /** Reason */
             reason: string;
         };
+        /** RoleInput */
+        RoleInput: {
+            /**
+             * Auto Review Count
+             * @default 0
+             */
+            auto_review_count: number;
+            /** Expected Revision */
+            expected_revision: number;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "extract" | "discover" | "review" | "plan" | "tutor";
+            /** Candidate Id */
+            candidate_id?: string | null;
+            intent?: components["schemas"]["LearningIntent"] | null;
+            /** Plan Id */
+            plan_id?: string | null;
+            /** Module Key */
+            module_key?: string | null;
+            /**
+             * Question
+             * @default
+             */
+            question: string;
+            /**
+             * Max Output Tokens
+             * @default 4096
+             */
+            max_output_tokens: number;
+            /**
+             * Model Call Limit
+             * @default 3
+             */
+            model_call_limit: number;
+        };
         /** SelectionInput */
         SelectionInput: {
             /**
@@ -3012,6 +3187,25 @@ export interface components {
              * @default 0.2
              */
             reserved_fraction: number;
+        };
+        /** TrackInput */
+        TrackInput: {
+            /** Name */
+            name: string;
+            /** Source Snapshot Ids */
+            source_snapshot_ids: string[];
+            /**
+             * Target Count
+             * @default 5
+             */
+            target_count: number;
+        };
+        /** TrackSettings */
+        TrackSettings: {
+            /** Expected Revision */
+            expected_revision: number;
+            /** Target Count */
+            target_count: number;
         };
         /** ValidationError */
         ValidationError: {
@@ -7064,6 +7258,236 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listing_api_v1_study_tracks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"];
+                };
+            };
+        };
+    };
+    create_api_v1_study_tracks_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TrackInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    detail_api_v1_study_tracks__identifier__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    configure_api_v1_study_tracks__identifier__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TrackSettings"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    candidate_api_v1_study_tracks__identifier__candidates_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string | null;
+            };
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CandidateInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_api_v1_study_tracks__identifier__runs_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string | null;
+            };
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoleInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    progress_api_v1_study_tracks__identifier__progress_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModuleProgress"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

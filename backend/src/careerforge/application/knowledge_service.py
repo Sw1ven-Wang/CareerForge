@@ -109,7 +109,7 @@ def build_index(db, owner, snapshot_id, metadata=None):
     return project_detail(db, owner, snapshot_id)
 
 
-def import_project(db, owner, body, key):
+def import_project(db, owner, body, key, *, trusted_archive=False, archive_skipped=None):
     record = idempotency(db, owner, "knowledge.import", key, body.model_dump(mode="json"))
     if record.response_summary:
         return project_detail(db, owner, UUID(record.response_summary["repository_snapshot_id"]))
@@ -118,7 +118,9 @@ def import_project(db, owner, body, key):
         origin = "github_commit_archive"
     else:
         files, skipped = validate_submitted(body.files), {}
-        origin = "user_submitted_text"
+        origin = "github_commit_archive" if trusted_archive else "user_submitted_text"
+        if trusted_archive:
+            skipped = archive_skipped or {}
     # Registration also serializes same repository/version imports, without another request key.
     registration = RepositoryInput(github_url=body.github_url, requested_ref=body.requested_ref)
     from sqlalchemy.dialects.postgresql import insert

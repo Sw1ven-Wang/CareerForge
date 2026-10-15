@@ -39,11 +39,12 @@ async function logout() {
   <div v-else class="app-shell">
     <aside class="sidebar"><div class="brand"><span class="brand-mark">C</span> CareerForge</div><p class="sidebar-caption">从需求找到开源实现</p>
       <nav aria-label="工作台导航">
-        <router-link to="/studio">◈ 学习工作台</router-link>
+        <router-link to="/agent">◈ Agent 工作台</router-link>
         <router-link to="/sources">▤ 需求资料</router-link>
         <router-link to="/knowledge">▧ 开源项目</router-link>
         <details class="sidebar-group"><summary>更多</summary><div class="sidebar-group-links">
-          <router-link to="/planning">学习计划</router-link>
+          <router-link to="/studio">学习 IDE</router-link>
+          <router-link to="/planning">历史学习计划</router-link>
           <router-link to="/market">岗位统计与分析</router-link>
           <router-link to="/goals">学习方向设置</router-link>
           <router-link to="/runs">运行记录</router-link>
@@ -51,7 +52,7 @@ async function logout() {
       </nav>
       <div class="sidebar-bottom"><span class="status-dot"></span> 个人空间<br><small>{{ session.user.email }}</small><el-button link @click="logout">退出登录</el-button></div>
     </aside>
-    <main class="main-content"><header class="topbar"><span>人工导入需求 · Agent 匹配开源实现</span><el-tag type="info" effect="plain">本机学习工作台</el-tag></header><router-view /></main>
+    <main class="main-content"><header class="topbar"><span>职业需求 → 技术要求 → 开源实现 → 模块化学习</span><el-tag type="info" effect="plain">本机学习工作台</el-tag></header><router-view /></main>
   </div>
 </template>
 

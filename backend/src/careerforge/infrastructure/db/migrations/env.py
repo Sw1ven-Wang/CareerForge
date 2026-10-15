@@ -1,5 +1,6 @@
 from alembic import context
 from careerforge.infrastructure.db.models import Base
+from careerforge.infrastructure.db import study_models  # noqa: F401
 from careerforge.infrastructure.db.session import get_engine
 
 with get_engine().connect() as connection:

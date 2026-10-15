@@ -1,5 +1,7 @@
 # CareerForge V1：产品与实现文档包
 
+> 2026-10-15 最新产品结构：职业需求由人工导入；主流程改为技术需求提取（了解/熟悉/掌握）→开源项目调研→独立审核入库→用户选择学习意图→模块化计划→同页交互导学与代码定位。详见 [重构说明](progress/AGENT_STUDY_REFACTOR.md) 与 [ADR 0003](decisions/0003-agent-study-pipeline.md)。此决定覆盖旧六模块主导航和岗位自动采集安排；旧数据与历史功能保留。
+
 > 2026-10-12 实施修订：用户决定移除 LangGraph，采用 Python 显式阶段工作流；协议变更与验收映射见 [ADR 0002](decisions/0002-explicit-workflows.md)。原始 1.0 文档保留在 CareerForge_V1_Implementation_Package。
 
 版本：1.0  
