@@ -1,88 +1,152 @@
-# CareerForge · V1 本地预览
+# CareerForge
 
-> 2026-10-15 最新产品结构：职业需求由人工导入；主流程改为技术需求提取（了解/熟悉/掌握）→开源项目调研→独立审核入库→用户选择学习意图→模块化计划→同页交互导学与代码定位。详见 [重构说明](docs/progress/AGENT_STUDY_REFACTOR.md) 与 [ADR 0003](docs/decisions/0003-agent-study-pipeline.md)。此决定覆盖旧六模块主导航和岗位自动采集安排；旧数据与历史功能保留。
+**把职业需求映射到开源实现的个人 Agent 学习工作台。**  
+An evidence-based agent workbench for learning from real open-source code.
 
-个人 Agent 开发学习与实践工作台：岗位正文 → 要求与引用 → 个人材料与目标 → 固定版本参考代码 → 学习单元 → 在已有学习计划中编辑目标、交付物、工时和验收条件。
+你导入岗位或技术资料，Agent 提取技术需求，发现并审核开源项目，再根据你选择的学习目标制定模块化计划。在同一页面阅读参考代码、查看计划、提问，以及在自己的项目里审阅并应用代码修改。
 
-当前提供岗位来源、岗位分析、证据与学习计划、项目代码学习及运行记录，另有个人模拟调研汇总页。自主构建模块已按用户要求下线。工作流采用 **Python 显式阶段函数 + PostgreSQL 阶段产物 + Celery/Redis**；不安装或运行 LangGraph。保存的 LangGraph 源码仅是 S00 固定版本的只读学习材料，许可证和文件哈希随包保留。
+项目优先服务本机使用，提供浏览器界面与 Windows Tauri 桌面外壳。采用 Python 显式工作流，不依赖 LangGraph。
 
-**当前交付是本地工程版本，已接入真实公开岗位采集及可选模型工具调用。** 默认无需模型即可采集正文；后续规划、代码学习和材料审阅采用保守规则，缺少证据保持 unknown。真实模型质量、独立校准/留出评测及作者本人真实迁移任务尚未验证，不宣称正式 R4 效果门槛通过。完整状态见 [V1 交付记录](docs/progress/V1_DELIVERY.md)。
+## 主流程
 
-## 启动
+```mermaid
+flowchart LR
+    A[人工导入需求] --> B[Extract Agent<br/>技术与三级目标深度]
+    B --> C[Research Agent<br/>GitHub 候选发现]
+    C --> D[Review Agent<br/>固定版本源码审核]
+    D -->|强相关且满足条件| E[项目库与代码索引]
+    E --> F[用户选择学习意图]
+    F --> G[Plan Agent<br/>分级模块化计划]
+    G --> H[Tutor Agent<br/>检索、问答、图示与代码高亮]
+    H --> I[自己的 IDE<br/>审阅补丁与确认命令]
+```
 
-在项目目录运行（PowerShell）：
+- **需求提取**：技术关键词、了解 / 熟悉 / 掌握、原文明确要求与模型推断分开记录。
+- **项目研究**：按技术需求搜索 GitHub，读取固定 commit 的代码；候选经过独立角色审核才进入学习项目库。
+- **学习规划**：支持学习项目构建、整个项目、技术设计、函数实现；计划包含最多三级模块、前置关系、步骤、成果和验收条件。
+- **交互导学**：Agent 使用只读代码工具自主检索，输出文字、结构化 SVG 图示和表格；引用连接真实文件和行区间。
+- **内置 IDE**：同页查看计划、参考代码与问答，可切换自己的项目，编辑文件、审阅并应用 Agent 补丁。
+- **受控执行**：命令逐条确认后在无网络 Docker 沙箱运行；桌面桥接不提供任意宿主 Shell。
+- **持久化运行**：保存阶段产物、事件、调用收据和预算；不确定的模型请求不自动重复收费。
+
+默认收集目标为 5 个不同审核项目，可配置为 1–10 个；不足时保留结果，由用户决定是否继续一轮，不无限搜索或调用模型。
+
+## 架构
+
+| 层 | 实现 |
+| --- | --- |
+| 界面 | Vue 3、TypeScript、Element Plus |
+| 桌面 | Tauri 2、Rust、Windows WebView2 |
+| API | FastAPI、Pydantic |
+| 数据 | PostgreSQL、SQLAlchemy、Alembic |
+| 后台运行 | Python 显式阶段函数、Celery、Redis、数据库 outbox 与租约 |
+| 模型 | 可配置的 OpenAI-compatible Chat Completions 接口、结构化输出与工具调用 |
+| 代码知识库 | 固定 commit 快照、Python AST、文本窗口、PostgreSQL 全文检索、符号 / 路径加权 |
+| 执行环境 | Docker 隔离沙箱 |
+
+Extract、Research、Review、Plan、Tutor 是同一后端内的角色，复用运行内核与模型适配器。IDE 编码助手独立生成待审阅修改。当前未启用向量检索或模型重排序。
+
+## 快速开始
+
+需要 Git、Docker（Linux containers）、Python 3.12、uv，以及 Node.js / npm。Windows 建议使用 Docker Desktop。
 
 ```powershell
+git clone https://github.com/Sw1ven-Wang/CareerForge.git
+cd CareerForge
+
+Copy-Item .env.example .env
 uv sync --project backend --python 3.12 --locked
 npm.cmd ci --prefix frontend
 npm.cmd run build --prefix frontend
-# 先准备 API 镜像，离线 UI 网关将复用它。
+
+# 先构建后端；本地静态资源网关与沙箱复用 API 镜像。
 docker compose --profile app build api worker dispatcher migrate
-docker compose -f compose.yaml -f compose.offline.yaml --profile app build frontend
-docker compose -f compose.yaml -f compose.offline.yaml --profile app up -d --no-build
+docker compose -f compose.yaml -f compose.offline.yaml -f compose.ide.yaml --profile app build frontend
+docker compose -f compose.yaml -f compose.offline.yaml -f compose.ide.yaml --profile app up -d --no-build
 ```
 
-打开 **http://127.0.0.1:8080**。当前机器已启动这一入口。Docker Hub 的 Node 镜像拉取曾超时，故提供复用 Python 镜像与本地构建静态资源的网关；联网环境仍可使用原来的 Nginx 多阶段 Dockerfile。离线网关只用于回环地址下的本机私有预览。
+打开 **http://127.0.0.1:8080**，注册自己的本地账号。仓库不附带用户数据库、个人材料或预置业务账号。
 
-没有通用初始管理员或后门账号。你可以在登录页注册自己的本地账号。当前已创建的**合成演示账号**：
+macOS / Linux 可将上述 PowerShell 的 `Copy-Item` 换成 `cp`，`npm.cmd` 换成 `npm`。桌面外壳目前按 Windows x64 构建，其他平台桌面支持尚未验证。
 
-- 邮箱：`v1-demo-20261012@example.test`
-- 密码：`SyntheticOfflineDemo2026`
+### 配置真实 Agent
 
-这个账号里的验收记录明确标记为合成流程测试，不构成 joblearn 或本人能力认证。joblearn 仅按授权清单读取，未修改、导入执行或测试它的代码。真实材料、数据库备份与完整运行记录均保存在 Git 忽略的 `private/` 或本地数据库中。
+编辑本地 `.env`：
 
-## 页面
+```dotenv
+OPENAI_BASE_URL=https://your-provider.example/v1
+OPENAI_API_KEY=your-local-api-key
+MODEL_NAME=your-provider-model-id
+CAREERFORGE_REAL_AGENT_ENABLED=true
+CAREERFORGE_MODEL_REASONING_EFFORT=low
+CAREERFORGE_STUDY_MAX_OUTPUT_TOKENS=8192
+```
 
-| 入口 | 用途 |
+Base URL、模型 ID 与兼容能力由所用供应商决定。适配器使用 Chat Completions、`max_completion_tokens`、JSON Schema 和工具调用；请确认供应商支持这些参数。真实请求仅在用户启动操作后发生，并可能产生供应商费用。未配置模型时可以浏览页面、手动导入资料和编辑代码，Agent 功能不会自动切换为模拟结果。
+
+修改配置后重建运行容器以加载新环境：
+
+```powershell
+docker compose -f compose.yaml -f compose.offline.yaml -f compose.ide.yaml --profile app up -d --force-recreate api worker
+```
+
+`.env` 已被 Git 忽略。不要把密钥写入代码、截图、Issue 或公开运行日志。
+
+### Windows 桌面版
+
+完成上述镜像和静态资源准备后，按 [桌面构建说明](desktop/README.md) 构建：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File desktop/build.ps1
+```
+
+构建产物位于 `desktop/release/`，不纳入源码仓库。桌面版保留 Docker 后端，提供服务状态与双击启动；首次镜像仍需手动准备。选择本机项目目录后才授予该目录内的代码读写权限。
+
+## 页面入口
+
+| 路径 | 用途 |
 | --- | --- |
-| `/` | 职业目标与当前工作台 |
-| `/sources`、`/market` | 正文/附件导入、要求引用、去重、人工更正与报告 |
-| `/planning` | 个人材料改版与撤销、未知对齐、目标与完整条件、计划草稿和子集采纳 |
-| `/projects` | 固定 commit 候选、代码引用、明确选择、学习单元、追问纠错、独立阅读进度 |
-| `/mock-research` | 完整模拟调研、技能统计、个人材料与六周计划 |
-| `/build` | 旧地址自动转到 `/planning`，不再提供独立构建功能 |
-| `/runs` | 后台状态、持久化事件、等待决定与取消 |
+| `/agent` | 需求提取、项目研究与审核、选择学习意图、生成计划 |
+| `/sources` | 人工导入岗位 / 技术正文与来源管理 |
+| `/knowledge` | 固定版本开源项目库与代码检索 |
+| `/studio` | 学习计划、参考代码、导师问答与自己的 IDE |
+| `/runs` | 后台任务、事件、用量与取消 |
 
-## 模拟调研与计划
+旧版分析、计划编辑、采集及验收接口保留兼容，位于次级入口。当前主流程不要求 Agent 自动采集岗位。
 
-现有演示账号已导入五份虚构 JD、个人材料分析及六周计划草稿，打开 `/mock-research` 查看完整报告，打开 `/planning` 编辑已有计划。每周 12 小时仅为模拟假设。
+## 当前状态与边界
 
-计划内的“编辑目标”会在一个事务中保存目标新版本并更新计划草稿引用；失败时整体回滚。可调整目标选择、顺序、交付物、工时、前置依赖和完整条件。已采纳计划的修改保存为新草稿，原采纳版本仍保留。
+这是持续迭代的本机学习工具，尚未作为公网多用户服务加固或验证。
 
-旧六模块演示工具 `scripts/run_offline_demo.py` 已停用；本地 mock 原始文件与导入收据位于 Git 忽略的 `private/mock_research/`，可用 `scripts/import_mock_research.py` 在现有演示账号续传导入。历史流程记录仍保留，但不代表当前功能入口。变更见 [计划编辑调整记录](docs/progress/PLAN_EDITING_CHANGE.md)。
+最近一次受限真实验证完成了需求提取、GitHub 调研和审核入库：3 份岗位正文、15 条有效技术需求、8 个候选、3 个入库项目；6 次模型调用均在 8192 输出 token 请求上限内。部分引用失败经本地修复、复用保存结果恢复，不能视为无人干预一次通过。详见 [验证记录](docs/progress/AGENT_STUDY_LIVE_20261017.md)。
 
-## 验证与运维
+- 审核依据是有限静态代码窗口；强相关不代表生产质量、安全性或运行效果通过验收。
+- 当前新流程模块进度由用户记录；旧版成果提交、人工验收及计划更新链路保留，尚未完全统一到新模块计划。
+- Tutor 展示事件进度，完整回答完成后呈现；目前不是逐 token 流式聊天。
+- IDE 支持受限编辑与补丁审阅，尚无完整 VS Code / LSP 功能；命令在沙箱执行。
+- 供应商曾报告超过请求上限的用量。客户端会记录并停止后续调用，不能保证供应商在所有请求中严格遵守 token 上限。
+- 首次启动不会自动下载他人的项目或执行仓库脚本。公开源码不包含开发机的数据库、资料快照与私有运行记录。
 
-最终只做了一次整体回归：85 项通过、1 项并发确认失败、4 项 Linux 故障用例未重复运行；修复行锁后的 ORM 旧对象问题后，该失败用例定向通过。失败原始记录仍保留，没有改写成全绿。新业务关键闭环、类型检查、前端构建及 Linux Celery 七次业务运行通过。既有杀进程恢复证据沿用 S02/S03。
+## 目录与文档
 
-独立新库从全部迁移启动成功；备份恢复后 56 张表、430 行及内容聚合哈希一致。恢复工具只允许新建 `careerforge_restore_` 数据库，不能覆盖当前工作库。
+```text
+backend/      API、业务服务、工作流、模型适配、代码索引、迁移与测试
+frontend/     工作台、计划、代码阅读与 IDE 界面
+desktop/      Tauri 外壳、服务管理与本机目录桥接
+docs/         架构、合同、运维与各阶段历史记录
+evals/        离线评测与结果
+scripts/      开发、演示、文档导出与运维工具
+```
 
-- [启动与备份恢复](docs/operations/deployment.md)
-- [恢复、取消与事件](docs/operations/recovery.md)
-- [撤销、正文清理与保留边界](docs/operations/deletion.md)
-- [工程取舍与真实限制](docs/interview/project_evidence.md)
-- [离线检索与条件守卫对照](evals/reports/offline_comparison.json)
+- [文档索引](docs/00_README.md)
+- [Agent 主流程设计](docs/decisions/0003-agent-study-pipeline.md)
+- [部署与备份恢复](docs/operations/deployment.md)
+- [运行恢复和取消](docs/operations/recovery.md)
+- [本机 IDE 的边界](desktop/README.md)
+- [贡献指南](CONTRIBUTING.md) · [安全说明](SECURITY.md)
 
-数据库密码为本机开发示例，所有端口仅绑定回环地址。自动物理擦除默认关闭；逻辑撤销及读取阻断立即生效，清理只在独立验证库执行过。真实模型工具调用需要在本轮明确开启；向量库、Langfuse 和 MCP 写操作未开放。费用/Token/时长预算的真实供应商验证属于后续受控启用门槛，不能将当前调用数限额冒充生产成本控制。
+部分历史文档记录了当时的产品结构与开发机验证条件，请结合日期阅读；当前主流程以本 README 和 ADR 0003 为准。
 
-岗位标准化 V1.1 已接入来源、调研和现有计划编辑流程；使用与回滚见 [数据协议说明](docs/progress/JOB_DATA_CONTRACT_V1_1.md)。
+## 许可证
 
-真实模型岗位候选提取入口与当前验证状态见 [真实 Agent 第一阶段](docs/progress/REAL_JOB_AGENT.md)。
-
-## 真实岗位采集
-
-打开 `/sources` → **查询 / 采集岗位**，支持腾讯官网和牛客校招关键词查询，以及牛客、猎聘、百度和腾讯的公开详情链接采集。手动模式无需模型；Agent 模式加载项目内官网调研 Skill，自行选择查询与读取工具。每轮限制网络请求、岗位数和模型调用数。
-
-跨站关键词发现可在本地 `.env` 配置 `CAREERFORGE_TAVILY_API_KEY`，重建容器后单独开启本轮搜索；当前未配置，也未调用该服务。BOSS、登录验证页及无可验证正文的动态页面返回明确限制。官网导航登记不等于所有官网已具备自动采集适配器。真实采集记录及可复用路径见 [岗位采集说明](docs/progress/JOB_COLLECTION.md)。
-
-资料库现可点击 **下一步：岗位要求分析** 选择正文并带入固定版本；报告可继续带入现有学习计划。操作与边界见 [资料库衔接说明](docs/progress/SOURCE_ANALYSIS_HANDOFF.md)。
-
-岗位要求分析已接入真实 Agent（单份真实岗位报告与原文依据验证通过）：[接入说明](docs/progress/REAL_MARKET_ANALYSIS.md)。
-
-同页学习工作台与内置 IDE 已提供：访问 `/studio`，见 [功能与运行限制](docs/progress/LEARNING_STUDIO.md)。
-
-代码学习库第一阶段已提供：访问 `/knowledge` 导入固定版本的公开项目、检索代码并关联已有学习目标。已真实导入 smolagents 的 177 个文件 / 1,916 个片段；范围与后续语义检索计划见 [代码学习库说明](docs/progress/CODE_KNOWLEDGE_LIBRARY.md)。
-
-知识库检索已接入内置 Agent：在 `/studio` 选择“学习说明 · 自主检索”，可根据当前目标自主检索、读取与追踪代码，生成带原文摘录及行号的说明。每轮最多 4 次模型调用，使用方式及验证边界见 [知识库学习 Agent](docs/progress/KNOWLEDGE_AGENT_LEARNING.md)。
-
-知识库学习 Agent 已进行一次真实验证：自主检索与原文说明可用，显示标题字段已修复；供应商报告输出超过请求上限，严格额度验证尚未通过。结果与用量见 [真实验证记录](docs/progress/REAL_KNOWLEDGE_AGENT_VERIFICATION.md)。
+CareerForge 原创代码与文档采用 [MIT License](LICENSE)。保留的第三方参考代码遵循其自身许可证，见 [NOTICE](NOTICE.md)。用户导入的项目、岗位资料与个人材料不因导入本工具而改变权利归属。

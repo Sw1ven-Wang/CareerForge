@@ -1,3 +1,7 @@
+# Third-party notices
+
+CareerForge 原创部分使用根目录 MIT License；下列第三方材料遵循各自许可证。用户导入内容不属于项目原创授权范围。
+
 # 参考材料许可与使用范围
 
 backend/src/careerforge/data/curated/files 中保存 LangGraph 公开仓库 commit 799c2f04fd3a56186e24e9fb8bbf3568e543cfbe 的 LICENSE 和两个局部 Python 文件，来源、SHA-256 与覆盖范围见同目录上级 manifest.json。原 MIT 许可证保留。
