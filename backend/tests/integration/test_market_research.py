@@ -14,6 +14,16 @@ from test_owner_scope import clients as clients
 pytestmark = pytest.mark.infrastructure
 
 
+@pytest.fixture(autouse=True)
+def legacy_market_contract(monkeypatch):
+    # These cases exercise immutable market-offline-v1 reports, not the V1.1 handoff.
+    from careerforge.config.settings import get_settings
+
+    settings = get_settings()
+    monkeypatch.setattr(settings, "job_contract_write", False)
+    monkeypatch.setattr(settings, "job_contract_read", "off")
+
+
 def post(client, path, body, key=None):
     return client.post(
         "/api/v1" + path, json=body, headers={"Idempotency-Key": key or str(uuid4())}

@@ -35,7 +35,10 @@ class KnowledgeMetadata(InputModel):
     tags: list[str] = Field(default_factory=list, max_length=20)
     expected_revision: int = Field(ge=1)
 
-    _tags = field_validator("tags")(KnowledgeImport.valid_tags)
+    @field_validator("tags")
+    @classmethod
+    def valid_tags(cls, values: list[str]) -> list[str]:
+        return KnowledgeImport.valid_tags(values)
 
 
 class KnowledgeBind(InputModel):

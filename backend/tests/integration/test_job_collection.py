@@ -92,20 +92,25 @@ def test_collection_raw_evidence_owner_scope_and_duplicate_delivery(clients, mon
 
     monkeypatch.setattr(OpenAICompatibleProvider, "complete", complete)
     a, b = clients
-    response = post(
-        a,
-        "/collection/runs",
-        {
-            "channels": ["tencent"],
-            "mode": mode,
-            "allow_model_calls": mode == "agent",
-            "model_call_limit": 2,
-            "limit": 1,
-            "urls": [URL] if mode == "manual" else [],
-        },
-    )
-    assert response.status_code == 202, response.text
-    run_id = UUID(response.json()["data"]["run_id"])
+    body = {
+        "channels": ["tencent"],
+        "mode": mode,
+        "allow_model_calls": mode == "agent",
+        "model_call_limit": 2,
+        "limit": 1,
+        "urls": [URL] if mode == "manual" else [],
+    }
+    response = post(a, "/collection/runs", body)
+    assert response.status_code == 410
+    assert response.json()["error"]["code"] == "MANUAL_REQUIREMENTS_ONLY"
+    # The public creation API stays retired; retained historical workers remain replayable.
+    from careerforge.application.collection_service import start
+    from careerforge.schemas.collection import CollectionInput
+
+    owner = UUID(a.get("/api/v1/auth/me").json()["data"]["user_id"])
+    with Session(get_engine()) as db, db.begin():
+        created = start(db, owner, CollectionInput.model_validate(body), str(uuid4()))
+    run_id = UUID(created["run_id"])
     execute(run_id, "offline-collection")
     execute(run_id, "duplicate-delivery")
     result = a.get(f"/api/v1/collection/runs/{run_id}").json()["data"]

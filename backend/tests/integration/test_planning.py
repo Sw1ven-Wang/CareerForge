@@ -12,6 +12,7 @@ from careerforge.workflows.alignment.workflow import execute
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from test_market_research import A, goal, post, run_report, source
+from test_market_research import legacy_market_contract as legacy_market_contract
 from test_owner_scope import clients as clients
 
 pytestmark = pytest.mark.infrastructure

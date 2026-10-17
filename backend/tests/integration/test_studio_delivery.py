@@ -223,7 +223,13 @@ def test_delivery_revision_accept_plan_and_revoke(clients, monkeypatch):
             {
                 "question": "本人解释",
                 "answer": "这是离线验收输入，不是生产用户理解声明。",
-                "criterion_version_ids": [first["criteria"][1]["criterion_version_id"]],
+                "criterion_version_ids": [
+                    next(
+                        c["criterion_version_id"]
+                        for c in first["criteria"]
+                        if c["dimension"] == "explanation"
+                    )
+                ],
             }
         ],
     }
