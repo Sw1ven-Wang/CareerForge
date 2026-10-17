@@ -42,7 +42,7 @@ class ModelResult(ContractModel):
 class ModelRequest(ContractModel):
     model: str = Field(min_length=1)
     prompt: str = Field(min_length=1, max_length=50000)
-    max_output_tokens: int = Field(default=512, ge=1, le=4096)
+    max_output_tokens: int = Field(default=512, ge=1, le=8192)
     reasoning_effort: Literal["low", "medium", "high"] | None = None
     tools: list[dict[str, Any]] = Field(default_factory=list)
     response_schema: dict[str, Any] | None = None

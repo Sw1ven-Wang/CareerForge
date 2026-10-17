@@ -171,7 +171,7 @@ class RoleInput(InputModel):
     plan_id: UUID | None = None
     module_key: str | None = Field(default=None, max_length=40)
     question: str = Field(default="", max_length=3000)
-    max_output_tokens: int = Field(default=4096, ge=512, le=4096)
+    max_output_tokens: int = Field(default=8192, ge=512, le=8192)
     model_call_limit: int = Field(default=3, ge=1, le=3)
 
 
@@ -186,3 +186,8 @@ class ModuleProgress(InputModel):
     module_key: str = Field(max_length=40)
     state: Literal["pending", "learning", "completed"]
     note: str = Field(default="", max_length=1000)
+
+
+class ExtractionRecovery(InputModel):
+    expected_revision: int = Field(ge=1)
+    run_id: UUID

@@ -7284,6 +7284,75 @@
           }
         }
       }
+    },
+    "/api/v1/study/tracks/{identifier}/recover-extraction": {
+      "post": {
+        "tags": [
+          "agent-study"
+        ],
+        "summary": "Recover",
+        "operationId": "recover_api_v1_study_tracks__identifier__recover_extraction_post",
+        "parameters": [
+          {
+            "name": "identifier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Identifier"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExtractionRecovery"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -8584,6 +8653,27 @@
           "criterion_version_ids"
         ],
         "title": "ExplanationAnswer"
+      },
+      "ExtractionRecovery": {
+        "properties": {
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Revision"
+          },
+          "run_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Run Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected_revision",
+          "run_id"
+        ],
+        "title": "ExtractionRecovery"
       },
       "ExtractionRunInput": {
         "properties": {
@@ -10348,10 +10438,10 @@
           },
           "max_output_tokens": {
             "type": "integer",
-            "maximum": 4096.0,
+            "maximum": 8192.0,
             "minimum": 512.0,
             "title": "Max Output Tokens",
-            "default": 4096
+            "default": 8192
           },
           "model_call_limit": {
             "type": "integer",

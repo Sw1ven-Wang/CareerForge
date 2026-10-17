@@ -92,6 +92,51 @@ def extracted(output, sources):
     return requirements
 
 
+def partial_extraction(output, sources):
+    """Keep individually grounded requirements; unresolved claims cannot drive downstream work."""
+    from collections import Counter
+
+    from careerforge.schemas.study import ExtractOutput
+
+    normalized, repairs = normalize_depths(output, sources)
+    counts = Counter(item.key for item in normalized.requirements)
+    valid, unresolved = [], []
+    for item in normalized.requirements:
+        try:
+            if counts[item.key] != 1:
+                raise ValueError("duplicate key")
+            valid.extend(extracted(ExtractOutput(requirements=[item], limitations=[]), sources))
+        except ValueError:
+            unresolved.append(
+                {
+                    "key": item.key,
+                    "technology": item.technology,
+                    "reason": "原文引用缺失、不匹配或不能唯一定位；未纳入有效需求。",
+                }
+            )
+    if not valid:
+        raise ValueError("no grounded requirements")
+    kept = {item["key"] for item in valid}
+    return {
+        "requirements": valid,
+        "unresolved": unresolved,
+        "normalization_repairs": [r for r in repairs if r["key"] in kept],
+        "coverage": {
+            "complete": not unresolved,
+            "validated": len(valid),
+            "unresolved": len(unresolved),
+        },
+        "limitations": [
+            *output.limitations,
+            *(
+                [f"{len(unresolved)} 项未通过原文校验，已排除后续调研和计划。"]
+                if unresolved
+                else []
+            ),
+        ],
+    }
+
+
 def excerpts(files, requirements):
     terms = list(
         dict.fromkeys(
@@ -148,32 +193,68 @@ def review_matches(output, manifest, reading):
     keys = {r["key"] for r in manifest["requirements"]}
     matched = []
     for point in output.matches:
-        window = next(
-            (
-                r
-                for r in reading["code"]
-                if r["path"] == point.path
-                and r["start_line"] <= point.start_line <= point.end_line <= r["end_line"]
-            ),
-            None,
-        )
-        if point.requirement_key not in keys or not window:
-            raise ValueError("review refers to unread source")
-        lines = window["content"].splitlines()
-        content = "\n".join(
-            lines[
-                point.start_line - window["start_line"] : point.end_line - window["start_line"] + 1
-            ]
-        )
-        if content.count(point.quote) != 1:
-            raise ValueError("invalid code quote")
-        offset = content.index(point.quote)
-        start = point.start_line + content[:offset].count("\n")
+        windows = [r for r in reading["code"] if r["path"] == point.path]
+        exact = [w for w in windows if w["content"].count(point.quote) == 1]
+        if point.requirement_key not in keys or len(exact) != 1:
+            raise ValueError("review needs a unique literal quote in a read source window")
+        window = exact[0]
+        offset = window["content"].index(point.quote)
+        start = window["start_line"] + window["content"][:offset].count("\n")
         end = start + point.quote.count("\n")
-        matched.append({**point.model_dump(), "start_line": start, "end_line": end})
+        match = {**point.model_dump(), "start_line": start, "end_line": end}
+        if (start, end) != (point.start_line, point.end_line):
+            match["line_normalization"] = {
+                "reported_start_line": point.start_line,
+                "reported_end_line": point.end_line,
+                "method": "unique_literal_quote_in_read_window",
+            }
+        matched.append(match)
     if output.verdict == "strong" and not matched:
         raise ValueError("strong relevance requires actual code")
     return matched
+
+
+def partial_review(output, manifest, reading):
+    """Exclude unmatched claims; only grounded matches may support admission and plans."""
+    valid, unresolved = [], []
+    for point in output.matches:
+        try:
+            valid.extend(
+                review_matches(output.model_copy(update={"matches": [point]}), manifest, reading)
+            )
+        except ValueError:
+            unresolved.append(
+                {
+                    "requirement_key": point.requirement_key,
+                    "path": point.path,
+                    "reason": "摘录不在已读源码中或不能唯一定位；未用于入库及计划。",
+                }
+            )
+    if output.verdict == "strong" and not valid:
+        raise ValueError("strong relevance requires grounded matches")
+    metadata = {"validated": len(valid), "unresolved": unresolved}
+    if unresolved:
+        metadata["unverified_model_summary"] = output.summary
+        output = output.model_copy(
+            update={
+                "summary": f"审核结论：{output.verdict}；{len(valid)} 项源码匹配已核验，"
+                f"{len(unresolved)} 项引用未通过校验，已排除。覆盖范围以代码依据为准。",
+                "limitations": [
+                    *output.limitations[:9],
+                    "未通过原文校验的技术匹配："
+                    + "、".join(p["requirement_key"] for p in unresolved),
+                ],
+                "matches": [
+                    p
+                    for p in output.matches
+                    if not any(
+                        u["requirement_key"] == p.requirement_key and u["path"] == p.path
+                        for u in unresolved
+                    )
+                ],
+            }
+        )
+    return output, valid, metadata
 
 
 def plan_modules(output, manifest):

@@ -45,7 +45,7 @@ function pos(block:Block,key:string){const i=block.nodes.findIndex(n=>n.key===ke
 <el-empty v-if="!turns.length" description="选择模块后，问一个问题开始学习。"/></div>
 <div v-if="active" class="live"><span class="pulse"></span> Agent 正在工作，工具进度实时更新；完整回答完成后显示。<el-button link @click="stop">停止本轮</el-button></div><ol v-if="events.length" class="muted"><li v-for="(e,i) in events.slice(-5)" :key="i">{{e}}</li></ol>
 <el-input v-model="question" type="textarea" :rows="4" placeholder="这个模块为什么这样设计？请定位核心代码，并画出数据流。"/><div class="send"><el-button type="primary" :disabled="active||!question.trim()" :loading="busy" @click="send">提问 / 继续学习</el-button></div>
-<details><summary>模型预算</summary><p>gpt-6.1-sol · low</p><label>最多调用 <el-input-number v-model="calls" :min="1" :max="3" size="small"/></label><label>每次输出 <el-input-number v-model="cap" :min="512" :max="4096" :step="512" size="small"/></label></details>
+<details><summary>模型预算</summary><p>gpt-6.1-sol · low</p><label>最多调用 <el-input-number v-model="calls" :min="1" :max="3" size="small"/></label><label>每次输出 <el-input-number v-model="cap" :min="512" :max="8192" :step="512" size="small"/></label></details>
 <p class="muted">只读导学。切换自己的 IDE 后可编辑代码、请求补丁；命令执行仍需确认。</p>
 </div></template>
 <style scoped>

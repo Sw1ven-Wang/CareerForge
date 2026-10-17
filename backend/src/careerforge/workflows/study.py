@@ -30,7 +30,6 @@ from careerforge.infrastructure.db.session import get_engine
 from careerforge.infrastructure.llm.provider import ModelError
 from careerforge.infrastructure.repository import github_research as github
 from careerforge.infrastructure.repository.knowledge_reader import fetch_github
-from careerforge.schemas.knowledge import KnowledgeImport
 from careerforge.schemas.model_io import ModelRequest, ModelResult
 from careerforge.schemas.studio import KnowledgeChunkArgs, KnowledgeReadArgs, KnowledgeSearchArgs
 from careerforge.schemas.study import (
@@ -226,17 +225,17 @@ class Runner:
 
     async def extract(self):
         output = await self.ask("extract", {"sources": self.m["sources"]}, ExtractOutput)
-        output, repairs = validation.normalize_depths(output, self.m["sources"])
+
+        values = validation.partial_extraction(output, self.m["sources"])
         self.store(
             "requirements",
             {
-                "requirements": validation.extracted(output, self.m["sources"]),
-                "normalization_repairs": repairs,
-                "limitations": output.limitations,
+                **values,
                 "sources": [
                     {k: v for k, v in s.items() if k != "content"} for s in self.m["sources"]
                 ],
             },
+            "partially_succeeded" if values["unresolved"] else "succeeded",
         )
 
     async def discover(self):
@@ -381,74 +380,23 @@ class Runner:
             {"requirements": self.m["requirements"], "candidate": candidate, "reading": reading},
             ReviewOutput,
         )
-        matches = validation.review_matches(output, self.m, reading)
-        license_known = candidate.get("license") not in {
-            None,
-            "",
-            "unknown",
-            "NOASSERTION",
-            "OTHER",
-        }
-        admitted = output.verdict == "strong" and bool(matches) and license_known
-        if material["origin"] != "user_import":
-            admitted = (
-                admitted and candidate.get("archived") is False and candidate.get("fork") is False
-            )
-        payload = {
-            **output.model_dump(),
-            "requirements_id": self.m["requirements_id"],
-            "candidate_id": self.m["candidate_id"],
-            "candidate": candidate,
-            "admitted": admitted,
-            "highlights": [],
-            "coverage": reading["coverage"],
-            "repository_snapshot_id": None,
-        }
-        if not license_known:
-            payload["limitations"].append("许可证未识别，未自动纳入学习项目库。")
-        if material["origin"] == "user_import":
-            payload["limitations"].append("人工提交副本：远端版本、活跃度与 fork 状态未独立验证。")
-        if output.verdict == "strong" and not admitted:
-            payload["admission_reason"] = "源码相关性较强，但自动入库质量门槛未满足。"
-        # Import/index only after review passes; rejected downloads never become library projects.
+        output, matches, checked = validation.partial_review(output, self.m, reading)
         with self.factory.begin() as db:
             run = self.run(db)
             row = service.track(db, run.owner_id, UUID(self.m["track_id"]), True)
-            if admitted:
-                if candidate.get("repository_snapshot_id"):
-                    snapshot_id = UUID(candidate["repository_snapshot_id"])
-                else:
-                    imported = knowledge.import_project(
-                        db,
-                        run.owner_id,
-                        KnowledgeImport(
-                            github_url=candidate["github_url"],
-                            requested_ref=candidate["commit"],
-                            name=candidate["full_name"],
-                            description=candidate.get("description", ""),
-                            tags=output.technology_stack[:20],
-                            files=material["files"],
-                        ),
-                        f"{run.id}:{self.m['candidate_id']}",
-                        trusted_archive=True,
-                        archive_skipped=material["skipped"],
-                    )
-                    snapshot_id = UUID(imported["repository_snapshot_id"])
-                payload["repository_snapshot_id"] = str(snapshot_id)
-                for match in matches:
-                    citation = repositories.code_citation(
-                        db,
-                        run.owner_id,
-                        snapshot_id,
-                        match["path"],
-                        match["start_line"],
-                        match["end_line"],
-                    )
-                    payload["highlights"].append(
-                        {**match, "citation_id": str(citation.id), "commit": candidate["commit"]}
-                    )
-            item = service.put(db, row, "review", {**payload, "synthetic": self.synthetic}, run.id)
-            row.revision += 1
+            item = service.publish_review(
+                db,
+                run,
+                row,
+                self.m,
+                material,
+                output,
+                reading,
+                matches,
+                self.synthetic,
+                evidence_validation=checked,
+            )
+            admitted = item.payload["admitted"]
             commit_stage(
                 db,
                 self.id,

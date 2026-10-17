@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     )
     model_reasoning_effort: Literal["low"] = "low"
     model_max_output_tokens: int = Field(default=4096, ge=128, le=4096)
+    study_max_output_tokens: int = Field(default=8192, ge=512, le=8192)
     real_agent_timeout_seconds: int = Field(default=120, ge=10, le=180)
     tavily_api_key: SecretStr = Field(
         default=SecretStr(""),

@@ -7,7 +7,7 @@ import { type StudyTrack, intentNames, roleNames, activeStates } from '../types/
 const router=useRouter(),write=mutation()
 const tracks=ref<{track_id:string;name:string;available:boolean}[]>([]),id=ref(''),track=ref<StudyTrack|null>(null)
 const sources=ref<{source_id:string;title:string;read_status:string}[]>([]),sourceIds=ref<string[]>([]),name=ref('Agent 开发'),target=ref(5)
-const createOpen=ref(false),busy=ref(false),showReview=ref(''),tokenCap=ref(4096)
+const createOpen=ref(false),busy=ref(false),showReview=ref(''),tokenCap=ref(8192)
 const intent=ref('learn_project'),focus=ref(''),reqKeys=ref<string[]>([]),reviewIds=ref<string[]>([])
 const focusChunk=ref(''),focusHits=ref<{chunk_id:string;symbol:string;path:string;start_line:number}[]>([]),searchBusy=ref(false)
 const existing=ref<{repository_snapshot_id:string;name:string}[]>([]),existingId=ref('')
@@ -86,13 +86,15 @@ function learn(){if(latestPlan.value)void router.push({path:'/studio',query:{tra
 <template v-if="track">
 <div class="flow-strip"><span :class="{done:track.sources.length}">人工需求</span><b>→</b><span :class="{done:track.requirements}">技术要求</span><b>→</b><span :class="{done:track.candidates.length}">研究与审核</span><b>→</b><span :class="{done:ready}">项目库 {{track.approved_count}} / {{track.target_count}}</span><b>→</b><span :class="{done:latestPlan}">模块化学习</span></div>
 <div v-if="track.active_run" class="run-status"><span>{{roleNames[track.active_run.role]}} · {{track.active_run.status}}</span><el-button v-if="running" link @click="cancel">停止本轮</el-button><router-link to="/runs">查看运行记录</router-link></div>
-<el-alert v-if="track.active_run?.status==='failed'&&!track.extraction_preview" title="本轮未发布结果。请在运行记录查看原因；系统没有自动追加收费重试。" type="warning" :closable="false"/>
+<el-alert v-if="track.active_run?.status==='failed'&&!track.extraction_preview&&!track.requirements?.recovery" title="本轮未发布结果。请在运行记录查看原因；系统没有自动追加收费重试。" type="warning" :closable="false"/>
 <el-alert v-if="track.extraction_preview?.budget_warning" :title="`供应商报告输出 ${track.extraction_preview.budget_warning.reported} token，超过请求上限 ${track.extraction_preview.budget_warning.requested}。本轮已停止，以下仅为未发布预览，调研与审核未启动。`" type="warning" :closable="false"/>
+<el-alert v-if="track.requirements?.recovery" :title="`原提取运行校验失败；已从保存结果恢复 ${track.requirements.requirements.length} 条有效需求，未追加模型调用。待核对 ${track.requirements.unresolved?.length??0} 条。`" type="info" :closable="false"/>
 <div class="study-columns">
 <section class="surface study-card"><header><h2>① 技术需求</h2><el-button :disabled="running" :loading="busy" @click="run('extract')">{{track.requirements?'重新提取':'提取需求'}}</el-button></header><p class="muted">了解 / 熟悉 / 掌握是目标深度。推断会单独标注。</p><p class="source-chips"><span v-for="s in track.sources" :key="s.source_snapshot_id">{{s.title}}</span></p>
 <el-empty v-if="!displayedRequirements" description="尚未提取技术要求"/><p v-if="track.extraction_preview" class="muted">已校验 {{track.extraction_preview.requirements.length}} 条原文依据；{{track.extraction_preview.unresolved.length}} 条待核对。</p><el-tag v-if="track.extraction_preview" type="warning">未发布预览 · 不进入后续链路</el-tag>
 <el-tag v-if="track.requirements?.synthetic" type="warning">离线模拟</el-tag>
 <article v-for="r in displayedRequirements?.requirements" :key="r.key" class="requirement"><div><strong>{{r.technology}}</strong><el-tag :type="r.depth==='掌握'?'success':'info'" size="small">{{r.depth}}</el-tag><small>{{r.depth_basis==='explicit'?'原文明确':'模型推断'}}</small></div><p>{{r.rationale}}</p><details><summary>原文依据 · {{r.evidence.length}}</summary><blockquote v-for="(e,i) in r.evidence" :key="i">{{e.quote}}<small>{{e.source_title}}</small></blockquote><small>检索词：{{r.keywords.join('、')}}</small></details></article>
+<details v-if="track.requirements?.unresolved?.length"><summary>未纳入后续链路的待核对条目 · {{track.requirements.unresolved.length}}</summary><p v-for="item in track.requirements.unresolved" :key="item.key">{{item.technology}}：{{item.reason}}</p></details>
 <details v-if="track.extraction_preview?.unresolved.length"><summary>待核对条目</summary><p v-for="item in track.extraction_preview.unresolved" :key="item.key">{{item.technology}}：{{item.reason}}</p></details>
 <details v-if="track.extraction_preview?.normalization_repairs.length"><summary>本地等级校正 · {{track.extraction_preview.normalization_repairs.length}} 项</summary><p v-for="item in track.extraction_preview.normalization_repairs" :key="item.key">{{item.key}}：{{item.original_depth}} / {{item.original_basis}} → {{item.depth}} / {{item.depth_basis}}。{{item.reason}}</p></details>
 </section>
@@ -109,7 +111,7 @@ function learn(){if(latestPlan.value)void router.push({path:'/studio',query:{tra
 <div class="plan-actions"><el-button type="primary" :disabled="!ready||running||!reqKeys.length||!reviewIds.length||(['function','technical_design'].includes(intent)&&!focus.trim())||(intent==='function'&&!focusChunk)" :loading="busy" @click="run('plan')">制定模块化计划</el-button><span class="muted">不自动更改已有计划；新计划保留为独立版本。</span></div>
 <div v-if="latestPlan" class="plan-result"><div><h3>{{latestPlan.title}}</h3><el-tag v-if="latestPlan.synthetic" type="warning">离线模拟</el-tag><p>{{latestPlan.summary}}</p><small>{{latestPlan.modules.length}} 个分级模块 · {{intentNames[latestPlan.intent.kind]}}</small></div><el-button type="primary" @click="learn">进入学习 · 计划 / 代码 / Agent</el-button></div>
 </section>
-<details class="budget"><summary>本轮模型设置</summary><span>gpt-6.1-sol · low · 提取 / 计划 / 单项审核各 1 次；调研批次最多 6 次</span><el-input-number v-model="tokenCap" :min="512" :max="4096" :step="512"/><small>输出 token 上限；导师问答单独设置。金额取决于供应商。</small></details>
+<details class="budget"><summary>本轮模型设置</summary><span>gpt-6.1-sol · low · 提取 / 计划 / 单项审核各 1 次；调研批次最多 6 次</span><el-input-number v-model="tokenCap" :min="512" :max="8192" :step="512"/><small>输出 token 上限；导师问答单独设置。金额取决于供应商。</small></details>
 </template>
 <el-dialog v-model="createOpen" title="从人工需求开始" width="560px"><el-form label-position="top"><el-form-item label="学习方向名称"><el-input v-model="name"/></el-form-item><el-form-item label="人工导入的正文（最多 5 份，固定当前版本）"><el-select v-model="sourceIds" multiple :multiple-limit="5" style="width:100%"><el-option v-for="s in sources" :key="s.source_id" :value="s.source_id" :label="s.title||'未命名资料'"/></el-select></el-form-item><router-link to="/sources" @click="createOpen=false">先导入岗位正文 →</router-link><el-form-item label="审核入库目标数量"><el-input-number v-model="target" :min="1" :max="10"/></el-form-item></el-form><template #footer><el-button @click="createOpen=false">取消</el-button><el-button type="primary" :disabled="!name.trim()||!sourceIds.length" :loading="busy" @click="create">创建方向</el-button></template></el-dialog>
 </template>

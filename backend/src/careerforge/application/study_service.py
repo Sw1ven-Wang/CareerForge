@@ -397,7 +397,7 @@ def start(db, owner, identifier, body, key):
         "sources": source_values,
         "model": settings.model_name,
         "base_url": settings.openai_base_url,
-        "max_output_tokens": min(body.max_output_tokens, settings.model_max_output_tokens),
+        "max_output_tokens": min(body.max_output_tokens, settings.study_max_output_tokens),
         "model_call_limit": (
             body.model_call_limit
             if body.role == "tutor"
@@ -595,3 +595,182 @@ def progress(db, owner, identifier, body):
     row.payload = {**row.payload, "progress": values}
     row.revision += 1
     return detail(db, row)
+
+
+def recover_extraction(db, owner, identifier, body, key):
+    """Recover only a completed, within-budget saved response; leave the failed run untouched."""
+    from careerforge.application.study_validation import partial_extraction
+    from careerforge.infrastructure.db.models import ModelCallReceipt, StageArtifact
+    from careerforge.schemas.model_io import ModelResult
+    from careerforge.schemas.study import ExtractOutput
+
+    row = track(db, owner, identifier, True)
+    record = idempotency(
+        db, owner, f"study.recover-extract:{identifier}", key, body.model_dump(mode="json")
+    )
+    if record.response_summary:
+        return detail(db, row)
+    check_revision(row.revision, body.expected_revision)
+    idle(db, row)
+    run = owned(db, AgentRun, owner, body.run_id)
+    if (
+        run.status != "failed"
+        or run.workflow_version != VERSION
+        or run.input_manifest.get("role") != "extract"
+        or run.input_manifest.get("track_id") != str(identifier)
+        or row.payload.get("active_run_id") != str(run.id)
+        or row.payload.get("requirements_id")
+    ):
+        raise BusinessError(
+            409, "EXTRACTION_RECOVERY_UNAVAILABLE", "只能恢复此方向最新未发布的提取结果。"
+        )
+    validate_run(db, run)
+    saved = db.scalar(
+        select(StageArtifact).where(
+            StageArtifact.run_id == run.id,
+            StageArtifact.stage_key == "extract",
+            StageArtifact.stage_version == VERSION,
+        )
+    )
+    receipts = list(db.scalars(select(ModelCallReceipt).where(ModelCallReceipt.run_id == run.id)))
+    if not saved or len(receipts) != 1 or receipts[0].status != "completed":
+        raise BusinessError(409, "EXTRACTION_RESULT_UNCERTAIN", "没有完整且已计量的模型结果。")
+    result = ModelResult.model_validate(saved.payload)
+    output = result.usage.output_tokens
+    requested = run.input_manifest["max_output_tokens"]
+    if (
+        result.finish_reason != "stop"
+        or output is None
+        or output > requested
+        or receipts[0].usage != result.usage.model_dump()
+    ):
+        raise BusinessError(
+            409, "EXTRACTION_BUDGET_UNVERIFIED", "未知或超限结果只能预览，不能恢复发布。"
+        )
+    values = partial_extraction(
+        ExtractOutput.model_validate(result.structured), run.input_manifest["sources"]
+    )
+    item = put(
+        db,
+        row,
+        "requirements",
+        {
+            **values,
+            "synthetic": result.synthetic,
+            "sources": [
+                {k: v for k, v in s.items() if k != "content"}
+                for s in run.input_manifest["sources"]
+            ],
+            "recovery": {
+                "method": "validated_partial_extraction",
+                "original_run_id": str(run.id),
+                "original_status": "failed",
+                "extra_model_calls": 0,
+            },
+        },
+        run.id,
+    )
+    row.payload = {**row.payload, "requirements_id": str(item.id), "active_plan_id": None}
+    row.revision += 1
+    from careerforge.application.run_service import event
+
+    event(
+        db,
+        run,
+        "study.extraction_recovered",
+        {
+            "artifact_id": str(item.id),
+            "validated_count": len(values["requirements"]),
+            "unresolved_count": len(values["unresolved"]),
+            "extra_model_calls": 0,
+        },
+    )
+    record.response_summary = {"study_artifact_id": str(item.id)}
+    return detail(db, row)
+
+
+def publish_review(
+    db,
+    run,
+    row,
+    manifest,
+    material,
+    output,
+    reading,
+    matches,
+    synthetic,
+    recovery=None,
+    evidence_validation=None,
+):
+    """Publish only literal validated source matches, using the same gates for saved recovery."""
+    from careerforge.schemas.knowledge import KnowledgeImport
+
+    candidate = material["candidate"]
+    license_known = candidate.get("license") not in {
+        None,
+        "",
+        "unknown",
+        "NOASSERTION",
+        "OTHER",
+    }
+    admitted = output.verdict == "strong" and bool(matches) and license_known
+    if material["origin"] != "user_import":
+        admitted = (
+            admitted and candidate.get("archived") is False and candidate.get("fork") is False
+        )
+    payload = {
+        **output.model_dump(),
+        "requirements_id": manifest["requirements_id"],
+        "candidate_id": manifest["candidate_id"],
+        "candidate": candidate,
+        "admitted": admitted,
+        "highlights": [],
+        "coverage": reading["coverage"],
+        "repository_snapshot_id": None,
+    }
+    if not license_known:
+        payload["limitations"].append("许可证未识别，未自动纳入学习项目库。")
+    if material["origin"] == "user_import":
+        payload["limitations"].append("人工提交副本：远端版本、活跃度与 fork 状态未独立验证。")
+    if output.verdict == "strong" and not admitted:
+        payload["admission_reason"] = "源码相关性较强，但自动入库质量门槛未满足。"
+    if recovery:
+        payload["recovery"] = recovery
+    if evidence_validation:
+        payload["evidence_validation"] = evidence_validation
+    if admitted:
+        if candidate.get("repository_snapshot_id"):
+            snapshot_id = UUID(candidate["repository_snapshot_id"])
+        else:
+            imported = knowledge.import_project(
+                db,
+                run.owner_id,
+                KnowledgeImport(
+                    github_url=candidate["github_url"],
+                    requested_ref=candidate["commit"],
+                    name=candidate["full_name"],
+                    description=candidate.get("description", ""),
+                    tags=output.technology_stack[:20],
+                    files=material["files"],
+                ),
+                f"{run.id}:{manifest['candidate_id']}",
+                trusted_archive=True,
+                archive_skipped=material["skipped"],
+            )
+            snapshot_id = UUID(imported["repository_snapshot_id"])
+        payload["repository_snapshot_id"] = str(snapshot_id)
+        for match in matches:
+            citation = repositories.code_citation(
+                db,
+                run.owner_id,
+                snapshot_id,
+                match["path"],
+                match["start_line"],
+                match["end_line"],
+            )
+            payload["highlights"].append(
+                {**match, "citation_id": str(citation.id), "commit": candidate["commit"]}
+            )
+    item = put(db, row, "review", {**payload, "synthetic": synthetic}, run.id)
+    row.revision += 1
+    return item

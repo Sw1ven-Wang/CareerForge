@@ -8,6 +8,7 @@ from careerforge.application import study_service as service
 from careerforge.schemas.resources import Envelope
 from careerforge.schemas.study import (
     CandidateInput,
+    ExtractionRecovery,
     ModuleProgress,
     RoleInput,
     TrackInput,
@@ -70,3 +71,15 @@ def progress(
     identifier: UUID, body: ModuleProgress, request: Request, db: Database, user: Authenticated
 ):
     return wrap(request, service.progress(db, user.id, identifier, body))
+
+
+@router.post("/tracks/{identifier}/recover-extraction", response_model=Envelope)
+def recover(
+    identifier: UUID,
+    body: ExtractionRecovery,
+    request: Request,
+    db: Database,
+    user: Authenticated,
+    key: IdempotencyKey,
+):
+    return wrap(request, service.recover_extraction(db, user.id, identifier, body, key))
