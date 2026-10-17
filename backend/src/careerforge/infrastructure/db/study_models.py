@@ -6,6 +6,7 @@ from sqlalchemy import ForeignKey, ForeignKeyConstraint, String, UniqueConstrain
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
+from careerforge.domain.json_types import JsonObject as Json
 from careerforge.infrastructure.db.models import Base, Timestamped
 
 
@@ -16,7 +17,7 @@ class StudyTrack(Timestamped, Base):
     owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
     name: Mapped[str] = mapped_column(String(100))
     revision: Mapped[int] = mapped_column(default=1)
-    payload: Mapped[dict] = mapped_column(JSONB)
+    payload: Mapped[Json] = mapped_column(JSONB)
 
 
 class StudyArtifact(Timestamped, Base):
@@ -31,4 +32,4 @@ class StudyArtifact(Timestamped, Base):
     track_id: Mapped[UUID] = mapped_column(index=True)
     run_id: Mapped[UUID | None] = mapped_column(ForeignKey("agent_runs.id"))
     kind: Mapped[str] = mapped_column(String(30))
-    payload: Mapped[dict] = mapped_column(JSONB)
+    payload: Mapped[Json] = mapped_column(JSONB)

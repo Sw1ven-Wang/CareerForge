@@ -1,6 +1,6 @@
 """Requirement → reviewed project → modular learning contracts."""
 
-from typing import Literal
+from typing import Literal, Self
 from uuid import UUID
 
 from pydantic import Field, model_validator
@@ -16,11 +16,13 @@ class TrackInput(InputModel):
     name: str = Field(min_length=1, max_length=100)
     source_snapshot_ids: list[UUID] = Field(min_length=1, max_length=5)
     target_count: int = Field(default=5, ge=1, le=10)
+    collection_policy: Literal["coverage", "strict_count"] | None = None
 
 
 class TrackSettings(InputModel):
     expected_revision: int = Field(ge=1)
     target_count: int = Field(ge=1, le=10)
+    collection_policy: Literal["coverage", "strict_count"] | None = None
 
 
 class Evidence(InputModel):
@@ -79,7 +81,7 @@ class LearningIntent(InputModel):
     focus: str = Field(default="", max_length=1500)
 
     @model_validator(mode="after")
-    def needs_focus(self):
+    def needs_focus(self) -> Self:
         if self.kind in {"technical_design", "function"} and not self.focus.strip():
             raise ValueError("请填写具体设计或函数目标")
         if self.kind == "function" and not self.focus_chunk_id:
@@ -129,7 +131,7 @@ class VisualBlock(InputModel):
     rows: list[list[str]] = Field(default_factory=list, max_length=12)
 
     @model_validator(mode="after")
-    def valid_block(self):
+    def valid_block(self) -> Self:
         keys = [n.key for n in self.nodes]
         if self.kind == "diagram" and (
             not keys
@@ -163,6 +165,8 @@ class TutorOutput(InputModel):
 
 
 class RoleInput(InputModel):
+    acknowledge_collection_gap: bool = False
+    research_requirement_keys: list[str] | None = Field(default=None, min_length=1, max_length=25)
     auto_review_count: int = Field(default=0, ge=0, le=5)
     expected_revision: int = Field(ge=1)
     role: Role

@@ -1,24 +1,27 @@
 """Mutable library organization, independent of frozen source evidence."""
 
 import re
+from typing import Any
 from urllib.parse import urlparse
 from uuid import UUID
 
 from sqlalchemy import select, text
+from sqlalchemy.orm import Session
 
 from careerforge.application.common import check_revision, digest, idempotency
 from careerforge.domain.errors import BusinessError, not_found
+from careerforge.domain.json_types import JsonObject as Json
 from careerforge.infrastructure.db.models import Source, SourceLibraryCategory, SourceSnapshot
 
 
-def lock_library(db, owner):
+def lock_library(db: Session, owner: UUID) -> None:
     db.execute(
         text("SELECT pg_advisory_xact_lock(:key)"),
         {"key": int(digest("source-library:" + str(owner))[:15], 16)},
     )
 
 
-def category(db, owner, identifier):
+def category(db: Session, owner: UUID, identifier: UUID) -> SourceLibraryCategory:
     row = db.scalar(
         select(SourceLibraryCategory).where(
             SourceLibraryCategory.id == identifier, SourceLibraryCategory.owner_id == owner
@@ -29,7 +32,7 @@ def category(db, owner, identifier):
     return row
 
 
-def category_result(row):
+def category_result(row: SourceLibraryCategory) -> Json:
     return {
         "id": str(row.id),
         "parent_id": str(row.parent_id) if row.parent_id else None,
@@ -38,7 +41,7 @@ def category_result(row):
     }
 
 
-def categories(db, owner):
+def categories(db: Session, owner: UUID) -> list[Json]:
     return [
         category_result(row)
         for row in db.scalars(
@@ -49,7 +52,9 @@ def categories(db, owner):
     ]
 
 
-def ensure_category(db, owner, name, parent_id=None):
+def ensure_category(
+    db: Session, owner: UUID, name: str, parent_id: UUID | None = None
+) -> SourceLibraryCategory:
     name = name.strip()
     if not name or len(name) > 100:
         raise BusinessError(422, "INVALID_CATEGORY", "分类名称需要为1至100个字符。")
@@ -67,7 +72,7 @@ def ensure_category(db, owner, name, parent_id=None):
     return row
 
 
-def inferred_job(title):
+def inferred_job(title: str | None) -> str:
     for pattern, name in [
         ("agent|智能体|llm|大模型应用|rag", "Agent 开发"),
         ("后端|backend|back.end|java|golang", "后端开发"),
@@ -83,7 +88,7 @@ def inferred_job(title):
     return "未分类岗位"
 
 
-def inferred_source(url):
+def inferred_source(url: str | None) -> str:
     if not url:
         return "手动导入"
     host = (urlparse(url).hostname or "").removeprefix("www.")
@@ -101,7 +106,13 @@ def inferred_source(url):
     return host[:100] or "未分类来源"
 
 
-def assign(db, owner, source, job_name=None, source_name=None):
+def assign(
+    db: Session,
+    owner: UUID,
+    source: Source,
+    job_name: str | None = None,
+    source_name: str | None = None,
+) -> SourceLibraryCategory:
     if source.library_category_id and not job_name and not source_name:
         return category(db, owner, source.library_category_id)
     root = ensure_category(db, owner, (job_name or "").strip() or inferred_job(source.title))
@@ -112,7 +123,7 @@ def assign(db, owner, source, job_name=None, source_name=None):
     return leaf
 
 
-def initialize(db, owner):
+def initialize(db: Session, owner: UUID) -> list[Json]:
     lock_library(db, owner)
     for source in db.scalars(
         select(Source)
@@ -135,7 +146,9 @@ def initialize(db, owner):
     return categories(db, owner)
 
 
-def save_category(db, owner, value, key, identifier=None):
+def save_category(
+    db: Session, owner: UUID, value: Any, key: str | None, identifier: UUID | None = None
+) -> Json:
     record = idempotency(
         db,
         owner,
@@ -176,7 +189,7 @@ def save_category(db, owner, value, key, identifier=None):
     return record.response_summary
 
 
-def edit_source(db, owner, identifier, value, key):
+def edit_source(db: Session, owner: UUID, identifier: UUID, value: Any, key: str | None) -> Json:
     from careerforge.application.source_service import get_source
 
     record = idempotency(

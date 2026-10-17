@@ -1,5 +1,4 @@
 import pytest
-
 from careerforge.application.job_agent_service import request_for, strict_schema, validated_facts
 from careerforge.domain.job_normalization import sections
 from careerforge.schemas.job_agent import AgentExtraction

@@ -25,7 +25,7 @@ class ModelError(Exception):
         usage_unknown: bool = True,
         usage: Usage | None = None,
         diagnostics: dict[str, Any] | None = None,
-    ):
+    ) -> None:
         self.usage = usage
         self.diagnostics = diagnostics
         self.code = code

@@ -1,11 +1,11 @@
 import pytest
-from pydantic import ValidationError
 from careerforge.schemas.job_contract import (
+    DemandReportV1,
     JobPostingSnapshotV1,
     RequirementFactV1,
-    DemandReportV1,
     validate_requirement_against_snapshot,
 )
+from pydantic import ValidationError
 
 JD = (
     "工作职责：参与Agent工作流研发。\n任职要求：熟悉 Python 或 Go 任意一种语言；每周至少出勤 4 天。"

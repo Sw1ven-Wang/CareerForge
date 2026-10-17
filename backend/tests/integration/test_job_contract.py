@@ -1,15 +1,14 @@
 from uuid import UUID, uuid4
 
 import pytest
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-from test_market_research import goal, post
-from test_owner_scope import clients as clients
-
 from careerforge.infrastructure.db.models import AgentRun, MarketReport
 from careerforge.infrastructure.db.session import get_engine
 from careerforge.workflows.alignment.workflow import execute as align
 from careerforge.workflows.job_contract import execute
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+from test_market_research import goal, post
+from test_owner_scope import clients as clients
 
 pytestmark = pytest.mark.infrastructure
 

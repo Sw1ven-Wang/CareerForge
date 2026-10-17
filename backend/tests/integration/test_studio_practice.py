@@ -2,11 +2,6 @@ import json
 from uuid import UUID, uuid4
 
 import pytest
-from sqlalchemy.orm import Session
-from test_market_research import post
-from test_owner_scope import clients as clients
-from test_studio_learning_agent import setup_learning
-
 from careerforge.application import studio_service as studio
 from careerforge.application.studio_learning_service import validate_guide
 from careerforge.config.settings import get_settings
@@ -16,6 +11,10 @@ from careerforge.infrastructure.llm.openai_compatible import OpenAICompatiblePro
 from careerforge.schemas.model_io import ModelResult, Usage
 from careerforge.schemas.studio import LearningGuide
 from careerforge.workflows.studio_agent import execute
+from sqlalchemy.orm import Session
+from test_market_research import post
+from test_owner_scope import clients as clients
+from test_studio_learning_agent import setup_learning
 
 pytestmark = pytest.mark.infrastructure
 

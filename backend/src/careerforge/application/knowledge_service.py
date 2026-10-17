@@ -1,14 +1,18 @@
 """Owner-scoped code knowledge and verified plan-to-code associations."""
 
+from typing import Any
 from uuid import UUID
 
-from sqlalchemy import case, delete, func, literal_column, select
+from sqlalchemy import Float, case, delete, func, literal_column, select
+from sqlalchemy.orm import Session
+from sqlalchemy.sql.elements import ColumnClause
 
 from careerforge.application import repository_service as repositories
 from careerforge.application.common import digest, fingerprint, idempotency
 from careerforge.application.ownership import owned
 from careerforge.application.planning_service import objective_version
 from careerforge.domain.errors import BusinessError
+from careerforge.domain.json_types import JsonObject as Json
 from careerforge.infrastructure.code_index.knowledge_index import (
     VERSION,
     chunks,
@@ -25,23 +29,24 @@ from careerforge.infrastructure.db.models import (
     RepositorySnapshot,
 )
 from careerforge.infrastructure.repository.knowledge_reader import fetch_github, validate_submitted
+from careerforge.schemas.knowledge import KnowledgeBind, KnowledgeImport, KnowledgeMetadata
 from careerforge.schemas.repositories import RepositoryInput
 
 
-def index_row(db, snapshot_id):
+def index_row(db: Session, snapshot_id: UUID) -> CodeKnowledgeIndex | None:
     return db.scalar(
         select(CodeKnowledgeIndex).where(CodeKnowledgeIndex.snapshot_id == snapshot_id)
     )
 
 
-def search_text(chunk, metadata):
+def search_text(chunk: Any, metadata: Json) -> str:
     context = " ".join(
         [metadata.get("name", ""), metadata.get("description", ""), *metadata.get("tags", [])]
     )
     return " ".join(tokens(f"{chunk.path} {chunk.symbol} " * 3 + chunk.content + " " + context))
 
 
-def build_index(db, owner, snapshot_id, metadata=None):
+def build_index(db: Session, owner: UUID, snapshot_id: UUID, metadata: Json | None = None) -> Json:
     snapshot = repositories.snapshot(db, owner, snapshot_id)
     owned(db, RepositorySnapshot, owner, snapshot_id, lock=True)
     existing = index_row(db, snapshot_id)
@@ -109,7 +114,15 @@ def build_index(db, owner, snapshot_id, metadata=None):
     return project_detail(db, owner, snapshot_id)
 
 
-def import_project(db, owner, body, key, *, trusted_archive=False, archive_skipped=None):
+def import_project(
+    db: Session,
+    owner: UUID,
+    body: KnowledgeImport,
+    key: str | None,
+    *,
+    trusted_archive: bool = False,
+    archive_skipped: Json | None = None,
+) -> Json:
     record = idempotency(db, owner, "knowledge.import", key, body.model_dump(mode="json"))
     if record.response_summary:
         return project_detail(db, owner, UUID(record.response_summary["repository_snapshot_id"]))
@@ -139,6 +152,8 @@ def import_project(db, owner, body, key, *, trusted_archive=False, archive_skipp
         )
         .with_for_update()
     )
+    if repository is None:
+        raise BusinessError(404, "NOT_FOUND", "仓库版本不存在。")
     if repository.revoked_at:
         raise BusinessError(409, "REPOSITORY_REVOKED", "此仓库版本已撤销。")
     manifest = [
@@ -204,7 +219,7 @@ def import_project(db, owner, body, key, *, trusted_archive=False, archive_skipp
     return result
 
 
-def project_detail(db, owner, snapshot_id):
+def project_detail(db: Session, owner: UUID, snapshot_id: UUID) -> Json:
     snapshot = repositories.snapshot(db, owner, snapshot_id)
     repository = owned(db, Repository, owner, snapshot.repository_id)
     index = index_row(db, snapshot_id)
@@ -225,7 +240,7 @@ def project_detail(db, owner, snapshot_id):
     }
 
 
-def projects(db, owner):
+def projects(db: Session, owner: UUID) -> list[Json]:
     rows = db.scalars(
         select(RepositorySnapshot)
         .join(Repository, Repository.id == RepositorySnapshot.repository_id)
@@ -236,7 +251,7 @@ def projects(db, owner):
     return [project_detail(db, owner, row.id) for row in rows]
 
 
-def update_metadata(db, owner, snapshot_id, body):
+def update_metadata(db: Session, owner: UUID, snapshot_id: UUID, body: KnowledgeMetadata) -> Json:
     repositories.snapshot(db, owner, snapshot_id)
     owned(db, RepositorySnapshot, owner, snapshot_id, lock=True)
     index = index_row(db, snapshot_id)
@@ -253,7 +268,7 @@ def update_metadata(db, owner, snapshot_id, body):
     return project_detail(db, owner, snapshot_id)
 
 
-def chunk_detail(db, owner, identifier):
+def chunk_detail(db: Session, owner: UUID, identifier: UUID) -> Json:
     row = owned(db, CodeKnowledgeChunk, owner, identifier)
     snapshot = repositories.snapshot(db, owner, row.snapshot_id)
     file = repositories.file(db, owner, row.snapshot_id, row.path)
@@ -275,11 +290,18 @@ def chunk_detail(db, owner, identifier):
     }
 
 
-def search(db, owner, query, snapshot_id=None, limit=20, scope_ids=None):
+def search(
+    db: Session,
+    owner: UUID,
+    query: str,
+    snapshot_id: UUID | None = None,
+    limit: int = 20,
+    scope_ids: list[UUID] | None = None,
+) -> Json:
     terms, aliases = query_terms(query)
     if scope_ids is not None:
-        for identifier in scope_ids:
-            repositories.snapshot(db, owner, identifier)
+        for scope_id in scope_ids:
+            repositories.snapshot(db, owner, scope_id)
     if snapshot_id:
         repositories.snapshot(db, owner, snapshot_id)
     if not terms:
@@ -290,10 +312,10 @@ def search(db, owner, query, snapshot_id=None, limit=20, scope_ids=None):
             "expanded_topics": aliases,
         }
     # Terms come exclusively from the tokenizer; no tsquery syntax from user input.
-    config = literal_column("'simple'::regconfig")
+    config: ColumnClause[Any] = literal_column("'simple'::regconfig")
     vector = func.to_tsvector(config, CodeKnowledgeChunk.search_text)
     tsquery = func.to_tsquery(config, " | ".join(terms))
-    rank = func.ts_rank_cd(vector, tsquery)
+    rank = func.ts_rank_cd(vector, tsquery, type_=Float)
     statement = (
         select(CodeKnowledgeChunk, rank.label("rank"))
         .join(RepositorySnapshot, RepositorySnapshot.id == CodeKnowledgeChunk.snapshot_id)
@@ -317,7 +339,7 @@ def search(db, owner, query, snapshot_id=None, limit=20, scope_ids=None):
             case((exact, 1), else_=0).desc(), rank.desc(), CodeKnowledgeChunk.id
         ).limit(200)
     ).all()
-    scored = []
+    scored: list[tuple[float, CodeKnowledgeChunk, list[str]]] = []
     for row, base in candidates:
         names = set(tokens(row.symbol + " " + row.path))
         body = set(tokens(row.content))
@@ -336,13 +358,14 @@ def search(db, owner, query, snapshot_id=None, limit=20, scope_ids=None):
         if identity in seen:
             continue
         seen.add(identity)
+        project_index = index_row(db, row.snapshot_id)
         selected.append(
             {
                 **chunk_detail(db, owner, row.id),
                 "score": round(score, 3),
                 "matched_terms": hits,
                 "match_reason": "符号/路径/原文关键词" if hits else "项目资料与主题标签",
-                "project_name": index_row(db, row.snapshot_id).payload.get("name", ""),
+                "project_name": project_index.payload.get("name", "") if project_index else "",
             }
         )
         if len(selected) >= limit:
@@ -360,7 +383,7 @@ def search(db, owner, query, snapshot_id=None, limit=20, scope_ids=None):
     }
 
 
-def related(db, owner, identifier):
+def related(db: Session, owner: UUID, identifier: UUID) -> Json:
     item = chunk_detail(db, owner, identifier)
     names = {name.split(".")[-1] for name in item["references"]}
     row = owned(db, CodeKnowledgeChunk, owner, identifier)
@@ -395,7 +418,7 @@ def related(db, owner, identifier):
     }
 
 
-def citation(db, owner, chunk_id):
+def citation(db: Session, owner: UUID, chunk_id: UUID) -> Json:
     item = chunk_detail(db, owner, chunk_id)
     row = db.scalar(
         select(CodeCitation).where(
@@ -419,7 +442,7 @@ def citation(db, owner, chunk_id):
     return repositories.citation_detail(db, owner, row.id)
 
 
-def bind(db, owner, body, key):
+def bind(db: Session, owner: UUID, body: KnowledgeBind, key: str | None) -> Json:
     objective_version(db, owner, body.objective_version_id)
     record = idempotency(db, owner, "knowledge.bind", key, body.model_dump(mode="json"))
     if record.response_summary:
@@ -445,7 +468,7 @@ def bind(db, owner, body, key):
     return record.response_summary
 
 
-def links(db, owner, objective_id):
+def links(db: Session, owner: UUID, objective_id: UUID) -> list[Json]:
     objective_version(db, owner, objective_id)
     rows = db.scalars(
         select(CodeLearningLink)

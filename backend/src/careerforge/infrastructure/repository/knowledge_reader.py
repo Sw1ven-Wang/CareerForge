@@ -8,7 +8,6 @@ import zipfile
 from pathlib import PurePosixPath
 
 import httpx
-
 from careerforge.domain.errors import BusinessError
 from careerforge.infrastructure.repository.snapshot_reader import safe_path
 
@@ -59,7 +58,7 @@ BLOCKED = {
 }
 
 
-def permitted(name):
+def permitted(name: str) -> bool:
     name = safe_path(name)
     parts = PurePosixPath(name).parts
     if len(name) > 1000 or any(ord(c) < 32 for c in name):
@@ -76,7 +75,7 @@ def permitted(name):
     }
 
 
-def validate_submitted(files):
+def validate_submitted(files: dict[str, str]) -> dict[str, str]:
     if not files or len(files) > MAX_FILES:
         raise BusinessError(422, "KNOWLEDGE_FILE_LIMIT", "请提供 1–1000 个文本文件。")
     clean = {}
@@ -101,10 +100,12 @@ def validate_submitted(files):
     return clean
 
 
-def unpack(data):
-    files, skipped, total = {}, {}, 0
+def unpack(data: bytes) -> tuple[dict[str, str], dict[str, int]]:
+    files: dict[str, str] = {}
+    skipped: dict[str, int] = {}
+    total = 0
 
-    def skip(reason):
+    def skip(reason: str) -> None:
         skipped[reason] = skipped.get(reason, 0) + 1
 
     try:
@@ -159,7 +160,7 @@ def unpack(data):
     return files, skipped
 
 
-def fetch_github(github_url, commit):
+def fetch_github(github_url: str, commit: str) -> tuple[dict[str, str], dict[str, int]]:
     # Fixed host and validated path; redirects disabled, no cookies or model secrets.
     match = re.fullmatch(r"https://github.com/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)", github_url)
     if not match or not re.fullmatch(r"[0-9a-f]{40}", commit):

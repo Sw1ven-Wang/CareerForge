@@ -3074,6 +3074,13 @@ export interface components {
         /** RoleInput */
         RoleInput: {
             /**
+             * Acknowledge Collection Gap
+             * @default false
+             */
+            acknowledge_collection_gap: boolean;
+            /** Research Requirement Keys */
+            research_requirement_keys?: string[] | null;
+            /**
              * Auto Review Count
              * @default 0
              */
@@ -3226,6 +3233,8 @@ export interface components {
              * @default 5
              */
             target_count: number;
+            /** Collection Policy */
+            collection_policy?: ("coverage" | "strict_count") | null;
         };
         /** TrackSettings */
         TrackSettings: {
@@ -3233,6 +3242,8 @@ export interface components {
             expected_revision: number;
             /** Target Count */
             target_count: number;
+            /** Collection Policy */
+            collection_policy?: ("coverage" | "strict_count") | null;
         };
         /** ValidationError */
         ValidationError: {

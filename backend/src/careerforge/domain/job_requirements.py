@@ -3,10 +3,14 @@
 import json
 import re
 from collections import defaultdict
+from collections.abc import Iterator
+from typing import cast
 from uuid import NAMESPACE_URL, uuid5
 
+from careerforge.domain.json_types import JsonObject as Json
 from careerforge.schemas.job_contract import (
     DemandReportV1,
+    JobPostingSnapshotV1,
     RequirementFactV1,
     validate_requirement_against_snapshot,
 )
@@ -46,15 +50,17 @@ CONSTRAINT_FIELDS = {
 }
 
 
-def signature(expr):
+def signature(expr: Json) -> str:
     if expr["type"] in {"any_of", "all_of"}:
-        return expr["type"] + "(" + ",".join(sorted(signature(c) for c in expr["children"])) + ")"
+        return cast(
+            str, expr["type"] + "(" + ",".join(sorted(signature(c) for c in expr["children"])) + ")"
+        )
     if expr["type"] == "concept":
-        return expr["concept_id"]
+        return cast(str, expr["concept_id"])
     return json.dumps(expr, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
 
 
-def validate_expression(expr, depth=0):
+def validate_expression(expr: Json, depth: int = 0) -> None:
     if depth > 12:
         raise ValueError("Expression nesting exceeds limit")
     if expr["type"] == "concept" and expr["concept_id"] not in CONCEPTS:
@@ -67,24 +73,24 @@ def validate_expression(expr, depth=0):
         validate_expression(child, depth + 1)
 
 
-def concept_leaves(expr, alternative=False):
+def concept_leaves(expr: Json, alternative: bool = False) -> Iterator[tuple[str, bool]]:
     if expr.get("type") == "concept":
         yield expr["concept_id"], alternative
     for child in expr.get("children", []):
         yield from concept_leaves(child, alternative or expr["type"] == "any_of")
 
 
-def constraints(expr):
+def constraints(expr: Json) -> Iterator[Json]:
     if expr["type"] == "constraint":
         yield expr
     for child in expr.get("children", []):
         yield from constraints(child)
 
 
-def parse_concepts(quote):
+def parse_concepts(quote: str) -> Json | None:
     hits = []
     for concept, aliases in CONCEPTS.items():
-        found = []
+        found: list[re.Match[str]] = []
         for alias in aliases:
             pattern = (
                 r"(?<![A-Za-z0-9])" + re.escape(alias) + r"(?![A-Za-z0-9])"
@@ -111,12 +117,12 @@ def parse_concepts(quote):
     if not hits:
         return None
 
-    def combine(nodes, op):
+    def combine(nodes: list[Json], op: str) -> Json:
         return nodes[0] if len(nodes) == 1 else {"type": op, "children": nodes}
 
     # Parentheses delimit subexpressions; within one phrase alternatives bind before AND.
-    def parse_range(start, end):
-        atoms = []
+    def parse_range(start: int, end: int) -> Json | None:
+        atoms: list[Json] = []
         gaps = []
         cursor = start
         index = start
@@ -163,7 +169,7 @@ def parse_concepts(quote):
     return parse_range(0, len(quote))
 
 
-def extract(snapshot):
+def extract(snapshot: JobPostingSnapshotV1) -> list[RequirementFactV1]:
     result = []
     for section in snapshot.document.sections:
         if section.kind == "benefit":
@@ -204,20 +210,20 @@ def extract(snapshot):
                         "unit": unit,
                     }
                     conditions.append(constraint)
-            if re.search(r"本科|硕士|博士", quote):
+            if degree_match := re.search(r"本科|硕士|博士", quote):
                 constraint = {
                     "type": "constraint",
                     "field": "education.degree",
                     "comparator": "eq",
-                    "value": re.search(r"本科|硕士|博士", quote).group(),
+                    "value": degree_match.group(),
                 }
                 conditions.append(constraint)
-            if re.search(r"20\d{2}届", quote):
+            if year_match := re.search(r"(20\d{2})届", quote):
                 constraint = {
                     "type": "constraint",
                     "field": "graduation.year",
                     "comparator": "eq",
-                    "value": int(re.search(r"20\d{2}", quote).group()),
+                    "value": int(year_match.group(1)),
                 }
                 conditions.append(constraint)
             constraint = (
@@ -277,7 +283,14 @@ def extract(snapshot):
     return result
 
 
-def aggregate(report_id, goal_id, snapshots, facts, scope, exclusions=None):
+def aggregate(
+    report_id: str,
+    goal_id: str,
+    snapshots: list[JobPostingSnapshotV1],
+    facts: list[RequirementFactV1],
+    scope: Json,
+    exclusions: Json | None = None,
+) -> DemandReportV1:
     exclusions = dict(exclusions or {})
     for snapshot in snapshots:
         if (
@@ -294,7 +307,7 @@ def aggregate(report_id, goal_id, snapshots, facts, scope, exclusions=None):
             raise ValueError("Select exactly one fixed snapshot per posting")
         posting_ids[s.posting_id] = s.job_snapshot_id
     included_ids = {s.job_snapshot_id for s in included}
-    groups = defaultdict(lambda: defaultdict(set))
+    groups: dict[tuple[str, str], dict[str, set[str]]] = defaultdict(lambda: defaultdict(set))
     refs = defaultdict(set)
     expressions = {}
     eligibility = []
@@ -376,10 +389,10 @@ def aggregate(report_id, goal_id, snapshots, facts, scope, exclusions=None):
     )
 
 
-def validate_dedup_decisions(decisions):
+def validate_dedup_decisions(decisions: list[Json]) -> None:
     parent = {i: i for d in decisions for i in [d["left"], d["right"]]}
 
-    def root(i):
+    def root(i: str) -> str:
         while parent[i] != i:
             i = parent[i]
         return i

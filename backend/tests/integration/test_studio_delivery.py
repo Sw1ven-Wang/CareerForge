@@ -1,12 +1,6 @@
 from uuid import UUID, uuid4
 
 import pytest
-from sqlalchemy.orm import Session
-from test_market_research import goal, post
-from test_owner_scope import clients as clients
-from test_planning import objective_body
-from test_studio_learning_agent import SOURCE
-
 from careerforge.application import planning_service as planning
 from careerforge.application import studio_service as studio
 from careerforge.application.common import fingerprint
@@ -22,6 +16,11 @@ from careerforge.infrastructure.db.session import get_engine
 from careerforge.infrastructure.llm.openai_compatible import OpenAICompatibleProvider
 from careerforge.schemas.studio import LearningGuide
 from careerforge.workflows.assessment.workflow import execute
+from sqlalchemy.orm import Session
+from test_market_research import goal, post
+from test_owner_scope import clients as clients
+from test_planning import objective_body
+from test_studio_learning_agent import SOURCE
 
 pytestmark = pytest.mark.infrastructure
 

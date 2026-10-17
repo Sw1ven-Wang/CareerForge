@@ -24,7 +24,7 @@ from careerforge.schemas.studio import AgentReply
 from careerforge.workflows.job_agent import call
 
 
-def execute(run_id: UUID, worker: str):
+def execute(run_id: UUID, worker: str) -> None:
     factory = sessionmaker(get_engine(), expire_on_commit=False)
     with factory.begin() as db:
         epoch = claim(db, run_id, worker)

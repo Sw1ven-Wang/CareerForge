@@ -1,26 +1,16 @@
 """Validate model claims against frozen original text, not model-generated identifiers."""
 
-from pathlib import PurePosixPath
+from typing import Any
 
-CODE_SUFFIXES = {
-    ".py",
-    ".js",
-    ".ts",
-    ".tsx",
-    ".jsx",
-    ".vue",
-    ".java",
-    ".go",
-    ".rs",
-    ".c",
-    ".cpp",
-    ".h",
-    ".cs",
-    ".sql",
-}
+from careerforge.application.coverage_service import evidence_verification
+from careerforge.infrastructure.code_index.source_windows import CODE_SUFFIXES as CODE_SUFFIXES
+from careerforge.infrastructure.code_index.source_windows import excerpts as excerpts
+from careerforge.schemas.study import ExtractOutput, PlanOutput, ReviewOutput, TutorOutput
 
 
-def normalize_depths(output, sources):
+def normalize_depths(
+    output: ExtractOutput, sources: list[dict[str, Any]]
+) -> tuple[ExtractOutput, list[dict[str, Any]]]:
     """Repair only depth metadata supported by the already validated literal text."""
     from careerforge.schemas.study import ExtractOutput
 
@@ -63,7 +53,7 @@ def normalize_depths(output, sources):
     return ExtractOutput.model_validate(value), repairs
 
 
-def extracted(output, sources):
+def extracted(output: ExtractOutput, sources: list[dict[str, Any]]) -> list[dict[str, Any]]:
     allowed = {s["source_snapshot_id"]: s for s in sources}
     keys = [r.key for r in output.requirements]
     if len(keys) != len(set(keys)):
@@ -92,7 +82,7 @@ def extracted(output, sources):
     return requirements
 
 
-def partial_extraction(output, sources):
+def partial_extraction(output: ExtractOutput, sources: list[dict[str, Any]]) -> dict[str, Any]:
     """Keep individually grounded requirements; unresolved claims cannot drive downstream work."""
     from collections import Counter
 
@@ -100,7 +90,8 @@ def partial_extraction(output, sources):
 
     normalized, repairs = normalize_depths(output, sources)
     counts = Counter(item.key for item in normalized.requirements)
-    valid, unresolved = [], []
+    valid: list[dict[str, Any]] = []
+    unresolved: list[dict[str, Any]] = []
     for item in normalized.requirements:
         try:
             if counts[item.key] != 1:
@@ -137,59 +128,9 @@ def partial_extraction(output, sources):
     }
 
 
-def excerpts(files, requirements):
-    terms = list(
-        dict.fromkeys(
-            k.lower() for r in requirements for k in [r["technology"], *r["keywords"]] if k.strip()
-        )
-    )
-    ranked = []
-    for path, content in files.items():
-        if PurePosixPath(path).suffix.lower() not in CODE_SUFFIXES:
-            continue
-        lines = content.splitlines()
-        scores = [
-            (sum(t in (path + " " + line).lower() for t in terms), i)
-            for i, line in enumerate(lines)
-        ]
-        score, line = max(scores, default=(0, 0))
-        if not score:
-            continue
-        start = max(0, line - 8)
-        quote, end = "", start
-        for i in range(start, min(len(lines), start + 70)):
-            value = lines[i] + "\n"
-            if len(quote) + len(value) > 2600:
-                break
-            quote += value
-            end = i + 1
-        if quote:
-            ranked.append(
-                (
-                    score,
-                    path,
-                    {
-                        "path": path,
-                        "start_line": start + 1,
-                        "end_line": end,
-                        "content": quote.rstrip("\n"),
-                    },
-                )
-            )
-    ranked.sort(key=lambda item: (-item[0], item[1]))
-    docs = [
-        {"path": p, "content": c[:5000], "truncated": len(c) > 5000}
-        for p, c in sorted(files.items())
-        if PurePosixPath(p).name.lower().startswith("readme")
-    ][:2]
-    return {
-        "code": [r[2] for r in ranked[:6]],
-        "documents": docs,
-        "coverage": "关键词选取至多6个静态源码窗口；不是完整项目审计",
-    }
-
-
-def review_matches(output, manifest, reading):
+def review_matches(
+    output: ReviewOutput, manifest: dict[str, Any], reading: dict[str, Any]
+) -> list[dict[str, Any]]:
     keys = {r["key"] for r in manifest["requirements"]}
     matched = []
     for point in output.matches:
@@ -201,7 +142,12 @@ def review_matches(output, manifest, reading):
         offset = window["content"].index(point.quote)
         start = window["start_line"] + window["content"][:offset].count("\n")
         end = start + point.quote.count("\n")
-        match = {**point.model_dump(), "start_line": start, "end_line": end}
+        match = {
+            **point.model_dump(),
+            "start_line": start,
+            "end_line": end,
+            "verification": evidence_verification(),
+        }
         if (start, end) != (point.start_line, point.end_line):
             match["line_normalization"] = {
                 "reported_start_line": point.start_line,
@@ -214,9 +160,12 @@ def review_matches(output, manifest, reading):
     return matched
 
 
-def partial_review(output, manifest, reading):
+def partial_review(
+    output: ReviewOutput, manifest: dict[str, Any], reading: dict[str, Any]
+) -> tuple[ReviewOutput, list[dict[str, Any]], dict[str, Any]]:
     """Exclude unmatched claims; only grounded matches may support admission and plans."""
-    valid, unresolved = [], []
+    valid: list[dict[str, Any]] = []
+    unresolved: list[dict[str, Any]] = []
     for point in output.matches:
         try:
             valid.extend(
@@ -232,7 +181,13 @@ def partial_review(output, manifest, reading):
             )
     if output.verdict == "strong" and not valid:
         raise ValueError("strong relevance requires grounded matches")
-    metadata = {"validated": len(valid), "unresolved": unresolved}
+    metadata = {
+        "validated": len(valid),
+        "unresolved": unresolved,
+        "location_validated": len(valid),
+        "semantic_verified": 0,
+        "runtime_observed": 0,
+    }
     if unresolved:
         metadata["unverified_model_summary"] = output.summary
         output = output.model_copy(
@@ -257,7 +212,7 @@ def partial_review(output, manifest, reading):
     return output, valid, metadata
 
 
-def plan_modules(output, manifest):
+def plan_modules(output: PlanOutput, manifest: dict[str, Any]) -> list[dict[str, Any]]:
     modules = {m.key: m for m in output.modules}
     if len(modules) != len(output.modules):
         raise ValueError("duplicate module key")
@@ -270,7 +225,7 @@ def plan_modules(output, manifest):
     }
     covered = set()
 
-    def visit(key, chain, relation):
+    def visit(key: str, chain: list[str], relation: str) -> None:
         if key in chain or key not in modules:
             raise ValueError("invalid module graph")
         item = modules[key]
@@ -321,7 +276,7 @@ def plan_modules(output, manifest):
     return [m.model_dump() for m in output.modules]
 
 
-def tutor_points(output, sources):
+def tutor_points(output: TutorOutput, sources: list[dict[str, Any]]) -> list[dict[str, Any]]:
     allowed = {s["citation_id"]: s for s in sources}
     points = []
     for point in output.points:
@@ -335,6 +290,7 @@ def tutor_points(output, sources):
                 **point.model_dump(),
                 "path": source["path"],
                 "commit": source["commit"],
+                "verification": evidence_verification(),
                 "quote_start_line": start,
                 "quote_end_line": start + point.quote.count("\n"),
             }

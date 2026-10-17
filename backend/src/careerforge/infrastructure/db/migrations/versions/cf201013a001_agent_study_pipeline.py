@@ -10,7 +10,7 @@ branch_labels = None
 depends_on = None
 
 
-def upgrade():
+def upgrade() -> None:
     op.create_table(
         "study_tracks",
         sa.Column("id", sa.Uuid(), primary_key=True),
@@ -43,6 +43,6 @@ def upgrade():
     op.create_index("ix_study_artifacts_track_id", "study_artifacts", ["track_id"])
 
 
-def downgrade():
+def downgrade() -> None:
     op.drop_table("study_artifacts")
     op.drop_table("study_tracks")

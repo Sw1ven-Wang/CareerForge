@@ -1,9 +1,6 @@
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
 from careerforge.application import build_service as service
 from careerforge.application.ownership import owned
 from careerforge.application.planning_service import exact_ids, objective_version
@@ -15,6 +12,8 @@ from careerforge.infrastructure.db.models import (
     PlanDeltaProposal,
 )
 from careerforge.workflows.shared.pure import execute_pure
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 
 def validate(db: Session, run: AgentRun) -> dict[str, Any]:

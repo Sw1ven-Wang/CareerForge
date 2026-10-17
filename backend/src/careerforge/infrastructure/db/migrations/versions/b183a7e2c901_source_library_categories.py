@@ -13,7 +13,7 @@ branch_labels = None
 depends_on = None
 
 
-def upgrade():
+def upgrade() -> None:
     op.create_table(
         "source_library_categories",
         sa.Column("id", sa.Uuid(), primary_key=True),
@@ -51,7 +51,7 @@ def upgrade():
     )
 
 
-def downgrade():
+def downgrade() -> None:
     op.drop_constraint("fk_sources_library_category_owner", "sources", type_="foreignkey")
     op.drop_column("sources", "library_category_id")
     op.drop_table("source_library_categories")

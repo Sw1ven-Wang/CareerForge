@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Self
 
 from pydantic import Field, field_validator, model_validator
 
@@ -19,10 +19,13 @@ Channel = Literal[
 ]
 
 
+DEFAULT_CHANNELS: list[Channel] = ["nowcoder", "tencent"]
+
+
 class CollectionInput(InputModel):
     query: str = Field(default="Agent 开发", min_length=1, max_length=200)
     channels: list[Channel] = Field(
-        default_factory=lambda: ["nowcoder", "tencent"],
+        default_factory=lambda: list(DEFAULT_CHANNELS),
         min_length=1,
         max_length=11,
     )
@@ -38,13 +41,13 @@ class CollectionInput(InputModel):
 
     @field_validator("query", "job_category")
     @classmethod
-    def nonblank(cls, value):
+    def nonblank(cls, value: str) -> str:
         if not value.strip():
             raise ValueError("查询和岗位分类不能为空")
         return value.strip()
 
     @model_validator(mode="after")
-    def validate_urls(self):
+    def validate_urls(self) -> Self:
         from careerforge.infrastructure.collection.portals import identify
 
         self.channels = list(dict.fromkeys(self.channels))

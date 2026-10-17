@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+from uuid import UUID
 
 from pydantic import ValidationError
 from sqlalchemy import func, select
@@ -19,6 +20,7 @@ from careerforge.application.run_service import (
 )
 from careerforge.application.source_service import get_snapshot, latest
 from careerforge.domain.errors import BusinessError
+from careerforge.domain.json_types import JsonObject as Json
 from careerforge.domain.runs import LeaseLost
 from careerforge.infrastructure.collection.network import CollectionError, PublicWeb
 from careerforge.infrastructure.collection.portals import identify
@@ -26,12 +28,12 @@ from careerforge.infrastructure.collection.tools import read_job, search_jobs
 from careerforge.infrastructure.db.models import RunEvent
 from careerforge.infrastructure.db.session import get_engine
 from careerforge.infrastructure.llm.provider import ModelError
-from careerforge.schemas.collection import CollectionInput
+from careerforge.schemas.collection import Channel, CollectionInput
 from careerforge.schemas.model_io import ModelRequest
 from careerforge.workflows.job_agent import call as model_call
 
 
-def tool_definitions(channels):
+def tool_definitions(channels: list[str] | list[Channel]) -> list[Json]:
     return [
         {
             "type": "function",
@@ -66,7 +68,7 @@ def tool_definitions(channels):
 
 
 class Collector:
-    def __init__(self, run_id, epoch, worker, manifest):
+    def __init__(self, run_id: UUID, epoch: int, worker: str, manifest: Json) -> None:
         self.run_id, self.epoch, self.worker = run_id, epoch, worker
         self.manifest = manifest
         self.options = CollectionInput.model_validate(
@@ -74,12 +76,12 @@ class Collector:
         )
         self.factory = sessionmaker(get_engine(), expire_on_commit=False)
         self.web = PublicWeb(self.reserve)
-        self.observations = []
+        self.observations: list[Json] = []
         self.allowed_urls = set(self.options.urls)
         self.saved = 0
         self.stop = False
 
-    def reserve(self, url, method):
+    def reserve(self, url: str, method: str) -> None:
         with self.factory.begin() as db:
             run = leased(db, self.run_id, self.epoch, self.worker)
             count = db.scalar(
@@ -87,6 +89,7 @@ class Collector:
                 .select_from(RunEvent)
                 .where(RunEvent.run_id == self.run_id, RunEvent.type == "collection.http_reserved")
             )
+            count = count or 0
             if count >= self.options.request_limit:
                 raise CollectionError("request_budget", "本轮网络请求次数已用尽。", url)
             heartbeat(db, self.run_id, self.epoch, self.worker)
@@ -97,7 +100,7 @@ class Collector:
                 {"url": url, "method": method, "request_no": count + 1},
             )
 
-    def remember(self, value):
+    def remember(self, value: Json) -> None:
         self.observations.append(value)
         if value.get("status") in {"collected", "reused"}:
             self.saved += 1
@@ -106,13 +109,14 @@ class Collector:
         if value.get("status") == "request_budget":
             self.stop = True
 
-    async def tool(self, key, name, arguments):
+    async def tool(self, key: str, name: str, arguments: Json) -> Json:
         with self.factory.begin() as db:
             run = leased(db, self.run_id, self.epoch, self.worker)
             old = artifact(db, run, key, service.VERSION)
             if old:
                 self.remember(old.payload)
                 return old.payload
+        value: Json | None
         trace_start = len(self.web.trace)
         try:
             if name == "search_jobs":
@@ -146,7 +150,7 @@ class Collector:
                         run = leased(db, self.run_id, self.epoch, self.worker)
                         source = service.existing_source(db, run.owner_id, url)
                         previous = latest(db, source) if source else None
-                        if previous:
+                        if previous and source:
                             get_snapshot(db, run.owner_id, source.id, previous.id)
                             value = {
                                 "status": "reused",
@@ -191,13 +195,15 @@ class Collector:
             }
             if value["status"] == "request_budget":
                 self.stop = True
+        assert value is not None
+        assert value is not None
         with self.factory.begin() as db:
             leased(db, self.run_id, self.epoch, self.worker)
             commit_stage(db, self.run_id, self.epoch, self.worker, key, service.VERSION, value)
         self.remember(value)
         return value
 
-    async def manual(self):
+    async def manual(self) -> None:
         if self.options.urls:
             urls = self.options.urls
         else:
@@ -216,7 +222,7 @@ class Collector:
                 break
             await self.tool(f"tool:read:{index}", "read_job", {"url": url})
 
-    async def agent(self):
+    async def agent(self) -> None:
         skill = service.SKILL_PATH.read_text(encoding="utf-8")
         from careerforge.application.common import digest
 
@@ -284,7 +290,7 @@ class Collector:
                 await self.tool(f"tool:agent:{round_no}:{index}", item["name"], item["arguments"])
 
 
-async def run_collection(collector):
+async def run_collection(collector: Collector) -> None:
     try:
         if collector.options.mode == "agent":
             await collector.agent()
@@ -294,7 +300,7 @@ async def run_collection(collector):
         await collector.web.close()
 
 
-def execute(run_id, worker):
+def execute(run_id: UUID, worker: str) -> None:
     factory = sessionmaker(get_engine(), expire_on_commit=False)
     with factory.begin() as db:
         epoch = claim(db, run_id, worker)

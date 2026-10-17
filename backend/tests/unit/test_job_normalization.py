@@ -1,7 +1,6 @@
 import json
 
 import pytest
-
 from careerforge.domain.job_normalization import adapt, canonical, sections
 from careerforge.domain.job_requirements import parse_concepts
 from careerforge.workflows.contract_alignment import choose

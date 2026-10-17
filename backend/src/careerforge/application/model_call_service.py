@@ -56,7 +56,10 @@ async def invoke_model(
         with factory.begin() as db:
             call_id = reserve_call(db, run_id, epoch, worker, request.model_dump(mode="json"))
             if call_id is not None and diagnostics is not None:
-                db.get(ModelCallReceipt, call_id).diagnostics = diagnostics
+                receipt = db.get(ModelCallReceipt, call_id)
+                if receipt is None:
+                    raise ValueError("Unreserved provider call")
+                receipt.diagnostics = diagnostics
         if call_id is None:
             return None
         try:

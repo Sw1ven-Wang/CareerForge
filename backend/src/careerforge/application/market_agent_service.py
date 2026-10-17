@@ -2,17 +2,21 @@
 
 from uuid import UUID
 
+from sqlalchemy.orm import Session
+
 from careerforge.application.common import fingerprint
 from careerforge.application.job_agent_service import PROMPT_VERSION, configuration
 from careerforge.application.job_contract_service import read
 from careerforge.config.settings import get_settings
 from careerforge.domain.errors import BusinessError
+from careerforge.domain.json_types import JsonObject as Json
+from careerforge.infrastructure.db.models import AgentRun, JobContractArtifact
 from careerforge.schemas.job_contract import JobPostingSnapshotV1
 
 VERSION = "market-agent-1.0"
 
 
-def freeze(jobs):
+def freeze(jobs: list[JobContractArtifact]) -> Json:
     config = configuration()
     if not config["enabled"] or not config["configured"]:
         raise BusinessError(409, "REAL_AGENT_DISABLED", "真实模型未启用或未配置。")
@@ -42,7 +46,7 @@ def freeze(jobs):
     }
 
 
-def snapshots_for_run(db, run):
+def snapshots_for_run(db: Session, run: AgentRun) -> list[JobPostingSnapshotV1]:
     snapshots = []
     for identifier in run.input_manifest["job_snapshot_ids"]:
         row = read(db, run.owner_id, UUID(identifier), "snapshot")

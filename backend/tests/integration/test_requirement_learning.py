@@ -1,15 +1,14 @@
 from uuid import UUID, uuid4
 
 import pytest
-from test_market_research import post
-from test_owner_scope import clients as clients
-from test_studio_learning_agent import model_result, prompt_data, setup_learning
-
 from careerforge.application.studio_learning_service import requirement_links
 from careerforge.infrastructure.llm.openai_compatible import OpenAICompatibleProvider
 from careerforge.schemas.model_io import ToolCall
 from careerforge.schemas.studio import LearningGuide
 from careerforge.workflows.studio_learning import execute
+from test_market_research import post
+from test_owner_scope import clients as clients
+from test_studio_learning_agent import model_result, prompt_data, setup_learning
 
 pytestmark = pytest.mark.infrastructure
 

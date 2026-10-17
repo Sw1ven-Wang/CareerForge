@@ -3,37 +3,40 @@
 import html
 import json
 import re
+from collections.abc import Iterator
 from datetime import datetime
 from html.parser import HTMLParser
 from typing import Any
+
+from careerforge.domain.json_types import JsonObject as Json
 
 NORMALIZER_VERSION = "job-normalizer-1.1"
 
 
 class VisibleText(HTMLParser):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
-        self.parts = []
+        self.parts: list[str] = []
         self.hidden = 0
 
-    def handle_starttag(self, tag, attrs):
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag in {"script", "style", "noscript"}:
             self.hidden += 1
         if tag in {"p", "div", "li", "br", "h1", "h2", "h3", "section"}:
             self.parts.append("\n")
 
-    def handle_endtag(self, tag):
+    def handle_endtag(self, tag: str) -> None:
         if tag in {"script", "style", "noscript"}:
             self.hidden = max(0, self.hidden - 1)
         if tag in {"p", "div", "li", "h1", "h2", "h3", "section"}:
             self.parts.append("\n")
 
-    def handle_data(self, data):
+    def handle_data(self, data: str) -> None:
         if not self.hidden:
             self.parts.append(data)
 
 
-def canonical(value: str, is_html=False) -> str:
+def canonical(value: str, is_html: bool = False) -> str:
     if is_html:
         parser = VisibleText()
         parser.feed(
@@ -45,7 +48,7 @@ def canonical(value: str, is_html=False) -> str:
 
 
 def sections(text: str) -> list[dict[str, Any]]:
-    result = []
+    result: list[Json] = []
     kind = "other"
     offset = 0
     for line in text.splitlines(keepends=True):
@@ -76,14 +79,14 @@ def sections(text: str) -> list[dict[str, Any]]:
     return result
 
 
-def aware(value):
+def aware(value: Any) -> str | None:
     if not value:
         return None
     result = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
     return result.isoformat() if result.tzinfo else None
 
 
-def jsonld_object(raw):
+def jsonld_object(raw: str) -> Json:
     if raw.lstrip().startswith(("{", "[")):
         values = [json.loads(raw)]
     else:
@@ -95,7 +98,7 @@ def jsonld_object(raw):
         ):
             values.append(json.loads(match.group(1)))
 
-    def walk(value):
+    def walk(value: Any) -> Iterator[Json]:
         if isinstance(value, list):
             for item in value:
                 yield from walk(item)
@@ -112,8 +115,10 @@ def jsonld_object(raw):
     return found[0]
 
 
-def adapt(provider, raw, title=None, employer=None):
-    job = {
+def adapt(
+    provider: str, raw: str, title: str | None = None, employer: str | None = None
+) -> tuple[Json, str, str | None, str | None, Json]:
+    job: Json = {
         "title_raw": title or "标题待补",
         "employer_name": employer,
         "role_family": None,

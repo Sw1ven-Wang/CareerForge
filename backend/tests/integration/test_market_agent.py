@@ -1,11 +1,6 @@
 from uuid import UUID
 
 import pytest
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-from test_market_research import goal, post
-from test_owner_scope import clients as clients
-
 from careerforge.config.settings import get_settings
 from careerforge.infrastructure.db.models import (
     AgentRun,
@@ -17,6 +12,10 @@ from careerforge.infrastructure.db.session import get_engine
 from careerforge.infrastructure.llm.openai_compatible import OpenAICompatibleProvider
 from careerforge.schemas.model_io import ModelResult, Usage
 from careerforge.workflows.market_agent import execute
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+from test_market_research import goal, post
+from test_owner_scope import clients as clients
 
 pytestmark = pytest.mark.infrastructure
 

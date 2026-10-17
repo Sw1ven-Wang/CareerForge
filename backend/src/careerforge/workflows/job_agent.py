@@ -1,6 +1,7 @@
 """External I/O is outside database stage transactions; one accounted call, no retry."""
 
 import asyncio
+from uuid import UUID
 
 import httpx
 from pydantic import ValidationError
@@ -28,9 +29,12 @@ from careerforge.domain.errors import BusinessError
 from careerforge.infrastructure.db.session import get_engine
 from careerforge.infrastructure.llm.openai_compatible import OpenAICompatibleProvider
 from careerforge.infrastructure.llm.provider import ModelError
+from careerforge.schemas.model_io import ModelRequest, ModelResult
 
 
-async def call(run_id, epoch, worker, request, base_url):
+async def call(
+    run_id: UUID, epoch: int, worker: str, request: ModelRequest, base_url: str
+) -> ModelResult | None:
     settings = get_settings()
     if not settings.real_agent_enabled or not settings.openai_api_key.get_secret_value():
         raise BusinessError(409, "REAL_AGENT_DISABLED", "真实模型未启用或未配置。")
@@ -63,7 +67,7 @@ async def call(run_id, epoch, worker, request, base_url):
                     pass
 
 
-def execute(run_id, worker):
+def execute(run_id: UUID, worker: str) -> None:
     factory = sessionmaker(get_engine(), expire_on_commit=False)
     with factory.begin() as db:
         epoch = claim(db, run_id, worker)

@@ -7,13 +7,16 @@ import subprocess
 import tempfile
 import time
 from pathlib import Path
+from typing import BinaryIO
 from uuid import uuid4
+
+from careerforge.domain.json_types import JsonObject as Json
 
 MAIL = Path("/mailbox")
 ROOT = Path("/workspace")
 
 
-def main():
+def main() -> None:
     if os.getpid() != 1:
         raise RuntimeError("Run only as PID 1 in the dedicated sandbox container")
     MAIL.mkdir(exist_ok=True)
@@ -34,12 +37,12 @@ def main():
     for directory, _, _ in os.walk(ROOT):
         Path(directory).chmod(0o777)
 
-    def drop():
+    def drop() -> None:
         os.setgroups([])
         os.setgid(65534)
         os.setuid(65534)
 
-    def stop_children():
+    def stop_children() -> None:
         # Dedicated PID namespace: also catches detached grandchildren.
         try:
             os.kill(-1, signal.SIGSTOP)
@@ -69,12 +72,12 @@ def main():
                 exit_code = 124
             stop_children()
 
-            def tail(stream):
+            def tail(stream: BinaryIO) -> str:
                 stream.seek(0, os.SEEK_END)
                 stream.seek(max(0, stream.tell() - 16000))
                 return stream.read().decode("utf-8", "replace")
 
-            out = {
+            out: Json = {
                 "exit_code": exit_code,
                 "stdout": tail(stdout),
                 "stderr": tail(stderr),
@@ -89,7 +92,7 @@ def main():
             }
         finally:
             stop_children()
-    files = {}
+    files: dict[str, str] = {}
     size = 0
     complete = True
     for directory, dirs, names in os.walk(ROOT, followlinks=False):

@@ -1,5 +1,5 @@
 class BusinessError(Exception):
-    def __init__(self, status: int, code: str, message: str, **details: object):
+    def __init__(self, status: int, code: str, message: str, **details: object) -> None:
         self.status = status
         self.code = code
         self.message = message

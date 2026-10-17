@@ -4,12 +4,6 @@ from uuid import UUID, uuid4
 
 import httpx
 import pytest
-from pydantic import SecretStr
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-from test_market_research import post
-from test_owner_scope import clients as clients
-
 from careerforge.config.settings import get_settings
 from careerforge.domain.job_normalization import sections
 from careerforge.infrastructure.collection.network import PublicWeb, robots_allowed
@@ -18,6 +12,11 @@ from careerforge.infrastructure.db.session import get_engine
 from careerforge.infrastructure.llm.openai_compatible import OpenAICompatibleProvider
 from careerforge.schemas.model_io import ModelResult, ToolCall, Usage
 from careerforge.workflows.job_collection import execute
+from pydantic import SecretStr
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+from test_market_research import post
+from test_owner_scope import clients as clients
 
 pytestmark = pytest.mark.infrastructure
 URL = "https://careers.tencent.com/jobdesc.html?postId=123456"

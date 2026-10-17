@@ -4,6 +4,7 @@ import ast
 import re
 from pathlib import PurePosixPath
 
+from careerforge.domain.json_types import JsonObject as Json
 from careerforge.infrastructure.code_index.ast_index import symbols
 
 VERSION = "code-knowledge-lexical-1.0"
@@ -23,10 +24,10 @@ TOPICS = {
 }
 
 
-def tokens(text):
+def tokens(text: str) -> list[str]:
     text = re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", text)
     values = re.findall(r"[a-zA-Z0-9]+|[\u4e00-\u9fff]+", text.lower())
-    result = []
+    result: list[str] = []
     for value in values:
         if re.fullmatch(r"[\u4e00-\u9fff]+", value):
             result.extend(value[i : i + 2] for i in range(max(1, len(value) - 1)))
@@ -35,7 +36,7 @@ def tokens(text):
     return result
 
 
-def query_terms(query):
+def query_terms(query: str) -> tuple[list[str], list[str]]:
     result = tokens(query)
     aliases = []
     for topic, names in TOPICS.items():
@@ -45,14 +46,16 @@ def query_terms(query):
     return list(dict.fromkeys(result))[:64], aliases
 
 
-def chunks(path, content):
+def chunks(path: str, content: str) -> list[Json]:
     lines = content.splitlines(keepends=True)
     count = len(lines)
     if not count:
         return []
-    spans = []
-    parsed = symbols(content) if path.endswith(".py") else {"status": "text_only", "symbols": []}
-    decorator_lines = {}
+    spans: list[tuple[int, int, str, str, str]] = []
+    parsed: Json = (
+        symbols(content) if path.endswith(".py") else {"status": "text_only", "symbols": []}
+    )
+    decorator_lines: dict[int, int] = {}
     if parsed["status"] == "parsed":
         for node in ast.walk(ast.parse(content)):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):

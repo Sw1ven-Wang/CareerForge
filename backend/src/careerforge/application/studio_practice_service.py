@@ -2,18 +2,23 @@
 
 from uuid import UUID, uuid4
 
+from sqlalchemy.orm import Session
+
 from careerforge.application import studio_service as studio
 from careerforge.application.common import fingerprint, idempotency
 from careerforge.application.repository_service import citation_detail
 from careerforge.application.studio_learning_service import visible_action
 from careerforge.domain.errors import BusinessError
+from careerforge.domain.json_types import JsonObject as Json
+from careerforge.infrastructure.db.models import LearningWorkspace
+from careerforge.schemas.studio import PracticeInput, PracticeNoteInput
 
 
-def report_hash(report):
+def report_hash(report: Json) -> str:
     return fingerprint({k: report[k] for k in ("objective_version_id", "guide", "sources")})
 
 
-def valid_report(db, owner, row, identifier):
+def valid_report(db: Session, owner: UUID, row: LearningWorkspace, identifier: UUID | str) -> Json:
     report = studio.action(row, identifier)
     visible = visible_action(db, owner, report) if report["kind"] == "learning_report" else {}
     if (
@@ -26,7 +31,9 @@ def valid_report(db, owner, row, identifier):
     return report
 
 
-def validate(db, owner, row, identifier):
+def validate(
+    db: Session, owner: UUID, row: LearningWorkspace, identifier: UUID | str
+) -> tuple[Json, Json]:
     item = studio.action(row, identifier)
     if item["kind"] != "practice":
         raise BusinessError(404, "NOT_FOUND", "练习不存在。")
@@ -42,9 +49,11 @@ def validate(db, owner, row, identifier):
     return item, report
 
 
-def visible(db, owner, row, item):
+def visible(db: Session, owner: UUID, row: LearningWorkspace, item: Json) -> Json:
     identifier = item["id"] if item["kind"] == "practice" else item.get("practice_id")
     try:
+        if identifier is None:
+            raise BusinessError(404, "NOT_FOUND", "练习不存在。")
         validate(db, owner, row, identifier)
     except (BusinessError, ValueError, KeyError):
         return {
@@ -57,7 +66,14 @@ def visible(db, owner, row, item):
     return item
 
 
-def create(db, owner, workspace_id, report_id, body, key):
+def create(
+    db: Session,
+    owner: UUID,
+    workspace_id: UUID,
+    report_id: UUID,
+    body: PracticeInput,
+    key: str | None,
+) -> Json:
     row = studio.workspace(db, owner, workspace_id, True)
     record = idempotency(
         db, owner, f"studio.practice:{workspace_id}:{report_id}", key, body.model_dump(mode="json")
@@ -110,7 +126,9 @@ def create(db, owner, workspace_id, report_id, body, key):
     return {**record.response_summary, "workspace": studio.detail(row, db)}
 
 
-def context(db, owner, row, identifier):
+def context(
+    db: Session, owner: UUID, row: LearningWorkspace, identifier: UUID | str
+) -> tuple[Json, list[Json], Json]:
     item, report = validate(db, owner, row, identifier)
     references = [citation_detail(db, owner, UUID(i)) for i in item["citation_ids"]]
     return (
@@ -137,7 +155,9 @@ def context(db, owner, row, identifier):
     )
 
 
-def note(db, owner, workspace_id, identifier, body):
+def note(
+    db: Session, owner: UUID, workspace_id: UUID, identifier: UUID, body: PracticeNoteInput
+) -> Json:
     row = studio.workspace(db, owner, workspace_id, True)
     studio.revision(row, body.expected_revision)
     validate(db, owner, row, identifier)

@@ -5,16 +5,15 @@ from uuid import UUID
 
 import httpx
 import pytest
-from pydantic import SecretStr
-from test_market_research import post, source
-from test_owner_scope import clients as clients
-from test_studio_learning_agent import model_result
-
 from careerforge.config.settings import get_settings
 from careerforge.infrastructure.llm.openai_compatible import OpenAICompatibleProvider
 from careerforge.infrastructure.repository import github_research
 from careerforge.schemas.model_io import ToolCall
 from careerforge.workflows import study
+from pydantic import SecretStr
+from test_market_research import post, source
+from test_owner_scope import clients as clients
+from test_studio_learning_agent import model_result
 
 pytestmark = pytest.mark.infrastructure
 CODE = "def execute_tool(tool, arguments):\n    return tool(**arguments)\n"
@@ -92,7 +91,7 @@ def test_requirement_review_plan_tutor_chain(clients, monkeypatch):
     )
 
     async def complete(self, request):
-        data = json.loads(request.prompt.split("INPUT_UNTRUSTED_JSON\n")[1])
+        data = json.JSONDecoder().raw_decode(request.prompt.split("INPUT_UNTRUSTED_JSON\n")[1])[0]
         calls.append(request)
         if "sources" in data and "requirements" not in data:
             return model_result(
@@ -288,12 +287,29 @@ def test_requirement_review_plan_tutor_chain(clients, monkeypatch):
         blocked.status_code == 409 and blocked.json()["error"]["code"] == "PROJECT_TARGET_NOT_MET"
     )
     changed = a.put(
-        "/api/v1" + path, json={"expected_revision": state["revision"], "target_count": 1}
+        "/api/v1" + path,
+        json={
+            "expected_revision": state["revision"],
+            "target_count": 2,
+            "collection_policy": "coverage",
+        },
     )
     assert changed.status_code == 200, changed.text
-    state = run("plan", intent=intent)
+    state = current()
+    assert state["collection_policy"] == "coverage"
+    assert state["coverage"]["located"] == 1 and state["coverage"]["semantic_verified"] == 0
+    unconfirmed = post(
+        a,
+        path + "/runs",
+        {"expected_revision": state["revision"], "role": "plan", "intent": intent},
+    )
+    assert unconfirmed.status_code == 409
+    assert unconfirmed.json()["error"]["code"] == "COLLECTION_GAP_CONFIRMATION_REQUIRED"
+    state = run("plan", intent=intent, acknowledge_collection_gap=True)
     plan = state["plans"][0]
     assert plan["modules"][1]["parent_key"] == "root"
+    assert plan["planning_scope"]["shortfall"] == 1
+    assert plan["planning_scope"]["collection_gap_acknowledged"]
     state = run("tutor", plan_id=plan["id"], module_key="leaf", question="解释 execute_tool 并画图")
     turn = state["turns"][0]
     assert turn["points"][0]["quote"] == "return tool(**arguments)"

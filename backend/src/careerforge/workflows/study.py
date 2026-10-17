@@ -2,12 +2,15 @@
 
 import asyncio
 import json
+from collections.abc import Callable
+from typing import Any
 from uuid import UUID
 
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
+from careerforge.application import coverage_service as coverage_rules
 from careerforge.application import knowledge_service as knowledge
 from careerforge.application import repository_service as repositories
 from careerforge.application import study_service as service
@@ -25,7 +28,7 @@ from careerforge.application.run_service import (
 from careerforge.application.studio_learning_service import brief, read_source
 from careerforge.domain.errors import BusinessError
 from careerforge.domain.runs import LeaseLost
-from careerforge.infrastructure.db.models import RepositoryFile
+from careerforge.infrastructure.db.models import AgentRun, RepositoryFile
 from careerforge.infrastructure.db.session import get_engine
 from careerforge.infrastructure.llm.provider import ModelError
 from careerforge.infrastructure.repository import github_research as github
@@ -38,6 +41,7 @@ from careerforge.schemas.study import (
     PlanOutput,
     ReviewOutput,
     TutorOutput,
+    VisualBlock,
 )
 from careerforge.workflows.job_agent import call as model_call
 from careerforge.workflows.studio_learning import tool_definitions
@@ -61,7 +65,8 @@ ROLE_RULES = {
 判断它是否直接实现岗位技术需求的核心机制，而非仅提及同一关键词或作为依赖。
 strong必须有至少一项来自已读源码窗口的匹配，逐项摘录连续代码和准确行号、解释覆盖边界；
 weak表示关联弱；uncertain表示资料不足。记录技术栈、质量依据、许可证/活跃度局限。
-不能把 README 的宣传写成代码已实现，不能把静态阅读当成运行验收。""",
+不能把 README 的宣传写成代码已实现，不能把静态阅读当成运行验收。
+原文位置校验不代表解释的语义支持已独立核验。""",
     "plan": """你是计划 Agent。根据用户意图、所选需求深度和审核项目制定分级模块化学习计划。
 build_project强调从核心机制逐步构建自己的项目；learn_project强调系统阅读架构与实现；
 technical_design聚焦指定设计及取舍；function聚焦指定函数、依赖、边界与迁移。
@@ -69,7 +74,7 @@ technical_design聚焦指定设计及取舍；function聚焦指定函数、依�
 每个模块只关联所选需求key和审核项目id，叶模块必须有已给出的源码highlight_ids（citation_id）。
 function意图必须使用purpose=user_selected_focus的代码引用，围绕用户选中的实际实现设计叶模块。
 包括具体步骤、产物、可观察验收条件；全部所选需求必须覆盖。输出最多10个模块，尽量简短。
-不编造源码路径，不声称完成学习。""",
+不编造源码路径，不声称完成学习。planning_scope仅表示位置覆盖，语义支持尚未独立核验。""",
     "tutor": """你是交互指导学习 Agent。围绕当前计划模块回答问题，结合前几轮问答。
 自主使用search_code发现，再read_code取得可引用原文；related_code只是候选，不证明运行调用。
 优先解释关键代码和设计取舍。无依据保留未知。
@@ -82,15 +87,17 @@ focus_citation_id可指定一个本轮points中的代码定位；禁止任意外
 
 
 class Runner:
-    def __init__(self, run_id, epoch, worker, manifest):
+    def __init__(self, run_id: UUID, epoch: int, worker: str, manifest: dict[str, Any]) -> None:
         self.id, self.epoch, self.worker, self.m = run_id, epoch, worker, manifest
         self.factory = sessionmaker(get_engine(), expire_on_commit=False)
         self.synthetic = False
         self.prefix = ""
-        self.discovered, self.sources, self.trace = set(), {}, []
+        self.discovered: set[str] = set()
+        self.sources: dict[str, dict[str, Any]] = {}
+        self.trace: list[dict[str, Any]] = []
         self.tool_count = 0
 
-    def run(self, db):
+    def run(self, db: Session) -> AgentRun:
         run = leased(db, self.id, self.epoch, self.worker)
         service.validate_run(db, run)
         candidate = self.m.get("candidate", {})
@@ -98,12 +105,12 @@ class Runner:
             repositories.snapshot(db, run.owner_id, UUID(candidate["repository_snapshot_id"]))
         return run
 
-    def save_stage(self, key, value):
+    def save_stage(self, key: str, value: dict[str, Any]) -> None:
         with self.factory.begin() as db:
             self.run(db)
             commit_stage(db, self.id, self.epoch, self.worker, key, service.VERSION, value)
 
-    async def io(self, key, function):
+    async def io(self, key: str, function: Callable[[], dict[str, Any]]) -> dict[str, Any]:
         key = self.prefix + key
         with self.factory.begin() as db:
             run = self.run(db)
@@ -126,7 +133,13 @@ class Runner:
         self.save_stage(key, value)
         return value
 
-    async def ask(self, key, context, schema=None, tools=None):
+    async def ask(
+        self,
+        key: str,
+        context: dict[str, Any],
+        schema: type[BaseModel] | None = None,
+        tools: list[dict[str, Any]] | None = None,
+    ) -> Any:
         key = self.prefix + key
         prompt = (
             RULES
@@ -195,7 +208,7 @@ class Runner:
             return schema.model_validate(result.structured)
         return result
 
-    def store(self, kind, payload, terminal="succeeded"):
+    def store(self, kind: str, payload: dict[str, Any], terminal: str = "succeeded") -> None:
         with self.factory.begin() as db:
             run = self.run(db)
             row = service.track(db, run.owner_id, UUID(self.m["track_id"]), True)
@@ -223,7 +236,7 @@ class Runner:
             )
             transition(db, run, terminal)
 
-    async def extract(self):
+    async def extract(self) -> None:
         output = await self.ask("extract", {"sources": self.m["sources"]}, ExtractOutput)
 
         values = validation.partial_extraction(output, self.m["sources"])
@@ -238,12 +251,13 @@ class Runner:
             "partially_succeeded" if values["unresolved"] else "succeeded",
         )
 
-    async def discover(self):
+    async def discover(self) -> None:
         output = await self.ask(
             "queries",
             {
                 "requirements": self.m["requirements"],
                 "previous_review_feedback": self.m.get("research_feedback", []),
+                "research_scope": self.m.get("research_requirement_keys", []),
             },
             DiscoveryOutput,
         )
@@ -307,7 +321,9 @@ class Runner:
             with self.factory.begin() as db:
                 run = self.run(db)
                 row = service.track(db, run.owner_id, UUID(self.m["track_id"]))
-                if len(service.approved(db, row)) >= row.payload["target_count"]:
+                accepted = [service.packed(i) for i in service.approved(db, row)]
+                located = coverage_rules.coverage(self.m["requirements"], accepted)
+                if len(accepted) >= row.payload["target_count"] and not located["missing_keys"]:
                     break
                 if artifact(db, run, "reviewed:" + identifier, service.VERSION):
                     continue
@@ -324,24 +340,32 @@ class Runner:
         with self.factory.begin() as db:
             run = self.run(db)
             row = service.track(db, run.owner_id, UUID(self.m["track_id"]))
-            approved_count = len(service.approved(db, row))
+            accepted = [service.packed(i) for i in service.approved(db, row)]
+            approved_count = len(accepted)
+            located = coverage_rules.coverage(self.m["requirements"], accepted)
             result = {
                 **batch,
                 "approved_count": approved_count,
                 "target_count": row.payload["target_count"],
+                "coverage": located,
             }
             commit_stage(db, self.id, self.epoch, self.worker, "result", service.VERSION, result)
             status = (
                 "succeeded"
-                if approved_count >= row.payload["target_count"]
+                if not located["missing_keys"]
+                and (
+                    coverage_rules.collection_policy(row.payload) == "coverage"
+                    or approved_count >= row.payload["target_count"]
+                )
                 else "partially_succeeded"
             )
             if not batch["review_candidate_ids"] and batch["candidates_added"]:
                 status = "succeeded"
             transition(db, run, status)
 
-    async def review(self, finish=True):
+    async def review(self, finish: bool = True) -> None:
         candidate = dict(self.m["candidate"])
+        material: dict[str, Any]
         if candidate.get("repository_snapshot_id"):
             with self.factory.begin() as db:
                 run = self.run(db)
@@ -362,7 +386,7 @@ class Runner:
             }
         else:
 
-            def fetch():
+            def fetch() -> dict[str, Any]:
                 pinned = github.pin(candidate)
                 files, skipped = fetch_github(pinned["github_url"], pinned["commit"])
                 return {
@@ -410,7 +434,7 @@ class Runner:
             if finish:
                 transition(db, run, "succeeded" if admitted else "partially_succeeded")
 
-    async def plan(self):
+    async def plan(self) -> None:
         focus_highlights = []
         if self.m.get("focus_chunk"):
             with self.factory.begin() as db:
@@ -427,6 +451,7 @@ class Runner:
                 requirement_key=self.m["intent"]["requirement_keys"][0],
                 explanation="用户选择的学习实现位置，关联需求由计划说明。",
                 purpose="user_selected_focus",
+                verification=coverage_rules.evidence_verification(),
             )
             focus_highlights.append(focus)
             from copy import deepcopy
@@ -441,6 +466,7 @@ class Runner:
             {
                 "requirements": self.m["requirements"],
                 "intent": self.m["intent"],
+                "planning_scope": self.m["planning_scope"],
                 "projects": self.m["projects"],
             },
             PlanOutput,
@@ -454,10 +480,11 @@ class Runner:
                 "focus_highlights": focus_highlights,
                 "requirements_id": self.m["requirements_id"],
                 "review_ids": [p["id"] for p in self.m["projects"]],
+                "planning_scope": self.m["planning_scope"],
             },
         )
 
-    def tool(self, key, name, arguments):
+    def tool(self, key: str, name: str, arguments: dict[str, Any]) -> None:
         with self.factory.begin() as db:
             run = self.run(db)
             old = artifact(db, run, key, service.VERSION)
@@ -477,25 +504,30 @@ class Runner:
                             "results": [brief(r) for r in hits["results"]],
                         }
                     elif name in {"read_code", "related_code"}:
-                        args = (
+                        chunk_args = (
                             KnowledgeReadArgs if name == "read_code" else KnowledgeChunkArgs
                         ).model_validate(arguments)
-                        if str(args.chunk_id) not in self.discovered:
+                        if str(chunk_args.chunk_id) not in self.discovered:
                             raise ValueError("undiscovered chunk")
-                        item = knowledge.chunk_detail(db, run.owner_id, args.chunk_id)
+                        item = knowledge.chunk_detail(db, run.owner_id, chunk_args.chunk_id)
                         if item["repository_snapshot_id"] not in self.m["scope"]:
                             raise ValueError("outside scope")
                         if name == "read_code":
+                            assert isinstance(chunk_args, KnowledgeReadArgs)
                             if len(self.sources) >= 4:
                                 raise ValueError("read budget exceeded")
                             value = {
                                 "status": "read",
                                 "source": read_source(
-                                    db, run.owner_id, item, args.start_line, args.end_line
+                                    db,
+                                    run.owner_id,
+                                    item,
+                                    chunk_args.start_line,
+                                    chunk_args.end_line,
                                 ),
                             }
                         else:
-                            related = knowledge.related(db, run.owner_id, args.chunk_id)
+                            related = knowledge.related(db, run.owner_id, chunk_args.chunk_id)
                             value = {
                                 "status": "related",
                                 "results": [brief(r) for r in related["results"][:5]],
@@ -513,7 +545,7 @@ class Runner:
             self.sources[value["source"]["citation_id"]] = value["source"]
         self.trace.append({"tool": name, "arguments": arguments, **value})
 
-    async def tutor(self):
+    async def tutor(self) -> None:
         module = self.m["module"]
         keywords = [
             k
@@ -534,7 +566,7 @@ class Runner:
                 },
             )
 
-        def context(final=False):
+        def context(final: bool = False) -> dict[str, Any]:
             return {
                 "module": module,
                 "question": self.m["question"],
@@ -581,10 +613,10 @@ class Runner:
             output = TutorOutput(
                 status="insufficient_evidence",
                 blocks=[
-                    {
-                        "kind": "text",
-                        "text": "本轮没有读取到足够代码，无法提供实现说明。请补充项目或调整问题。",
-                    }
+                    VisualBlock(
+                        kind="text",
+                        text="本轮没有读取到足够代码，无法提供实现说明。请补充项目或调整问题。",
+                    )
                 ],
                 limitations=["未根据搜索摘要编造实现说明。"],
             )
@@ -605,11 +637,11 @@ class Runner:
             "succeeded" if output.status == "grounded" else "partially_succeeded",
         )
 
-    async def execute(self):
+    async def execute(self) -> None:
         await getattr(self, self.m["role"])()
 
 
-def execute(run_id, worker):
+def execute(run_id: UUID, worker: str) -> None:
     factory = sessionmaker(get_engine(), expire_on_commit=False)
     with factory.begin() as db:
         epoch = claim(db, run_id, worker)

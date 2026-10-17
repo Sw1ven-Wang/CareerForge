@@ -10361,6 +10361,27 @@
       },
       "RoleInput": {
         "properties": {
+          "acknowledge_collection_gap": {
+            "type": "boolean",
+            "title": "Acknowledge Collection Gap",
+            "default": false
+          },
+          "research_requirement_keys": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array",
+                "maxItems": 25,
+                "minItems": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Research Requirement Keys"
+          },
           "auto_review_count": {
             "type": "integer",
             "maximum": 5.0,
@@ -10848,6 +10869,21 @@
             "minimum": 1.0,
             "title": "Target Count",
             "default": 5
+          },
+          "collection_policy": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "coverage",
+                  "strict_count"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collection Policy"
           }
         },
         "additionalProperties": false,
@@ -10870,6 +10906,21 @@
             "maximum": 10.0,
             "minimum": 1.0,
             "title": "Target Count"
+          },
+          "collection_policy": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "coverage",
+                  "strict_count"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collection Policy"
           }
         },
         "additionalProperties": false,

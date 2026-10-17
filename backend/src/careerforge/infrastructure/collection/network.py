@@ -4,11 +4,13 @@ import asyncio
 import ipaddress
 import re
 import socket
+from collections.abc import Callable
 from dataclasses import dataclass
 from urllib.parse import urljoin, urlparse
 
 import httpx
 
+from careerforge.domain.json_types import JsonObject as Json
 from careerforge.infrastructure.collection.portals import identify
 
 USER_AGENT = "CareerForgeResearch/1.0"
@@ -16,7 +18,7 @@ MAX_BYTES = 1000000
 
 
 class CollectionError(Exception):
-    def __init__(self, code, message, url=None):
+    def __init__(self, code: str, message: str, url: str | None = None) -> None:
         super().__init__(message)
         self.code, self.message, self.url = code, message, url
 
@@ -30,8 +32,10 @@ class Page:
     content_type: str
 
 
-def robots_allowed(text, url):
-    groups, agents, rules = [], [], []
+def robots_allowed(text: str, url: str) -> bool:
+    groups: list[tuple[list[str], list[tuple[str, str]]]] = []
+    agents: list[str] = []
+    rules: list[tuple[str, str]] = []
     for line in text.splitlines():
         line = line.split("#", 1)[0].strip()
         if ":" not in line:
@@ -67,22 +71,24 @@ def robots_allowed(text, url):
 
 
 class PublicWeb:
-    def __init__(self, reserve, client=None):
+    def __init__(
+        self, reserve: Callable[[str, str], None], client: httpx.AsyncClient | None = None
+    ) -> None:
         self.reserve = reserve
         self.client = client or httpx.AsyncClient(
             timeout=httpx.Timeout(15, connect=5), trust_env=False, follow_redirects=False
         )
         self.owns_client = client is None
-        self.robots = {}
-        self.trace = []
-        self.last_access = {}
-        self.denied_hosts = set()
+        self.robots: dict[str, str] = {}
+        self.trace: list[Json] = []
+        self.last_access: dict[str | None, float] = {}
+        self.denied_hosts: set[str | None] = set()
 
-    async def close(self):
+    async def close(self) -> None:
         if self.owns_client:
             await self.client.aclose()
 
-    async def _validate(self, url):
+    async def _validate(self, url: str) -> None:
         identify(url)
         host = urlparse(url).hostname
         if host in self.denied_hosts:
@@ -98,7 +104,9 @@ class PublicWeb:
         ):
             raise CollectionError("unsafe_address", "招聘域名解析到非公网地址。", url)
 
-    async def _request(self, url, maximum=MAX_BYTES, method="GET", form=None):
+    async def _request(
+        self, url: str, maximum: int = MAX_BYTES, method: str = "GET", form: Json | None = None
+    ) -> Page:
         for _ in range(4):
             await self._validate(url)
             host = urlparse(url).hostname
@@ -171,7 +179,7 @@ class PublicWeb:
                 raise CollectionError("network_error", "公开页面暂时无法访问。", url) from None
         raise CollectionError("redirect_limit", "站点重定向次数超限。", url)
 
-    async def fetch(self, url, *, form=None):
+    async def fetch(self, url: str, *, form: Json | None = None) -> Page:
         if form is not None and url != "https://www.nowcoder.com/np-api/u/job/search":
             raise CollectionError("invalid_search_path", "只允许已核实的公开只读查询路径。", url)
         await self._validate(url)

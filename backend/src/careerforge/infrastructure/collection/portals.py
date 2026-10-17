@@ -2,6 +2,8 @@
 
 from urllib.parse import quote, urlparse
 
+from careerforge.domain.json_types import JsonObject as Json
+
 PORTALS = {
     "boss": (
         "BOSS直聘",
@@ -72,7 +74,7 @@ PORTALS = {
 }
 
 
-def identify(url):
+def identify(url: str) -> str:
     parsed = urlparse(url)
     if (
         parsed.scheme != "https"
@@ -87,7 +89,7 @@ def identify(url):
     raise ValueError("该招聘域名尚未登记，请先核对官方域名并添加适配器")
 
 
-def catalog(query="Agent"):
+def catalog(query: str = "Agent") -> list[Json]:
     return [
         {
             "id": key,

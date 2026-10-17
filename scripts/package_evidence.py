@@ -13,20 +13,40 @@ ROOT = Path(__file__).resolve().parents[1]
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--output", type=Path, default=ROOT / "artifacts/CareerForge_V1_Offline_Evidence.zip"
+        "--output",
+        type=Path,
+        default=ROOT / "artifacts/CareerForge_V1_Offline_Evidence.zip",
     )
     args = parser.parse_args()
-    files = [ROOT / "README.md", ROOT / "NOTICE.md", ROOT / "docs/progress/V1_DELIVERY.md"]
-    files.extend([ROOT / "docs/progress/V1_ENVIRONMENT.json", ROOT / "docs/progress/V1_BACKUP_RESTORE.json"])
+    files = [
+        ROOT / "README.md",
+        ROOT / "NOTICE.md",
+        ROOT / "docs/progress/V1_DELIVERY.md",
+    ]
+    files.extend(
+        [
+            ROOT / "docs/progress/V1_ENVIRONMENT.json",
+            ROOT / "docs/progress/V1_BACKUP_RESTORE.json",
+        ]
+    )
     for stage in range(4, 12):
         files.append(ROOT / f"docs/progress/S{stage:02}_REPORT.md")
-    for directory in ["docs/operations", "docs/interview", "docs/demo", "evals/reports"]:
+    for directory in [
+        "docs/operations",
+        "docs/interview",
+        "docs/demo",
+        "evals/reports",
+    ]:
         files.extend(p for p in (ROOT / directory).rglob("*") if p.is_file())
     files.extend((ROOT / "docs/progress").glob("V1*.xml"))
     files.extend((ROOT / "scripts").glob("*.py"))
     files.append(ROOT / "docs/decisions/0002-explicit-workflows.md")
     commit = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True, check=True
+        ["git", "rev-parse", "HEAD"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
     ).stdout.strip()
     manifest = {
         "mode": "offline_engineering_evidence",

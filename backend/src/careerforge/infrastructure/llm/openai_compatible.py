@@ -214,7 +214,7 @@ class OpenAICompatibleProvider:
 
     def __init__(
         self, *, base_url: str, api_key: str, client: httpx.AsyncClient, timeout_seconds: float = 30
-    ):
+    ) -> None:
         self._url = base_url.rstrip("/") + "/chat/completions"
         self._api_key = api_key
         self._client = client

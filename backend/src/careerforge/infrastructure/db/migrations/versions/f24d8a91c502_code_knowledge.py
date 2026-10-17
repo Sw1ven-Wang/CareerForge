@@ -10,7 +10,7 @@ branch_labels = None
 depends_on = None
 
 
-def upgrade():
+def upgrade() -> None:
     op.create_table(
         "code_knowledge_indexes",
         sa.Column("id", sa.Uuid(), primary_key=True),
@@ -74,7 +74,7 @@ def upgrade():
     op.create_index("ix_code_learning_links_owner_id", "code_learning_links", ["owner_id"])
 
 
-def downgrade():
+def downgrade() -> None:
     op.drop_table("code_learning_links")
     op.drop_table("code_knowledge_chunks")
     op.drop_table("code_knowledge_indexes")

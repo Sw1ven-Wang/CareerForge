@@ -3,13 +3,16 @@
 from uuid import UUID
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from careerforge.application.common import fingerprint
 from careerforge.application.goal_service import get_goal
 from careerforge.application.job_contract_service import read
 from careerforge.application.ownership import owned
 from careerforge.application.planning_service import new_plan_version, persist_objective
+from careerforge.domain.json_types import JsonObject as Json
 from careerforge.infrastructure.db.models import (
+    AgentRun,
     AlignmentReport,
     CareerGoalVersion,
     LearningObjective,
@@ -18,7 +21,7 @@ from careerforge.infrastructure.db.models import (
 from careerforge.schemas.planning import CriterionInput, ObjectiveInput
 
 
-def choose(expr, preferences, decisions):
+def choose(expr: Json, preferences: set[str], decisions: list[Json]) -> list[str]:
     if expr["type"] == "constraint":
         return []
     if expr["type"] == "concept":
@@ -31,7 +34,7 @@ def choose(expr, preferences, decisions):
         ]
     branches = []
     for child in expr["children"]:
-        nested = []
+        nested: list[Json] = []
         concepts = choose(child, preferences, nested)
         branches.append((concepts, nested, child))
     scored = sorted(
@@ -54,7 +57,7 @@ def choose(expr, preferences, decisions):
     return selected
 
 
-def produce(db, run):
+def produce(db: Session, run: AgentRun) -> Json:
     owner = run.owner_id
     data = run.input_manifest
     context = read(db, owner, UUID(data["planning_context_id"]), "context").payload["context"]
@@ -67,7 +70,7 @@ def produce(db, run):
     preferences = {p.casefold() for p in context["user_constraints"]["preferred_languages"]}
     objective_ids = []
     alignments = []
-    covered = set()
+    covered: set[str] = set()
     alignment = AlignmentReport(
         owner_id=owner, goal_version_id=target.id, run_id=run.id, payload={}
     )
@@ -76,24 +79,26 @@ def produce(db, run):
     for demand in demands:
         for fact_id in demand["supporting_requirement_ids"]:
             fact = facts[fact_id]
-            decisions = []
+            decisions: list[Json] = []
             concepts = choose(fact["expression"], preferences, decisions)
             for concept in dict.fromkeys(concepts):
                 if concept in covered:
                     continue
                 covered.add(concept)
                 criteria = [
-                    CriterionInput(
-                        dimension=dimension,
-                        scenario=f"本人项目中的一个 {concept} 场景",
-                        expected_behavior=behavior,
-                        pass_rule="提交材料能追溯到版本并支持所述结论",
-                        fail_rule="材料明确显示条件不满足",
-                        unknown_rule="缺少材料或贡献不明时保持未知",
-                        critical=True,
-                        allowed_methods=["user_reported", "human_review"],
-                        required_artifact_types=[artifact],
-                        limitations=["静态材料不能证明本人贡献或实际运行"],
+                    CriterionInput.model_validate(
+                        dict(
+                            dimension=dimension,
+                            scenario=f"本人项目中的一个 {concept} 场景",
+                            expected_behavior=behavior,
+                            pass_rule="提交材料能追溯到版本并支持所述结论",
+                            fail_rule="材料明确显示条件不满足",
+                            unknown_rule="缺少材料或贡献不明时保持未知",
+                            critical=True,
+                            allowed_methods=["user_reported", "human_review"],
+                            required_artifact_types=[artifact],
+                            limitations=["静态材料不能证明本人贡献或实际运行"],
+                        )
                     )
                     for dimension, behavior, artifact in [
                         ("artifact", "提供实现与正常、失败场景记录", "execution_record"),

@@ -89,5 +89,6 @@ WORKFLOWS[("assessment", ASSESSMENT_VERSION)] = execute_assessment
 
 from careerforge.application.study_service import VERSION as STUDY_VERSION  # noqa: E402
 from careerforge.workflows.study import execute as execute_study  # noqa: E402
+
 for study_type in ("market_research", "project_research", "learning_path"):
     WORKFLOWS[(study_type, STUDY_VERSION)] = execute_study

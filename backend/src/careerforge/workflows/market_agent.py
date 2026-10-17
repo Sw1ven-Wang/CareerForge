@@ -18,6 +18,7 @@ from careerforge.application.run_service import (
     transition,
 )
 from careerforge.domain.errors import BusinessError
+from careerforge.domain.json_types import JsonObject as Json
 from careerforge.domain.runs import LeaseLost
 from careerforge.infrastructure.db.models import MarketReport
 from careerforge.infrastructure.db.session import get_engine
@@ -25,7 +26,7 @@ from careerforge.infrastructure.llm.provider import ModelError
 from careerforge.workflows.job_agent import call
 
 
-def execute(run_id, worker):
+def execute(run_id: UUID, worker: str) -> None:
     factory = sessionmaker(get_engine(), expire_on_commit=False)
     with factory.begin() as db:
         epoch = claim(db, run_id, worker)
@@ -39,7 +40,8 @@ def execute(run_id, worker):
             if artifact(db, run, "result", VERSION):
                 transition(db, run, "succeeded")
                 return
-        outputs = []
+        outputs: list[Json] = []
+        output: Json
         for snapshot in snapshots:
             key = "extract:" + snapshot.job_snapshot_id
             with factory.begin() as db:
@@ -118,6 +120,8 @@ def execute(run_id, worker):
                 db, run, [i for item in outputs for i in item["requirement_ids"]]
             )
             report = db.get(MarketReport, UUID(output["market_report_id"]))
+            if report is None:
+                raise BusinessError(404, "NOT_FOUND", "分析报告不存在。")
             report.payload = {
                 **report.payload,
                 "agent_analysis": {
@@ -131,6 +135,8 @@ def execute(run_id, worker):
                 },
                 "warnings": ["真实模型候选已校验原文位置；尚未人工确认的要求不进入正式统计。"],
             }
+            if report is None:
+                raise BusinessError(404, "NOT_FOUND", "分析报告不存在。")
             report.payload = {
                 **report.payload,
                 "counts": {

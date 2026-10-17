@@ -30,7 +30,7 @@ flowchart LR
 - **受控执行**：命令逐条确认后在无网络 Docker 沙箱运行；桌面桥接不提供任意宿主 Shell。
 - **持久化运行**：保存阶段产物、事件、调用收据和预算；不确定的模型请求不自动重复收费。
 
-默认收集目标为 5 个不同审核项目，可配置为 1–10 个；不足时保留结果，由用户决定是否继续一轮，不无限搜索或调用模型。
+新建方向默认按所选学习目标的代码位置覆盖规划，数量 5（可设 1–10）作为收集偏好；不足时需明确确认开始当前范围。可选择“必须达到指定数量”，历史方向也保留严格数量要求。数量达标仍不能替代目标覆盖；不无限搜索或调用模型。
 
 ## 架构
 
@@ -140,13 +140,13 @@ scripts/      开发、演示、文档导出与运维工具
 ```
 
 - [文档索引](docs/00_README.md)
-- [Agent 主流程设计](docs/decisions/0003-agent-study-pipeline.md)
+- [Agent 主流程设计](docs/decisions/0003-agent-study-pipeline.md) · [A 包覆盖与证据策略](docs/decisions/0004-coverage-and-evidence-levels.md)
 - [部署与备份恢复](docs/operations/deployment.md)
 - [运行恢复和取消](docs/operations/recovery.md)
 - [本机 IDE 的边界](desktop/README.md)
 - [贡献指南](CONTRIBUTING.md) · [安全说明](SECURITY.md)
 
-部分历史文档记录了当时的产品结构与开发机验证条件，请结合日期阅读；当前主流程以本 README 和 ADR 0003 为准。
+部分历史文档记录了当时的产品结构与开发机验证条件，请结合日期阅读；当前主流程以本 README、ADR 0003 及其修订 ADR 0004 为准。
 
 ## 许可证
 

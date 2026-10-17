@@ -3,7 +3,7 @@ import json
 import secrets
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, cast
 from uuid import UUID, uuid4
 
 from argon2 import PasswordHasher
@@ -384,18 +384,21 @@ def sources(
     elif read_status is not None:
         raise BusinessError(422, "INVALID_FILTER", "可读状态筛选无效。")
     rows, following = paginate(query, Source, db, cursor, limit)
-    metadata = {
-        source_id: values
-        for source_id, values in db.execute(
-            select(SourceSnapshot.source_id, SourceSnapshot.metadata_values)
-            .where(
-                SourceSnapshot.owner_id == user.id,
-                SourceSnapshot.source_id.in_([row.id for row in rows]),
+    metadata = cast(
+        dict[UUID, dict[str, Any]],
+        {
+            source_id: values
+            for source_id, values in db.execute(
+                select(SourceSnapshot.source_id, SourceSnapshot.metadata_values)
+                .where(
+                    SourceSnapshot.owner_id == user.id,
+                    SourceSnapshot.source_id.in_([row.id for row in rows]),
+                )
+                .distinct(SourceSnapshot.source_id)
+                .order_by(SourceSnapshot.source_id, SourceSnapshot.version_no.desc())
             )
-            .distinct(SourceSnapshot.source_id)
-            .order_by(SourceSnapshot.source_id, SourceSnapshot.version_no.desc())
-        )
-    }
+        },
+    )
     return envelope(
         request,
         [
@@ -625,4 +628,5 @@ from careerforge.api.routes.knowledge import router as knowledge_router  # noqa:
 app.include_router(knowledge_router)
 
 from careerforge.api.routes.study import router as study_router  # noqa: E402
+
 app.include_router(study_router)

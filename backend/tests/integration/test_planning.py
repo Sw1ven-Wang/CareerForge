@@ -2,11 +2,6 @@ from concurrent.futures import ThreadPoolExecutor
 from uuid import UUID, uuid4
 
 import pytest
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-from test_market_research import A, goal, post, run_report, source
-from test_owner_scope import clients as clients
-
 from careerforge.infrastructure.db.models import (
     AlignmentReport,
     LearningPlanVersion,
@@ -14,6 +9,10 @@ from careerforge.infrastructure.db.models import (
 )
 from careerforge.infrastructure.db.session import get_engine
 from careerforge.workflows.alignment.workflow import execute
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+from test_market_research import A, goal, post, run_report, source
+from test_owner_scope import clients as clients
 
 pytestmark = pytest.mark.infrastructure
 

@@ -4,6 +4,7 @@ import json
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from careerforge.application import attachment_service
 from careerforge.application import build_service as build
@@ -13,6 +14,7 @@ from careerforge.application import studio_service as studio
 from careerforge.application.common import check_revision, fingerprint, idempotency
 from careerforge.application.ownership import owned
 from careerforge.domain.errors import BusinessError
+from careerforge.domain.json_types import JsonObject as Json
 from careerforge.infrastructure.db.models import (
     Assessment,
     AssessmentConfirmation,
@@ -21,19 +23,31 @@ from careerforge.infrastructure.db.models import (
     CareerGoalVersion,
     LearningPlan,
     LearningPlanVersion,
+    LearningWorkspace,
     PlanDeltaProposal,
     Submission,
 )
-from careerforge.schemas.builds import AssessmentInput, ProjectInput, SubmissionInput, TaskInput
+from careerforge.schemas.builds import (
+    AssessmentInput,
+    ConfirmationInput,
+    ExecutionRecord,
+    ProjectInput,
+    RevocationInput,
+    SubmissionInput,
+    TaskInput,
+)
+from careerforge.schemas.studio import PracticePlanUpdateInput, PracticeSubmissionInput
 
 
-def roots(db, owner, workspace_id, practice_id, lock=False):
+def roots(
+    db: Session, owner: UUID, workspace_id: UUID, practice_id: UUID, lock: bool = False
+) -> tuple[LearningWorkspace, Json]:
     workspace = studio.workspace(db, owner, workspace_id, lock)
     item, _ = practice.validate(db, owner, workspace, practice_id)
     return workspace, item
 
 
-def linked_task(db, owner, item):
+def linked_task(db: Session, owner: UUID, item: Json) -> BuildTask | None:
     identifier = item.get("build_task_id")
     if not identifier:
         return None
@@ -44,7 +58,7 @@ def linked_task(db, owner, item):
     return task
 
 
-def validate_snapshot(db, owner, saved):
+def validate_snapshot(db: Session, owner: UUID, saved: Submission) -> None:
     snapshot = saved.payload.get("workspace_snapshot")
     if not snapshot:
         return
@@ -62,7 +76,7 @@ def validate_snapshot(db, owner, saved):
         raise BusinessError(409, "SUBMISSION_HASH_MISMATCH", "代码附件与快照不一致。")
 
 
-def code_version(saved):
+def code_version(saved: Submission) -> str | None:
     snapshot = saved.payload.get("workspace_snapshot")
     return (
         "workspace-sha256:" + snapshot["files_hash"]
@@ -71,8 +85,8 @@ def code_version(saved):
     )
 
 
-def plans(db, owner, objective_id):
-    objective = planning.objective_version(db, owner, UUID(objective_id))
+def plans(db: Session, owner: UUID, objective_id: UUID | str) -> list[Json]:
+    objective = planning.objective_version(db, owner, UUID(str(objective_id)))
     goal = owned(db, CareerGoalVersion, owner, objective.goal_version_id)
     root = db.scalar(
         select(LearningPlan).where(
@@ -87,7 +101,7 @@ def plans(db, owner, objective_id):
         .order_by(LearningPlanVersion.version_no.desc())
         .limit(1)
     )
-    if not latest or UUID(objective_id) not in planning.members(db, latest):
+    if not latest or UUID(str(objective_id)) not in planning.members(db, latest):
         return []
     return [
         {
@@ -100,7 +114,13 @@ def plans(db, owner, objective_id):
     ]
 
 
-def detail(db, owner, workspace_id, practice_id, submission_id=None):
+def detail(
+    db: Session,
+    owner: UUID,
+    workspace_id: UUID,
+    practice_id: UUID,
+    submission_id: UUID | None = None,
+) -> Json:
     workspace, item = roots(db, owner, workspace_id, practice_id)
     criteria = planning.criteria(db, owner, UUID(item["objective_version_id"]))
     task = linked_task(db, owner, item)
@@ -152,7 +172,7 @@ def detail(db, owner, workspace_id, practice_id, submission_id=None):
                 "submission_id": str(s.id),
                 "version_no": s.version_no,
                 "code_version": code_version(s),
-                "current": s.id == task.current_submission_id,
+                "current": bool(task and s.id == task.current_submission_id),
             }
             for s in rows
         ],
@@ -170,7 +190,14 @@ def detail(db, owner, workspace_id, practice_id, submission_id=None):
     }
 
 
-def submit(db, owner, workspace_id, practice_id, body, key):
+def submit(
+    db: Session,
+    owner: UUID,
+    workspace_id: UUID,
+    practice_id: UUID,
+    body: PracticeSubmissionInput,
+    key: str | None,
+) -> Json:
     workspace, item = roots(db, owner, workspace_id, practice_id, True)
     record = idempotency(
         db,
@@ -309,7 +336,7 @@ def submit(db, owner, workspace_id, practice_id, body, key):
                 "kind": "careerforge_ide_snapshot",
                 "code_version": "workspace-sha256:" + files_hash,
             },
-            execution_records=records,
+            execution_records=[ExecutionRecord.model_validate(r) for r in records],
             explanation_answers=body.explanation_answers,
             transfer_notes=body.transfer_notes,
             actual_minutes=body.actual_minutes,
@@ -317,6 +344,8 @@ def submit(db, owner, workspace_id, practice_id, body, key):
         str(uuid4()),
     )
     saved = db.get(Submission, UUID(response["submission_id"]))
+    if saved is None:
+        raise BusinessError(404, "NOT_FOUND", "提交记录不存在。")
     snapshot = {
         **bundle,
         "source_hash": item["source_hash"],
@@ -344,7 +373,9 @@ def submit(db, owner, workspace_id, practice_id, body, key):
     return detail(db, owner, workspace_id, practice_id, saved.id)
 
 
-def check_assessment(db, owner, workspace_id, practice_id, assessment_id):
+def check_assessment(
+    db: Session, owner: UUID, workspace_id: UUID, practice_id: UUID, assessment_id: UUID
+) -> Assessment:
     _, item = roots(db, owner, workspace_id, practice_id)
     task = linked_task(db, owner, item)
     proposal = build.assessment(db, owner, assessment_id)
@@ -354,19 +385,35 @@ def check_assessment(db, owner, workspace_id, practice_id, assessment_id):
     return proposal
 
 
-def review(db, owner, workspace_id, practice_id, assessment_id, body, key):
+def review(
+    db: Session,
+    owner: UUID,
+    workspace_id: UUID,
+    practice_id: UUID,
+    assessment_id: UUID,
+    body: ConfirmationInput,
+    key: str | None,
+) -> Json:
     check_assessment(db, owner, workspace_id, practice_id, assessment_id)
     build.confirm(db, owner, assessment_id, body, key)
     return detail(db, owner, workspace_id, practice_id)
 
 
-def revoke(db, owner, workspace_id, practice_id, assessment_id, body, key):
+def revoke(
+    db: Session,
+    owner: UUID,
+    workspace_id: UUID,
+    practice_id: UUID,
+    assessment_id: UUID,
+    body: RevocationInput,
+    key: str | None,
+) -> Json:
     check_assessment(db, owner, workspace_id, practice_id, assessment_id)
     build.revoke(db, owner, assessment_id, body, key)
     return detail(db, owner, workspace_id, practice_id)
 
 
-def effective_outcome(db, owner, entry):
+def effective_outcome(db: Session, owner: UUID, entry: Json) -> Json:
     try:
         task = build.task(db, owner, UUID(entry["task_id"]))
         confirmation = owned(db, AssessmentConfirmation, owner, UUID(entry["confirmation_id"]))
@@ -390,7 +437,14 @@ def effective_outcome(db, owner, entry):
         }
 
 
-def update_plan(db, owner, workspace_id, practice_id, body, key):
+def update_plan(
+    db: Session,
+    owner: UUID,
+    workspace_id: UUID,
+    practice_id: UUID,
+    body: PracticePlanUpdateInput,
+    key: str | None,
+) -> Json:
     _, item = roots(db, owner, workspace_id, practice_id)
     record = idempotency(
         db, owner, f"studio.delivery_plan:{practice_id}", key, body.model_dump(mode="json")
@@ -419,6 +473,7 @@ def update_plan(db, owner, workspace_id, practice_id, body, key):
     ids = planning.members(db, source)
     if (
         source.plan_id != root.id
+        or latest is None
         or latest.id != source.id
         or UUID(item["objective_version_id"]) not in ids
     ):

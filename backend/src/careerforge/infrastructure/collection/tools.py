@@ -6,12 +6,19 @@ from urllib.parse import quote
 import httpx
 
 from careerforge.config.settings import get_settings
-from careerforge.infrastructure.collection.extractors import extract_job, tencent_detail_url
-from careerforge.infrastructure.collection.network import CollectionError
+from careerforge.domain.json_types import JsonObject as Json
+from careerforge.infrastructure.collection.extractors import (
+    CollectedJob,
+    extract_job,
+    tencent_detail_url,
+)
+from careerforge.infrastructure.collection.network import CollectionError, Page, PublicWeb
 from careerforge.infrastructure.collection.portals import PORTALS, identify
 
 
-async def search_jobs(web, channel, query, limit, allow_search_api=False):
+async def search_jobs(
+    web: PublicWeb, channel: str, query: str, limit: int, allow_search_api: bool = False
+) -> Json:
     portal = PORTALS[channel]
     browser_url = portal[3].format(query=quote(query))
     if channel == "tencent":
@@ -156,7 +163,7 @@ async def search_jobs(web, channel, query, limit, allow_search_api=False):
     }
 
 
-async def read_job(web, url):
+async def read_job(web: PublicWeb, url: str) -> tuple[CollectedJob, Page]:
     channel = identify(url)
     effective = tencent_detail_url(url) if channel == "tencent" else url
     page = await web.fetch(effective)

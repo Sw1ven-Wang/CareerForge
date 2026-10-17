@@ -1,9 +1,11 @@
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Request
 
 from careerforge.api.dependencies import Authenticated, Database, IdempotencyKey
 from careerforge.application import source_library_service as service
+from careerforge.domain.json_types import JsonObject as Json
 from careerforge.schemas.resources import Envelope
 from careerforge.schemas.source_library import (
     CategoryInput,
@@ -14,12 +16,12 @@ from careerforge.schemas.source_library import (
 router = APIRouter(prefix="/api/v1/source-library", tags=["source-library"])
 
 
-def envelope(request, data):
+def envelope(request: Request, data: Any) -> Json:
     return {"data": data, "request_id": request.state.request_id}
 
 
 @router.post("/initialize", response_model=Envelope)
-def initialize(request: Request, user: Authenticated, db: Database):
+def initialize(request: Request, user: Authenticated, db: Database) -> Json:
     return envelope(request, service.initialize(db, user.id))
 
 
@@ -30,7 +32,7 @@ def create_category(
     user: Authenticated,
     db: Database,
     idempotency_key: IdempotencyKey = None,
-):
+) -> Json:
     return envelope(request, service.save_category(db, user.id, value, idempotency_key))
 
 
@@ -42,7 +44,7 @@ def revise_category(
     user: Authenticated,
     db: Database,
     idempotency_key: IdempotencyKey = None,
-):
+) -> Json:
     return envelope(
         request, service.save_category(db, user.id, value, idempotency_key, category_id)
     )
@@ -56,5 +58,5 @@ def revise_source(
     user: Authenticated,
     db: Database,
     idempotency_key: IdempotencyKey = None,
-):
+) -> Json:
     return envelope(request, service.edit_source(db, user.id, source_id, value, idempotency_key))

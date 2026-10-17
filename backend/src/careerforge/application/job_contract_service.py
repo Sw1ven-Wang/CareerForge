@@ -2,7 +2,9 @@
 
 import hashlib
 import json
+from collections.abc import Iterable
 from datetime import UTC, datetime
+from typing import Any
 from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 from sqlalchemy import select, text
@@ -18,7 +20,9 @@ from careerforge.domain.job_requirements import (
     extract,
     validate_expression,
 )
+from careerforge.domain.json_types import JsonObject as Json
 from careerforge.infrastructure.db.models import (
+    AgentRun,
     CareerGoalVersion,
     MarketReport,
     Source,
@@ -27,6 +31,8 @@ from careerforge.infrastructure.db.models import (
 from careerforge.infrastructure.db.models import JobContractArtifact as Artifact
 from careerforge.schemas.job_contract import (
     CaptureImport,
+    ContextInput,
+    FactRevision,
     JobPostingSnapshotV1,
     PlanningContextV1,
     RequirementFactV1,
@@ -36,7 +42,7 @@ from careerforge.schemas.job_contract import (
 VERSION = "job-contract-1.1"
 
 
-def read(db: Session, owner: UUID, identifier: UUID, kind=None):
+def read(db: Session, owner: UUID, identifier: UUID, kind: str | None = None) -> Artifact:
     row = db.get(Artifact, identifier)
     if (
         not row
@@ -59,6 +65,8 @@ def read(db: Session, owner: UUID, identifier: UUID, kind=None):
         for i in row.payload["input_manifest"]["fact_ids"]:
             read(db, owner, UUID(i), "fact")
     if row.kind == "context":
+        if row.parent_id is None:
+            raise not_found()
         from careerforge.application.planning_service import evidence_version
 
         for i in row.payload["context"]["personal_evidence_version_ids"]:
@@ -84,11 +92,20 @@ def read(db: Session, owner: UUID, identifier: UUID, kind=None):
     return row
 
 
-def result(row):
+def result(row: Artifact) -> Json:
     return {"contract_artifact_id": str(row.id), "kind": row.kind, **row.payload}
 
 
-def add_capture(db, owner, source, snapshot, raw, value, legacy=False, collected=None):
+def add_capture(
+    db: Session,
+    owner: UUID,
+    source: Source,
+    snapshot: SourceSnapshot,
+    raw: str,
+    value: CaptureImport,
+    legacy: bool = False,
+    collected: Json | None = None,
+) -> Artifact:
     capture_id = uuid4()
     job_id = uuid4()
     provider = collected["channel"] if collected else value.provider
@@ -246,7 +263,9 @@ def add_capture(db, owner, source, snapshot, raw, value, legacy=False, collected
     return row
 
 
-def from_legacy(db, owner, source, snapshot, raw=None):
+def from_legacy(
+    db: Session, owner: UUID, source: Source, snapshot: SourceSnapshot, raw: str | None = None
+) -> Artifact:
     existing = db.scalar(
         select(Artifact).where(
             Artifact.owner_id == owner,
@@ -267,7 +286,7 @@ def from_legacy(db, owner, source, snapshot, raw=None):
     return add_capture(db, owner, source, snapshot, payload, value, legacy=raw is None)
 
 
-def import_capture(db, owner, value, key):
+def import_capture(db: Session, owner: UUID, value: CaptureImport, key: str | None) -> Json:
     record = idempotency(db, owner, "job-contract.import", key, value.model_dump(mode="json"))
     if record.response_summary:
         read(db, owner, UUID(record.response_summary["contract_artifact_id"]))
@@ -354,7 +373,7 @@ def import_capture(db, owner, value, key):
     return record.response_summary
 
 
-def facts_for(db, owner, job_id, current=True):
+def facts_for(db: Session, owner: UUID, job_id: UUID, current: bool = True) -> list[Artifact]:
     read(db, owner, job_id, "snapshot")
     rows = list(
         db.scalars(
@@ -369,7 +388,9 @@ def facts_for(db, owner, job_id, current=True):
     return [r for r in rows if not current or r.id not in superseded]
 
 
-def revise_fact(db, owner, identifier, value, key):
+def revise_fact(
+    db: Session, owner: UUID, identifier: UUID, value: FactRevision, key: str | None
+) -> Json:
     record = idempotency(
         db, owner, f"job-contract.fact.{identifier}", key, value.model_dump(mode="json")
     )
@@ -385,6 +406,8 @@ def revise_fact(db, owner, identifier, value, key):
     corrected = value.correction
     if corrected.requirement_id != str(previous.id):
         raise BusinessError(422, "FACT_ID_MISMATCH", "修订必须引用当前要求身份。")
+    if previous.parent_id is None:
+        raise not_found()
     parent = read(db, owner, previous.parent_id, "snapshot")
     snapshot = JobPostingSnapshotV1.model_validate(parent.payload["snapshot"])
     try:
@@ -438,7 +461,7 @@ def revise_fact(db, owner, identifier, value, key):
     return record.response_summary
 
 
-def job_for_source(db, owner, snapshot_id):
+def job_for_source(db: Session, owner: UUID, snapshot_id: UUID) -> Artifact | None:
     row = db.scalar(
         select(Artifact).where(
             Artifact.owner_id == owner,
@@ -449,7 +472,7 @@ def job_for_source(db, owner, snapshot_id):
     return read(db, owner, row.id, "snapshot") if row else None
 
 
-def start_market(db, owner, body, key):
+def start_market(db: Session, owner: UUID, body: Any, key: str | None) -> Json:
     record = idempotency(db, owner, "job-contract.market", key, body.model_dump(mode="json"))
     target = owned(db, CareerGoalVersion, owner, body.goal_version_id)
     from careerforge.application.market_report_service import inputs
@@ -462,7 +485,7 @@ def start_market(db, owner, body, key):
         if row.metadata_values.get("source_type") == "job_posting":
             job = job_for_source(db, owner, row.id)
             if not job:
-                source = db.get(Source, row.source_id)
+                source = owned(db, Source, owner, row.source_id)
                 job = from_legacy(db, owner, source, row)
             jobs.append(job)
     if not jobs:
@@ -471,7 +494,7 @@ def start_market(db, owner, body, key):
         return record.response_summary
     from careerforge.application.run_service import create_run
 
-    manifest = {
+    manifest: Json = {
         "goal_version_id": str(target.id),
         "source_snapshot_ids": [str(r.id) for r in rows],
         "job_snapshot_ids": [str(r.id) for r in jobs],
@@ -489,7 +512,8 @@ def start_market(db, owner, body, key):
         decision = db.get(DedupDecision, i)
         candidate = db.get(DuplicateCandidate, decision.candidate_id) if decision else None
         if (
-            candidate is None
+            decision is None
+            or candidate is None
             or candidate.owner_id != owner
             or candidate.goal_version_id != target.id
         ):
@@ -497,17 +521,19 @@ def start_market(db, owner, body, key):
         if candidate.id in seen:
             raise BusinessError(422, "AMBIGUOUS_DECISIONS", "同一候选对只能选择一个决定版本。")
         seen.add(candidate.id)
-        links = []
+        posting_links: list[str] = []
         for posting_id in [candidate.left_id, candidate.right_id]:
             posting = db.get(JobPostingVersion, posting_id)
+            if posting is None:
+                raise not_found()
             mapped = job_for_source(db, owner, posting.snapshot_id)
             if not mapped or mapped.id not in {j.id for j in jobs}:
                 raise BusinessError(422, "DECISION_INPUT_MISMATCH", "去重决定不属于所选快照。")
-            links.append(str(mapped.id))
+            posting_links.append(str(mapped.id))
         manifest["dedup_decisions"].append(
             {
-                "left": links[0],
-                "right": links[1],
+                "left": posting_links[0],
+                "right": posting_links[1],
                 "decision": decision.decision,
                 "decision_id": str(decision.id),
             }
@@ -537,8 +563,8 @@ def start_market(db, owner, body, key):
     return record.response_summary
 
 
-def produce_report(db, run, extra_fact_ids=()):
-    manifest = {
+def produce_report(db: Session, run: AgentRun, extra_fact_ids: Iterable[UUID | str] = ()) -> Json:
+    manifest: Json = {
         **run.input_manifest,
         "fact_ids": list(dict.fromkeys([*run.input_manifest["fact_ids"], *extra_fact_ids])),
     }
@@ -605,7 +631,7 @@ def produce_report(db, run, extra_fact_ids=()):
         if not confirmed:
             exclusions[s.job_snapshot_id] = "requirements_need_review"
     # One explicit selected version per posting; deterministic selection among frozen inputs.
-    by_posting = {}
+    by_posting: dict[str, JobPostingSnapshotV1] = {}
     for s in snapshots:
         if s.job_snapshot_id in exclusions:
             continue
@@ -634,7 +660,7 @@ def produce_report(db, run, extra_fact_ids=()):
     active = [s for s in snapshots if s.job_snapshot_id not in exclusions]
     parent = {s.job_snapshot_id: s.job_snapshot_id for s in active}
 
-    def find(i):
+    def find(i: str) -> str:
         while parent[i] != i:
             i = parent[i]
         return i
@@ -822,7 +848,7 @@ def produce_report(db, run, extra_fact_ids=()):
     }
 
 
-def create_context(db, owner, value, key):
+def create_context(db: Session, owner: UUID, value: ContextInput, key: str | None) -> Json:
     record = idempotency(db, owner, "job-contract.context", key, value.model_dump(mode="json"))
     report = read(db, owner, UUID(value.demand_report_id), "report")
     goal = owned(db, CareerGoalVersion, owner, UUID(value.goal_version_id))
@@ -882,7 +908,7 @@ def create_context(db, owner, value, key):
             "require_source_evidence": True,
         },
     }
-    manifest = {
+    manifest: Json = {
         "context": json.loads(json.dumps(context)),
         "goal_hash": goal.content_hash,
         "report_hash": fingerprint(report.payload),

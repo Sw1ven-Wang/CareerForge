@@ -1,10 +1,13 @@
 """Read-only, bounded learning research with verified code evidence."""
 
 import json
+from collections.abc import Iterable
 from copy import deepcopy
+from typing import Any
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from careerforge.application import knowledge_service as knowledge
 from careerforge.application import repository_service as repositories
@@ -14,6 +17,7 @@ from careerforge.application.planning_service import objective_version
 from careerforge.application.run_service import create_run
 from careerforge.config.settings import get_settings
 from careerforge.domain.errors import BusinessError
+from careerforge.domain.json_types import JsonObject as Json
 from careerforge.infrastructure.db.models import (
     AgentRun,
     CodeKnowledgeIndex,
@@ -22,6 +26,7 @@ from careerforge.infrastructure.db.models import (
     Repository,
     RepositorySnapshot,
 )
+from careerforge.schemas.studio import LearningGuide, StudioAgentInput
 
 VERSION = "learning-studio-research-1.0"
 TOOL_LIMIT = 8
@@ -29,7 +34,7 @@ SOURCE_LIMIT = 4
 SOURCE_CHARS = 3500
 
 
-def read_requirements(db, owner, identifiers):
+def read_requirements(db: Session, owner: UUID, identifiers: Iterable[UUID | str]) -> list[Json]:
     from careerforge.application.source_service import get_snapshot, get_source
     from careerforge.infrastructure.db.models import SourceSnapshot
 
@@ -58,7 +63,7 @@ def read_requirements(db, owner, identifiers):
     return values
 
 
-def validate_requirements(db, owner, requirements):
+def validate_requirements(db: Session, owner: UUID, requirements: list[Json]) -> None:
     current = read_requirements(db, owner, [r["source_snapshot_id"] for r in requirements])
     if [(r["source_snapshot_id"], r["content_hash"]) for r in current] != [
         (r["source_snapshot_id"], r["content_hash"]) for r in requirements
@@ -66,7 +71,9 @@ def validate_requirements(db, owner, requirements):
         raise BusinessError(409, "REQUIREMENT_CONTENT_CHANGED", "冻结需求已变化。")
 
 
-def requirement_links(guide, requirements, code_sources):
+def requirement_links(
+    guide: LearningGuide, requirements: list[Json], code_sources: list[Json]
+) -> list[Json]:
     allowed = {r["source_snapshot_id"]: r for r in requirements}
     citations = {r["citation_id"] for r in code_sources}
     if requirements and guide.status == "grounded" and not guide.requirement_links:
@@ -93,7 +100,9 @@ def requirement_links(guide, requirements, code_sources):
     return links
 
 
-def start(db, owner, workspace_id, body, key):
+def start(
+    db: Session, owner: UUID, workspace_id: UUID, body: StudioAgentInput, key: str | None
+) -> Json:
     workspace = owned(db, LearningWorkspace, owner, workspace_id)
     if not body.objective_version_id and not body.source_snapshot_ids:
         raise BusinessError(
@@ -165,7 +174,7 @@ def start(db, owner, workspace_id, body, key):
                 "tags": index.payload.get("tags", [])[:10],
             }
         )
-    context = {
+    context: Json = {
         "objective": (
             {
                 k: objective.payload.get(k)
@@ -228,7 +237,7 @@ def start(db, owner, workspace_id, body, key):
     return record.response_summary
 
 
-def validate_inputs(db, run):
+def validate_inputs(db: Session, run: AgentRun) -> LearningWorkspace:
     data = run.input_manifest
     workspace = owned(db, LearningWorkspace, run.owner_id, UUID(data["workspace_id"]))
     if data["objective_version_id"]:
@@ -243,7 +252,7 @@ def validate_inputs(db, run):
     return workspace
 
 
-def brief(item):
+def brief(item: Json) -> Json:
     return {
         key: item[key]
         for key in (
@@ -259,7 +268,9 @@ def brief(item):
     }
 
 
-def read_source(db, owner, item, start=None, end=None):
+def read_source(
+    db: Session, owner: UUID, item: Json, start: int | None = None, end: int | None = None
+) -> Json:
     start = start if start is not None else item["start_line"]
     end = end if end is not None else item["end_line"]
     if not item["start_line"] <= start <= end <= item["end_line"]:
@@ -302,7 +313,7 @@ def read_source(db, owner, item, start=None, end=None):
     }
 
 
-def parse_guide(structured):
+def parse_guide(structured: Any) -> tuple[LearningGuide, list[Json]]:
     """Only repair missing presentation labels; never alter facts or quotations."""
     from careerforge.schemas.studio import LearningGuide
 
@@ -318,7 +329,9 @@ def parse_guide(structured):
     return LearningGuide.model_validate(value), repairs
 
 
-def validate_guide(db, owner, guide, sources):
+def validate_guide(
+    db: Session, owner: UUID, guide: LearningGuide, sources: list[Json]
+) -> tuple[list[Json], list[Json]]:
     allowed = {item["citation_id"]: item for item in sources}
     if guide.status == "grounded" and not guide.points:
         raise ValueError("grounded report needs quoted evidence")
@@ -353,21 +366,34 @@ def validate_guide(db, owner, guide, sources):
     return points, [allowed[i] for i in allowed if i in used]
 
 
-def usage(db, run_id):
+def usage(db: Session, run_id: UUID) -> Json:
     receipts = list(db.scalars(select(ModelCallReceipt).where(ModelCallReceipt.run_id == run_id)))
     known = all(
         r.status == "completed" and r.usage and r.usage.get("status") == "known" for r in receipts
     )
     return {
         "calls": len(receipts),
-        "input_tokens": sum(r.usage["input_tokens"] for r in receipts) if known else None,
-        "output_tokens": sum(r.usage["output_tokens"] for r in receipts) if known else None,
+        "input_tokens": sum(r.usage["input_tokens"] for r in receipts if r.usage is not None)
+        if known
+        else None,
+        "output_tokens": sum(r.usage["output_tokens"] for r in receipts if r.usage is not None)
+        if known
+        else None,
         "status": "known" if known else "unknown",
         "cost_status": "not_priced",
     }
 
 
-def save(db, run, guide, sources, trace, synthetic=False, generated_by="model", repairs=None):
+def save(
+    db: Session,
+    run: AgentRun,
+    guide: LearningGuide,
+    sources: list[Json],
+    trace: list[Json],
+    synthetic: bool = False,
+    generated_by: str = "model",
+    repairs: list[Json] | None = None,
+) -> Json:
     validate_inputs(db, run)
     points, used = validate_guide(db, run.owner_id, guide, sources)
     requirements = run.input_manifest["context"].get("requirements_untrusted", [])
@@ -412,7 +438,7 @@ def save(db, run, guide, sources, trace, synthetic=False, generated_by="model", 
     }
 
 
-def visible_action(db, owner, item):
+def visible_action(db: Session, owner: UUID, item: Json) -> Json:
     try:
         if item.get("objective_version_id"):
             objective_version(db, owner, UUID(item["objective_version_id"]))

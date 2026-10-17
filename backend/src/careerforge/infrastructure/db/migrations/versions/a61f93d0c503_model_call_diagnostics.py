@@ -10,9 +10,9 @@ branch_labels = None
 depends_on = None
 
 
-def upgrade():
+def upgrade() -> None:
     op.add_column("model_call_receipts", sa.Column("diagnostics", JSONB(), nullable=True))
 
 
-def downgrade():
+def downgrade() -> None:
     op.drop_column("model_call_receipts", "diagnostics")

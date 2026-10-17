@@ -4,34 +4,36 @@ import json
 import re
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
+from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 from careerforge.domain.job_normalization import adapt, canonical
-from careerforge.infrastructure.collection.network import CollectionError
+from careerforge.infrastructure.collection.network import CollectionError, Page
 
 ADAPTER_VERSION = "public-jobs-1.0"
 
 
 class PageParser(HTMLParser):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
-        self.scripts, self.headings = [], []
-        self.script = None
-        self.heading = None
+        self.scripts: list[list[Any]] = []
+        self.headings: list[list[str]] = []
+        self.script: list[Any] | None = None
+        self.heading: list[str] | None = None
 
-    def handle_starttag(self, tag, attrs):
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag == "script":
             self.script = [dict(attrs), ""]
         if tag in {"h1", "h2", "title"}:
             self.heading = [tag, ""]
 
-    def handle_data(self, text):
+    def handle_data(self, text: str) -> None:
         if self.script is not None:
             self.script[1] += text
         if self.heading is not None:
             self.heading[1] += text
 
-    def handle_endtag(self, tag):
+    def handle_endtag(self, tag: str) -> None:
         if tag == "script" and self.script is not None:
             self.scripts.append(self.script)
             self.script = None
@@ -55,14 +57,14 @@ class CollectedJob:
     employment_type: str | None = None
 
 
-def assigned_json(parser, marker):
+def assigned_json(parser: PageParser, marker: str) -> Any:
     for _, body in parser.scripts:
         if marker in body:
             return json.JSONDecoder().raw_decode(body.split(marker, 1)[1].lstrip())[0]
     raise ValueError("Missing structured state")
 
 
-def extract_job(channel, page, source_url=None):
+def extract_job(channel: str, page: Page, source_url: str | None = None) -> CollectedJob:
     url = source_url or page.url
     if channel == "tencent" and "application/json" in page.content_type:
         value = json.loads(page.text)
@@ -169,7 +171,7 @@ def extract_job(channel, page, source_url=None):
     )
 
 
-def tencent_detail_url(url):
+def tencent_detail_url(url: str) -> str:
     post_id = parse_qs(urlparse(url).query).get("postId", [""])[0]
     if not post_id.isdigit():
         raise CollectionError("invalid_job_url", "腾讯岗位链接需要有效 postId。", url)

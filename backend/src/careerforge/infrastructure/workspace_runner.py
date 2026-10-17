@@ -9,10 +9,11 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from careerforge.domain.errors import BusinessError
+from careerforge.domain.json_types import JsonObject as Json
 from careerforge.infrastructure.db.session import get_engine
 
 
-def run(files, argv):
+def run(files: dict[str, str], argv: list[str]) -> Json:
     mail = Path("/mailbox")
     if not mail.is_dir():
         raise BusinessError(
@@ -33,7 +34,7 @@ def run(files, argv):
             tmp.write_text(json.dumps({"job_id": job_id, "files": files, "argv": argv}))
             tmp.replace(mail / "job.json")
             deadline = time.monotonic() + 40
-            result = None
+            result: Json | None = None
             while time.monotonic() < deadline:
                 target = mail / "result.json"
                 if target.exists():

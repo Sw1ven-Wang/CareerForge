@@ -1,7 +1,6 @@
 import json
 
 import httpx
-
 from careerforge.infrastructure.llm.openai_compatible import OpenAICompatibleProvider
 from careerforge.schemas.model_io import ModelRequest
 

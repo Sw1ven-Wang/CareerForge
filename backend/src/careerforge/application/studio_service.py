@@ -4,6 +4,8 @@ import json
 from pathlib import PurePosixPath
 from uuid import UUID, uuid4
 
+from sqlalchemy.orm import Session
+
 from careerforge.application.common import fingerprint, idempotency
 from careerforge.application.ownership import owned
 from careerforge.application.planning_service import objective_version
@@ -11,14 +13,25 @@ from careerforge.application.repository_service import citation_detail
 from careerforge.application.run_service import create_run, db_now
 from careerforge.config.settings import get_settings
 from careerforge.domain.errors import BusinessError, not_found
-from careerforge.infrastructure.db.models import LearningWorkspace
-from careerforge.schemas.studio import AgentReply
+from careerforge.domain.json_types import JsonObject as Json
+from careerforge.infrastructure.db.models import AgentRun, LearningWorkspace
+from careerforge.schemas.model_io import ModelResult
+from careerforge.schemas.studio import (
+    AgentReply,
+    CommandInput,
+    ConfirmInput,
+    FileInput,
+    ReferenceLinkInput,
+    StudioAgentInput,
+    WorkspaceInput,
+    WorkspaceSnapshotInput,
+)
 
 VERSION = "learning-studio-agent-1.0"
 BLOCKED = {".git", ".env", ".aws", ".ssh", ".codex", "node_modules", ".venv", "__pycache__"}
 
 
-def path(value):
+def path(value: str) -> str:
     p = PurePosixPath(value)
     if (
         not value
@@ -35,7 +48,7 @@ def path(value):
     return value
 
 
-def validate_files(files):
+def validate_files(files: dict[str, str]) -> None:
     if len(files) > 100 or sum(len(v.encode()) for v in files.values()) > 2_000_000:
         raise BusinessError(413, "WORKSPACE_TOO_LARGE", "工作区最多 100 个文本文件、共 2 MB。")
     for name, content in files.items():
@@ -46,11 +59,11 @@ def validate_files(files):
             )
 
 
-def workspace(db, owner, identifier, lock=False):
+def workspace(db: Session, owner: UUID, identifier: UUID, lock: bool = False) -> LearningWorkspace:
     return owned(db, LearningWorkspace, owner, identifier, lock=lock)
 
 
-def detail(row, db=None):
+def detail(row: LearningWorkspace, db: Session | None = None) -> Json:
     value = {"workspace_id": str(row.id), "name": row.name, "revision": row.revision, **row.payload}
     if db is not None:
         from careerforge.application.studio_learning_service import visible_action
@@ -75,7 +88,7 @@ def detail(row, db=None):
     return value
 
 
-def create(db, owner, body, key):
+def create(db: Session, owner: UUID, body: WorkspaceInput, key: str | None) -> Json:
     record = idempotency(db, owner, "studio.create", key, body.model_dump(mode="json"))
     if record.response_summary:
         return detail(workspace(db, owner, UUID(record.response_summary["workspace_id"])), db)
@@ -89,12 +102,12 @@ def create(db, owner, body, key):
     return detail(row, db)
 
 
-def revision(row, expected):
+def revision(row: LearningWorkspace, expected: int) -> None:
     if row.revision != expected:
         raise BusinessError(409, "WORKSPACE_CHANGED", "工作区已修改，请刷新并重新审阅。")
 
 
-def save_file(db, owner, identifier, body):
+def save_file(db: Session, owner: UUID, identifier: UUID, body: FileInput) -> Json:
     row = workspace(db, owner, identifier, True)
     revision(row, body.expected_revision)
     files = {**row.payload["files"], path(body.path): body.content}
@@ -104,7 +117,9 @@ def save_file(db, owner, identifier, body):
     return detail(row, db)
 
 
-def sync_snapshot(db, owner, identifier, body, key):
+def sync_snapshot(
+    db: Session, owner: UUID, identifier: UUID, body: WorkspaceSnapshotInput, key: str | None
+) -> Json:
     row = workspace(db, owner, identifier, True)
     record = idempotency(
         db, owner, f"studio.snapshot:{identifier}", key, body.model_dump(mode="json")
@@ -136,20 +151,22 @@ def sync_snapshot(db, owner, identifier, body, key):
     return detail(row, db)
 
 
-def action(row, identifier):
-    item = next((a for a in row.payload["actions"] if a["id"] == str(identifier)), None)
+def action(row: LearningWorkspace, identifier: UUID | str) -> Json:
+    item: Json | None = next(
+        (a for a in row.payload["actions"] if a["id"] == str(identifier)), None
+    )
     if not item:
         raise not_found()
     return item
 
 
-def append(row, item):
+def append(row: LearningWorkspace, item: Json) -> None:
     if len(row.payload["actions"]) >= 100:
         raise BusinessError(422, "ACTION_LIMIT", "此工作区已有 100 条记录，请创建新的练习工作区。")
     row.payload = {**row.payload, "actions": [*row.payload["actions"], item]}
 
 
-def update_action(row, identifier, changes):
+def update_action(row: LearningWorkspace, identifier: UUID | str, changes: Json) -> None:
     row.payload = {
         **row.payload,
         "actions": [
@@ -158,7 +175,7 @@ def update_action(row, identifier, changes):
     }
 
 
-def command_argv(argv):
+def command_argv(argv: list[str]) -> list[str]:
     if not argv or argv[0] not in {"python", "python3", "uv", "node", "npm"}:
         raise BusinessError(
             422, "COMMAND_NOT_ALLOWED", "仅支持 Python、uv、Node 或 npm 参数化命令。"
@@ -168,14 +185,14 @@ def command_argv(argv):
     return argv
 
 
-def require_practice(db, owner, row, item):
+def require_practice(db: Session, owner: UUID, row: LearningWorkspace, item: Json) -> None:
     if item.get("practice_id"):
         from careerforge.application.studio_practice_service import validate
 
         validate(db, owner, row, item["practice_id"])
 
 
-def propose_command(db, owner, identifier, body):
+def propose_command(db: Session, owner: UUID, identifier: UUID, body: CommandInput) -> Json:
     row = workspace(db, owner, identifier, True)
     revision(row, body.expected_revision)
     require_practice(db, owner, row, {"practice_id": body.practice_id})
@@ -194,7 +211,7 @@ def propose_command(db, owner, identifier, body):
     return detail(row, db)
 
 
-def apply(db, owner, identifier, action_id, body):
+def apply(db: Session, owner: UUID, identifier: UUID, action_id: UUID, body: ConfirmInput) -> Json:
     row = workspace(db, owner, identifier, True)
     item = action(row, action_id)
     if item["kind"] != "patch" or body.confirmation != "APPLY":
@@ -219,7 +236,9 @@ def apply(db, owner, identifier, action_id, body):
     return detail(row, db)
 
 
-def start_agent(db, owner, identifier, body, key):
+def start_agent(
+    db: Session, owner: UUID, identifier: UUID, body: StudioAgentInput, key: str | None
+) -> Json:
     if body.mode == "learn":
         if body.practice_id:
             raise BusinessError(422, "PRACTICE_MODE_REQUIRED", "请用代码补丁助手继续已有练习。")
@@ -301,7 +320,7 @@ def start_agent(db, owner, identifier, body, key):
     return record.response_summary
 
 
-def validate_context(db, run):
+def validate_context(db: Session, run: AgentRun) -> LearningWorkspace:
     row = workspace(db, run.owner_id, UUID(run.input_manifest["workspace_id"]), True)
     if fingerprint(row.payload["files"]) != run.input_manifest["files_hash"]:
         raise BusinessError(409, "WORKSPACE_CHANGED", "工作区已变化，请重新发起 Agent 请求。")
@@ -318,7 +337,7 @@ def validate_context(db, run):
     return row
 
 
-def save_reply(db, run, result):
+def save_reply(db: Session, run: AgentRun, result: ModelResult) -> Json:
     row = validate_context(db, run)
     reply = AgentReply.model_validate(result.structured)
     if not set(reply.citation_ids).issubset(run.input_manifest["citation_ids"]):
@@ -386,7 +405,9 @@ def save_reply(db, run, result):
     return {"workspace_id": str(row.id), "edits": len(reply.edits), "commands": len(commands)}
 
 
-def execute_command(db, owner, identifier, action_id, body):
+def execute_command(
+    db: Session, owner: UUID, identifier: UUID, action_id: UUID, body: ConfirmInput
+) -> Json:
     if body.confirmation != "RUN":
         raise BusinessError(422, "COMMAND_CONFIRMATION_REQUIRED", "必须明确确认此命令。")
     from sqlalchemy.orm import sessionmaker
@@ -474,7 +495,9 @@ def execute_command(db, owner, identifier, action_id, body):
         return detail(row, db)
 
 
-def bind_reference(db, owner, identifier, body, key):
+def bind_reference(
+    db: Session, owner: UUID, identifier: UUID, body: ReferenceLinkInput, key: str | None
+) -> Json:
     row = workspace(db, owner, identifier, True)
     objective_version(db, owner, body.objective_version_id)
     record = idempotency(db, owner, f"studio.link:{identifier}", key, body.model_dump(mode="json"))

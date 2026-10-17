@@ -2,9 +2,11 @@
 
 import hashlib
 from pathlib import Path
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
 from careerforge.application.common import digest, fingerprint, idempotency
 from careerforge.application.job_contract_service import add_capture
@@ -13,7 +15,9 @@ from careerforge.application.source_library_service import assign, lock_library
 from careerforge.config.settings import get_settings
 from careerforge.domain.errors import BusinessError
 from careerforge.domain.job_normalization import adapt
-from careerforge.infrastructure.collection.extractors import ADAPTER_VERSION
+from careerforge.domain.json_types import JsonObject as Json
+from careerforge.infrastructure.collection.extractors import ADAPTER_VERSION, CollectedJob
+from careerforge.infrastructure.collection.network import Page
 from careerforge.infrastructure.collection.portals import PORTALS, catalog
 from careerforge.infrastructure.db.models import (
     AgentRun,
@@ -28,7 +32,7 @@ VERSION = "job-collection-1.0"
 SKILL_PATH = Path(__file__).resolve().parents[1] / "data/skills/official-recruitment/SKILL.md"
 
 
-def configuration():
+def configuration() -> Json:
     s = get_settings()
     return {
         "channels": catalog(),
@@ -41,7 +45,7 @@ def configuration():
     }
 
 
-def start(db, owner, body, key):
+def start(db: Session, owner: UUID, body: Any, key: str | None) -> Json:
     record = idempotency(db, owner, "collection.start", key, body.model_dump(mode="json"))
     if record.response_summary:
         return record.response_summary
@@ -85,7 +89,7 @@ def start(db, owner, body, key):
     return record.response_summary
 
 
-def existing_source(db, owner, url):
+def existing_source(db: Session, owner: UUID, url: str) -> Source | None:
     return db.scalar(
         select(Source)
         .where(Source.owner_id == owner, Source.source_url == url, Source.revoked_at.is_(None))
@@ -94,7 +98,14 @@ def existing_source(db, owner, url):
     )
 
 
-def store_job(db, owner, job, page, job_category, trace):
+def store_job(
+    db: Session,
+    owner: UUID,
+    job: CollectedJob,
+    page: Page,
+    job_category: str | None,
+    trace: list[Json],
+) -> Json:
     if not 80 <= len(job.body.strip()) <= 100000 or not job.title.strip():
         raise BusinessError(422, "INCOMPLETE_JOB", "详情正文不足，未作为完整 JD 保存。")
     lock_library(db, owner)
@@ -190,7 +201,7 @@ def store_job(db, owner, job, page, job_category, trace):
     }
 
 
-def history(db, owner):
+def history(db: Session, owner: UUID) -> list[Json]:
     rows = db.scalars(
         select(AgentRun)
         .where(AgentRun.owner_id == owner, AgentRun.workflow_version == VERSION)
@@ -209,7 +220,7 @@ def history(db, owner):
     ]
 
 
-def result(db, owner, identifier):
+def result(db: Session, owner: UUID, identifier: UUID) -> Json:
     run = owned_run(db, owner, identifier)
     if run.workflow_version != VERSION:
         raise BusinessError(404, "NOT_FOUND", "不是岗位采集运行。")

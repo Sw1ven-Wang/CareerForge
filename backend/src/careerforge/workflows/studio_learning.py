@@ -20,6 +20,7 @@ from careerforge.application.run_service import (
     transition,
 )
 from careerforge.domain.errors import BusinessError
+from careerforge.domain.json_types import JsonObject as Json
 from careerforge.domain.runs import LeaseLost
 from careerforge.infrastructure.db.session import get_engine
 from careerforge.infrastructure.llm.provider import ModelError
@@ -46,7 +47,7 @@ related_code 仅返回静态结构/同名引用候选，不证明调用关系。
 """
 
 
-def tool_definitions():
+def tool_definitions() -> list[Json]:
     return [
         {
             "type": "function",
@@ -76,7 +77,7 @@ def tool_definitions():
     ]
 
 
-def require_output_budget(result, request):
+def require_output_budget(result: ModelResult, request: ModelRequest) -> None:
     reported = result.usage.output_tokens
     if reported is not None and reported > request.max_output_tokens:
         raise BusinessError(
@@ -87,17 +88,17 @@ def require_output_budget(result, request):
 
 
 class Learner:
-    def __init__(self, run_id, epoch, worker, manifest):
+    def __init__(self, run_id: UUID, epoch: int, worker: str, manifest: Json) -> None:
         self.run_id, self.epoch, self.worker, self.manifest = run_id, epoch, worker, manifest
         self.factory = sessionmaker(get_engine(), expire_on_commit=False)
-        self.discovered = set()
-        self.sources = {}
-        self.observations = []
-        self.trace = []
+        self.discovered: set[str] = set()
+        self.sources: dict[str, Json] = {}
+        self.observations: list[Json] = []
+        self.trace: list[Json] = []
         self.tool_count = 0
         self.synthetic = False
 
-    def remember(self, name, arguments, value):
+    def remember(self, name: str, arguments: Json, value: Json) -> None:
         self.tool_count += 1
         self.discovered.update(i["chunk_id"] for i in value.get("results", []))
         if value.get("source"):
@@ -115,7 +116,7 @@ class Learner:
         self.trace.append(summary)
         self.observations.append({**summary, "results": value.get("results", [])})
 
-    def tool(self, key, name, arguments):
+    def tool(self, key: str, name: str, arguments: Json) -> None:
         with self.factory.begin() as db:
             run = leased(db, self.run_id, self.epoch, self.worker)
             service.validate_inputs(db, run)
@@ -129,11 +130,15 @@ class Learner:
             try:
                 scope = {i["snapshot_id"] for i in self.manifest["scope"]}
                 if name == "search_code":
-                    args = KnowledgeSearchArgs.model_validate(arguments)
+                    search_args = KnowledgeSearchArgs.model_validate(arguments)
                     result = knowledge.search(
-                        db, run.owner_id, args.query, limit=6, scope_ids=[UUID(i) for i in scope]
+                        db,
+                        run.owner_id,
+                        search_args.query,
+                        limit=6,
+                        scope_ids=[UUID(i) for i in scope],
                     )
-                    value = {
+                    value: Json = {
                         "status": "searched",
                         "results": [service.brief(i) for i in result["results"]],
                     }
@@ -161,7 +166,11 @@ class Learner:
                         if len(self.sources) >= service.SOURCE_LIMIT:
                             raise BusinessError(422, "SOURCE_LIMIT", "本轮读取的片段已达到上限。")
                         source = service.read_source(
-                            db, run.owner_id, item, args.start_line, args.end_line
+                            db,
+                            run.owner_id,
+                            item,
+                            getattr(args, "start_line", None),
+                            getattr(args, "end_line", None),
                         )
                         value = {"status": "read", "source": source}
                 else:
@@ -187,7 +196,7 @@ class Learner:
             )
         self.remember(name, arguments, value)
 
-    def prompt(self, final=False):
+    def prompt(self, final: bool = False) -> str:
         sources = [
             {
                 k: v[k]
@@ -243,16 +252,16 @@ reading_order 只放已读引用 ID；practice 给出小型迁移练习，questi
             )
         return text
 
-    async def call_once(self, key, request):
+    async def call_once(self, key: str, request: ModelRequest) -> ModelResult | None:
         with self.factory.begin() as db:
             run = leased(db, self.run_id, self.epoch, self.worker)
             service.validate_inputs(db, run)
             old = artifact(db, run, key, service.VERSION)
             if old:
-                result = ModelResult.model_validate(old.payload)
-                self.synthetic = self.synthetic or result.synthetic
-                require_output_budget(result, request)
-                return result
+                cached = ModelResult.model_validate(old.payload)
+                self.synthetic = self.synthetic or cached.synthetic
+                require_output_budget(cached, request)
+                return cached
             if artifact(db, run, "attempted:" + key, service.VERSION):
                 raise BusinessError(
                     409, "MODEL_RESULT_UNCERTAIN", "上次模型结果未保存，停止自动重试以免重复收费。"
@@ -289,7 +298,7 @@ reading_order 只放已读引用 ID；practice 给出小型迁移练习，questi
         require_output_budget(result, request)
         return result
 
-    async def research(self):
+    async def research(self) -> None:
         objective = self.manifest["context"]["objective"]
         query = " ".join(
             [
@@ -365,7 +374,7 @@ reading_order 只放已读引用 ID；practice 给出小型迁移练习，questi
             )
 
 
-def execute(run_id, worker):
+def execute(run_id: UUID, worker: str) -> None:
     factory = sessionmaker(get_engine(), expire_on_commit=False)
     with factory.begin() as db:
         epoch = claim(db, run_id, worker)

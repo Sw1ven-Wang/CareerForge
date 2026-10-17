@@ -3,16 +3,17 @@
 import re
 import time
 from datetime import UTC, datetime
+from typing import cast
 
 import httpx
-
 from careerforge.domain.errors import BusinessError
+from careerforge.domain.json_types import JsonObject as Json
 
 NAME = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")
 SHA = re.compile(r"[0-9a-f]{40}")
 
 
-def get(client, path, params=None):
+def get(client: httpx.Client, path: str, params: Json | None = None) -> Json:
     try:
         with client.stream("GET", "https://api.github.com/" + path, params=params) as response:
             if response.status_code in {403, 429}:
@@ -29,12 +30,12 @@ def get(client, path, params=None):
                     raise BusinessError(413, "GITHUB_RESPONSE_LIMIT", "GitHub 响应超过读取上限。")
             import json
 
-            return json.loads(data)
+            return cast(Json, json.loads(data))
     except (httpx.HTTPError, ValueError) as exc:
         raise BusinessError(502, "GITHUB_RESEARCH_FAILED", "GitHub 查询失败，未自动重试。") from exc
 
 
-def client():
+def client() -> httpx.Client:
     return httpx.Client(
         timeout=httpx.Timeout(15, connect=6),
         follow_redirects=False,
@@ -47,7 +48,7 @@ def client():
     )
 
 
-def search(queries):
+def search(queries: list[Json]) -> Json:
     candidates, observations = {}, []
     with client() as http:
         for query in queries[:3]:
@@ -92,7 +93,7 @@ def search(queries):
     return {"candidates": list(candidates.values())[:10], "observations": observations}
 
 
-def pin(candidate):
+def pin(candidate: Json) -> Json:
     name = candidate["full_name"]
     if not NAME.fullmatch(name):
         raise BusinessError(422, "GITHUB_NAME_INVALID", "仓库名称无效。")

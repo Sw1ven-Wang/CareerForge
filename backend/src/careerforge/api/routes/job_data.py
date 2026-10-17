@@ -1,3 +1,4 @@
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Request
@@ -7,6 +8,7 @@ from careerforge.application import job_contract_service as service
 from careerforge.application.source_service import get_snapshot
 from careerforge.config.settings import get_settings
 from careerforge.domain.errors import BusinessError, not_found
+from careerforge.domain.json_types import JsonObject as Json
 from careerforge.schemas.job_agent import ExtractionRunInput
 from careerforge.schemas.job_contract import CaptureImport, ContextInput, FactRevision
 from careerforge.schemas.resources import Envelope
@@ -14,19 +16,19 @@ from careerforge.schemas.resources import Envelope
 router = APIRouter(prefix="/api/v1/job-data", tags=["job-data-contract"])
 
 
-def enabled():
+def enabled() -> None:
     if not get_settings().job_contract_write:
         raise BusinessError(409, "CONTRACT_WRITES_DISABLED", "标准化写入已关闭。")
 
 
-def response(request, data):
+def response(request: Request, data: Any) -> Json:
     return {"data": data, "request_id": request.state.request_id}
 
 
 @router.post("/import", status_code=201, response_model=Envelope)
 def ingest(
     body: CaptureImport, request: Request, db: Database, user: Authenticated, key: IdempotencyKey
-):
+) -> Json:
     enabled()
     from pydantic import ValidationError
 
@@ -39,7 +41,7 @@ def ingest(
 
 
 @router.get("/source-snapshots/{identifier}", response_model=Envelope)
-def source_snapshot(identifier: UUID, request: Request, db: Database, user: Authenticated):
+def source_snapshot(identifier: UUID, request: Request, db: Database, user: Authenticated) -> Json:
     row = service.job_for_source(db, user.id, identifier)
     if not row:
         raise not_found()
@@ -55,7 +57,7 @@ def source_snapshot(identifier: UUID, request: Request, db: Database, user: Auth
 @router.post("/source-snapshots/{identifier}/normalize", response_model=Envelope)
 def normalize(
     identifier: UUID, request: Request, db: Database, user: Authenticated, key: IdempotencyKey
-):
+) -> Json:
     enabled()
     from careerforge.infrastructure.db.models import SourceSnapshot
 
@@ -70,7 +72,7 @@ def normalize(
 
 
 @router.get("/artifacts/{identifier}", response_model=Envelope)
-def detail(identifier: UUID, request: Request, db: Database, user: Authenticated):
+def detail(identifier: UUID, request: Request, db: Database, user: Authenticated) -> Json:
     row = service.read(db, user.id, identifier)
     data = service.result(row)
     if row.kind == "capture":
@@ -86,7 +88,7 @@ def revise(
     db: Database,
     user: Authenticated,
     key: IdempotencyKey,
-):
+) -> Json:
     enabled()
     return response(request, service.revise_fact(db, user.id, identifier, body, key))
 
@@ -94,7 +96,7 @@ def revise(
 @router.post("/planning-contexts", status_code=201, response_model=Envelope)
 def context(
     body: ContextInput, request: Request, db: Database, user: Authenticated, key: IdempotencyKey
-):
+) -> Json:
     enabled()
     return response(request, service.create_context(db, user.id, body, key))
 
@@ -104,7 +106,7 @@ def context(
 )
 def alignment(
     identifier: UUID, request: Request, db: Database, user: Authenticated, key: IdempotencyKey
-):
+) -> Json:
     enabled()
     from sqlalchemy import select
 
@@ -153,7 +155,7 @@ def alignment(
 
 
 @router.get("/agent-config", response_model=Envelope)
-def agent_config(request: Request, user: Authenticated):
+def agent_config(request: Request, user: Authenticated) -> Json:
     from careerforge.application.job_agent_service import configuration
 
     return response(request, configuration())
@@ -166,7 +168,7 @@ def extraction(
     db: Database,
     user: Authenticated,
     key: IdempotencyKey,
-):
+) -> Json:
     enabled()
     from careerforge.application.job_agent_service import start
 
