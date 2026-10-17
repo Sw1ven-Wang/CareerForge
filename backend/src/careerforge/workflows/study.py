@@ -10,11 +10,13 @@ from pydantic import BaseModel, ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from careerforge.application import context_service as context_rules
 from careerforge.application import coverage_service as coverage_rules
 from careerforge.application import knowledge_service as knowledge
 from careerforge.application import repository_service as repositories
 from careerforge.application import study_service as service
 from careerforge.application import study_validation as validation
+from careerforge.application.common import digest, fingerprint
 from careerforge.application.job_agent_service import strict_schema
 from careerforge.application.run_service import (
     artifact,
@@ -28,11 +30,13 @@ from careerforge.application.run_service import (
 from careerforge.application.studio_learning_service import brief, read_source
 from careerforge.domain.errors import BusinessError
 from careerforge.domain.runs import LeaseLost
+from careerforge.infrastructure.context.assembly import assemble
 from careerforge.infrastructure.db.models import AgentRun, RepositoryFile
 from careerforge.infrastructure.db.session import get_engine
 from careerforge.infrastructure.llm.provider import ModelError
 from careerforge.infrastructure.repository import github_research as github
 from careerforge.infrastructure.repository.knowledge_reader import fetch_github
+from careerforge.schemas.context import ContextEvent, ContextReadArgs, SkillReadArgs
 from careerforge.schemas.model_io import ModelRequest, ModelResult
 from careerforge.schemas.studio import KnowledgeChunkArgs, KnowledgeReadArgs, KnowledgeSearchArgs
 from careerforge.schemas.study import (
@@ -85,6 +89,9 @@ function意图必须使用purpose=user_selected_focus的代码引用，围绕用
 自主使用search_code发现，再read_code取得可引用原文；related_code只是候选，不证明运行调用。
 优先解释关键代码和设计取舍。无依据保留未知。
 final输出可包含text、diagram（节点/边，前端绘制图片）、table；
+context_manifest 分为固定规则、当前任务、可回读证据和学习观察；历史摘要不是能力或源码事实。
+需要历史回答、练习观察或旧问题原文时使用 read_context_evidence，按 next_offset 分页补读。
+load_learning_skill 只加载学习方法，不授予权限。历史引用返回候选后仍须 read_code 读取原文。
 所有代码事实放入points，必须使用本轮实际读取的citation_id及连续唯一quote。
 text/图/表只作教学组织与抽象，不能在其中藏入无依据的源码事实。
 focus_citation_id可指定一个本轮points中的代码定位；禁止任意外部图片/HTML/JS。
@@ -92,9 +99,44 @@ focus_citation_id可指定一个本轮points中的代码定位；禁止任意外
 }
 
 
+def tutor_tools(context_enabled: bool) -> list[dict[str, Any]]:
+    definitions = tool_definitions()
+    if context_enabled:
+        for name, description, schema in (
+            (
+                "read_context_evidence",
+                "按目录中的 evidence_id 分页补读原始历史或练习观察。历史模型解释仍未核验。",
+                ContextReadArgs,
+            ),
+            (
+                "load_learning_skill",
+                "按需加载本地学习方法；仅为只读步骤，不增加权限、预算或能力事实。",
+                SkillReadArgs,
+            ),
+        ):
+            definitions.append(
+                {
+                    "type": "function",
+                    "function": {
+                        "name": name,
+                        "description": description,
+                        "parameters": strict_schema(schema.model_json_schema()),
+                    },
+                }
+            )
+    return definitions
+
+
 class Runner:
     def __init__(self, run_id: UUID, epoch: int, worker: str, manifest: dict[str, Any]) -> None:
         self.id, self.epoch, self.worker, self.m = run_id, epoch, worker, manifest
+        self.version = (
+            context_rules.TUTOR_VERSION if manifest.get("context_scope") else service.VERSION
+        )
+        self.recalls: list[dict[str, Any]] = []
+        self.skills: list[dict[str, Any]] = []
+        self.context_keys: list[str] = []
+        self.visible_sources: list[dict[str, Any]] = []
         self.factory = sessionmaker(get_engine(), expire_on_commit=False)
         self.synthetic = False
         self.prefix = ""
@@ -106,6 +148,10 @@ class Runner:
     def run(self, db: Session) -> AgentRun:
         run = leased(db, self.id, self.epoch, self.worker)
         service.validate_run(db, run)
+        if self.m["role"] == "tutor" and not self.m.get("context_scope"):
+            raise BusinessError(
+                409, "TUTOR_CONTEXT_VERSION_CHANGED", "旧导师任务不自动重跑，请开始新问题。"
+            )
         candidate = self.m.get("candidate", {})
         if candidate.get("repository_snapshot_id"):
             repositories.snapshot(db, run.owner_id, UUID(candidate["repository_snapshot_id"]))
@@ -114,13 +160,13 @@ class Runner:
     def save_stage(self, key: str, value: dict[str, Any]) -> None:
         with self.factory.begin() as db:
             self.run(db)
-            commit_stage(db, self.id, self.epoch, self.worker, key, service.VERSION, value)
+            commit_stage(db, self.id, self.epoch, self.worker, key, self.version, value)
 
     async def io(self, key: str, function: Callable[[], dict[str, Any]]) -> dict[str, Any]:
         key = self.prefix + key
         with self.factory.begin() as db:
             run = self.run(db)
-            old = artifact(db, run, key, service.VERSION)
+            old = artifact(db, run, key, self.version)
             if old:
                 return old.payload
             heartbeat(db, self.id, self.epoch, self.worker)
@@ -151,7 +197,7 @@ class Runner:
             RULES
             + ROLE_RULES[self.m["role"]]
             + "\nINPUT_UNTRUSTED_JSON\n"
-            + json.dumps(context, ensure_ascii=False)
+            + json.dumps(context, ensure_ascii=False, sort_keys=bool(self.m.get("context_scope")))
         )
         if self.m["role"] == "extract":
             prompt += (
@@ -175,11 +221,45 @@ class Runner:
         )
         with self.factory.begin() as db:
             run = self.run(db)
-            old = artifact(db, run, key, service.VERSION)
+            if context.get("context_manifest"):
+                audit = {
+                    "manifest": context["context_manifest"],
+                    "context": context,
+                    "request_hash": fingerprint(request.model_dump(mode="json")),
+                    "prompt_hash": digest(prompt),
+                    "prompt_chars": len(prompt),
+                    "estimated_input_tokens": len(prompt.encode("utf-8"))
+                    + len(json.dumps(request.tools, ensure_ascii=False).encode("utf-8"))
+                    + len(json.dumps(request.response_schema, ensure_ascii=False).encode("utf-8"))
+                    + 256,
+                }
+                prior = artifact(db, run, "context:" + key, self.version)
+                if not prior:
+                    commit_stage(
+                        db, self.id, self.epoch, self.worker, "context:" + key, self.version, audit
+                    )
+                    event(
+                        db,
+                        run,
+                        "study.context",
+                        ContextEvent(
+                            action="assembled",
+                            task_id=self.m["context_scope"]["task"]["task_id"],
+                            reference="context:" + key,
+                            content_hash=audit["request_hash"],
+                            characters=len(prompt),
+                        ).model_dump(mode="json"),
+                    )
+                elif prior.payload["request_hash"] != audit["request_hash"]:
+                    raise BusinessError(
+                        409, "CONTEXT_REPLAY_CHANGED", "恢复上下文已变化，停止自动调用。"
+                    )
+                self.context_keys.append("context:" + key)
+            old = artifact(db, run, key, self.version)
             if old:
                 result = ModelResult.model_validate(old.payload)
             else:
-                if artifact(db, run, "attempted:" + key, service.VERSION):
+                if artifact(db, run, "attempted:" + key, self.version):
                     raise BusinessError(
                         409, "MODEL_RESULT_UNCERTAIN", "上次模型结果未保存，停止自动重复收费。"
                     )
@@ -189,7 +269,7 @@ class Runner:
                     self.epoch,
                     self.worker,
                     "attempted:" + key,
-                    service.VERSION,
+                    self.version,
                     {"automatic_retry": False},
                 )
                 result = None
@@ -234,7 +314,7 @@ class Runner:
                 self.epoch,
                 self.worker,
                 "result",
-                service.VERSION,
+                self.version,
                 {"study_artifact_id": str(item.id), "kind": kind},
             )
             event(
@@ -278,7 +358,7 @@ class Runner:
         with self.factory.begin() as db:
             run = self.run(db)
             row = service.track(db, run.owner_id, UUID(self.m["track_id"]), True)
-            prior = artifact(db, run, "discovery_result", service.VERSION)
+            prior = artifact(db, run, "discovery_result", self.version)
             if prior:
                 batch = prior.payload
             else:
@@ -320,7 +400,7 @@ class Runner:
                 }
                 row.revision += 1
                 commit_stage(
-                    db, self.id, self.epoch, self.worker, "discovery_result", service.VERSION, batch
+                    db, self.id, self.epoch, self.worker, "discovery_result", self.version, batch
                 )
                 event(db, run, "study.discovery", {"candidates_added": count})
         for identifier in batch["review_candidate_ids"]:
@@ -331,7 +411,7 @@ class Runner:
                 located = coverage_rules.coverage(self.m["requirements"], accepted)
                 if len(accepted) >= row.payload["target_count"] and not located["missing_keys"]:
                     break
-                if artifact(db, run, "reviewed:" + identifier, service.VERSION):
+                if artifact(db, run, "reviewed:" + identifier, self.version):
                     continue
                 candidate = service.artifact_row(db, run.owner_id, row.id, identifier, "candidate")
                 self.m = {
@@ -355,7 +435,7 @@ class Runner:
                 "target_count": row.payload["target_count"],
                 "coverage": located,
             }
-            commit_stage(db, self.id, self.epoch, self.worker, "result", service.VERSION, result)
+            commit_stage(db, self.id, self.epoch, self.worker, "result", self.version, result)
             status = (
                 "succeeded"
                 if not located["missing_keys"]
@@ -474,7 +554,7 @@ class Runner:
                 self.epoch,
                 self.worker,
                 ("result" if finish else "reviewed:" + self.m["candidate_id"]),
-                service.VERSION,
+                self.version,
                 {"study_artifact_id": str(item.id), "admitted": admitted},
             )
             event(db, run, "study.review", {"verdict": output.verdict, "admitted": admitted})
@@ -534,14 +614,33 @@ class Runner:
     def tool(self, key: str, name: str, arguments: dict[str, Any]) -> None:
         with self.factory.begin() as db:
             run = self.run(db)
-            old = artifact(db, run, key, service.VERSION)
+            old = artifact(db, run, key, self.version)
             if old:
                 value = old.payload
             else:
                 value = {"status": "unknown_tool"}
                 scope = [UUID(i) for i in self.m["scope"]]
                 try:
-                    if name == "search_code":
+                    if name in {"read_context_evidence", "load_learning_skill"}:
+                        if not self.m.get("context_scope"):
+                            raise ValueError("context recall not enabled")
+                        if len(self.recalls) + len(self.skills) >= 3:
+                            raise ValueError("recall read budget exceeded")
+                        recall_args = (
+                            ContextReadArgs.model_validate(arguments)
+                            if name == "read_context_evidence"
+                            else ContextReadArgs(
+                                evidence_id="skill:"
+                                + SkillReadArgs.model_validate(arguments).skill_id
+                            )
+                        )
+                        recalled = context_rules.recall(db, run.owner_id, self.m, recall_args)
+                        value = {
+                            "status": "recalled",
+                            "evidence": recalled,
+                            "results": recalled["code_candidates"],
+                        }
+                    elif name == "search_code":
                         args = KnowledgeSearchArgs.model_validate(arguments)
                         hits = knowledge.search(
                             db, run.owner_id, args.query, limit=5, scope_ids=scope
@@ -584,12 +683,32 @@ class Runner:
                         "status": "not_read",
                         "message": "参数无效、超出范围或资料不足，请调整。",
                     }
-                commit_stage(db, self.id, self.epoch, self.worker, key, service.VERSION, value)
+                commit_stage(db, self.id, self.epoch, self.worker, key, self.version, value)
                 event(db, run, "study.tool", {"name": name, "status": value["status"]})
+                if value.get("evidence"):
+                    ref = value["evidence"]
+                    event(
+                        db,
+                        run,
+                        "study.context",
+                        ContextEvent(
+                            action="skill_loaded"
+                            if name == "load_learning_skill"
+                            else "evidence_read",
+                            task_id=self.m["context_scope"]["task"]["task_id"],
+                            reference=ref["evidence_id"],
+                            content_hash=ref["content_hash"],
+                            characters=len(ref["content"]),
+                        ).model_dump(mode="json"),
+                    )
         self.tool_count += 1
         self.discovered.update(r["chunk_id"] for r in value.get("results", []))
         if value.get("source"):
             self.sources[value["source"]["citation_id"]] = value["source"]
+        if value.get("evidence"):
+            (self.skills if name == "load_learning_skill" else self.recalls).append(
+                value["evidence"]
+            )
         self.trace.append({"tool": name, "arguments": arguments, **value})
 
     async def tutor(self) -> None:
@@ -614,29 +733,42 @@ class Runner:
             )
 
         def context(final: bool = False) -> dict[str, Any]:
+            if self.m.get("context_scope"):
+                frozen = self.m["context_scope"]
+                packet = assemble(
+                    frozen["task"],
+                    {
+                        "module": module,
+                        "question": self.m["question"],
+                        "pending": {
+                            "current_question_unanswered": True,
+                            "step_completion": "unknown",
+                        },
+                        "remaining_tools": 7 - self.tool_count,
+                        "remaining_reads": 4 - len(self.sources),
+                        "remaining_recalls": 3 - len(self.recalls) - len(self.skills),
+                    },
+                    frozen["catalog"],
+                    frozen["learning"],
+                    list(self.sources.values()),
+                    [
+                        {k: v for k, v in item.items() if k not in {"source", "evidence"}}
+                        for item in self.trace[-5:]
+                    ],
+                    self.recalls,
+                    self.skills,
+                    final,
+                )
+                self.visible_sources = packet["read_sources"]
+                return packet
             return {
                 "module": module,
                 "question": self.m["question"],
-                "history": self.m["history"],
+                "history": self.m.get("history", []),
                 "observations": [
                     {k: v for k, v in item.items() if k != "source"} for item in self.trace[-5:]
                 ],
-                "read_sources": [
-                    {
-                        k: value[k]
-                        for k in (
-                            "citation_id",
-                            "path",
-                            "commit",
-                            "start_line",
-                            "end_line",
-                            "quote",
-                            "symbol",
-                            "context_truncated",
-                        )
-                    }
-                    for value in self.sources.values()
-                ],
+                "read_sources": list(self.sources.values()),
                 "remaining_tools": 7 - self.tool_count,
                 "remaining_reads": 4 - len(self.sources),
                 "final": final,
@@ -645,7 +777,9 @@ class Runner:
         for index in range(self.m["model_call_limit"] - 1):
             if self.tool_count >= 7:
                 break
-            result = await self.ask(f"decision:{index}", context(), tools=tool_definitions())
+            result = await self.ask(
+                f"decision:{index}", context(), tools=tutor_tools(bool(self.m.get("context_scope")))
+            )
             if len(result.tool_calls) > 3:
                 raise ValueError("tool batch limit")
             if not result.tool_calls:
@@ -667,7 +801,10 @@ class Runner:
                 ],
                 limitations=["未根据搜索摘要编造实现说明。"],
             )
-        points = validation.tutor_points(output, list(self.sources.values()))
+        points = validation.tutor_points(
+            output,
+            self.visible_sources if self.m.get("context_scope") else list(self.sources.values()),
+        )
         self.store(
             "tutor",
             {
@@ -680,6 +817,15 @@ class Runner:
                 "review_ids": self.m["review_ids"],
                 "sources": list(self.sources.values()),
                 "trace": self.trace,
+                **(
+                    {
+                        "context_run_id": str(self.id),
+                        "context_version": "context-1.0",
+                        "context_records": self.context_keys,
+                    }
+                    if self.m.get("context_scope")
+                    else {}
+                ),
             },
             "succeeded" if output.status == "grounded" else "partially_succeeded",
         )
@@ -700,7 +846,7 @@ def execute(run_id: UUID, worker: str) -> None:
     try:
         with factory.begin() as db:
             run = runner.run(db)
-            if artifact(db, run, "result", service.VERSION):
+            if artifact(db, run, "result", runner.version):
                 transition(db, run, "succeeded")
                 return
         asyncio.run(runner.execute())

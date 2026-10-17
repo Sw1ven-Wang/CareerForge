@@ -30,7 +30,7 @@ flowchart LR
 - **需求提取**：技术关键词、了解 / 熟悉 / 掌握、原文明确要求与模型推断分开记录。
 - **项目研究**：按技术需求搜索 GitHub，读取固定 commit 的代码；候选经过独立角色审核才进入学习项目库。审核支持有界符号调查、相关实现与测试补读，原文位置与解释的语义支持分开记录。
 - **学习规划**：支持学习项目构建、整个项目、技术设计、函数实现；计划包含最多三级模块、前置关系、步骤、成果和验收条件。
-- **交互导学**：Agent 使用只读代码工具自主检索，输出文字、结构化 SVG 图示和表格；引用连接真实文件和行区间。
+- **交互导学**：Agent 使用只读代码工具自主检索，输出文字、结构化 SVG 图示和表格；引用连接真实文件和行区间。导师按四区装配上下文，在原预算内补读历史与练习观察、加载学习方法；清单、版本、哈希和计量可回溯。
 - **内置 IDE**：同页查看计划、参考代码与问答，可切换自己的项目，编辑文件、审阅并应用 Agent 补丁。
 - **模块实践**：从叶模块冻结练习条件，建立独立的多次尝试；提交代码、运行记录、本人解释与迁移说明，逐项人工核对后更新已有计划版本。成果分别记录允许辅助条件、本人声明独立及迁移条件，不自动升级为能力掌握。
 - **受控执行**：命令逐条确认后在无网络 Docker 沙箱运行；桌面桥接不提供任意宿主 Shell。
@@ -152,7 +152,7 @@ scripts/      开发、演示、文档导出与运维工具
 - [本机 IDE 的边界](desktop/README.md)
 - [贡献指南](CONTRIBUTING.md) · [安全说明](SECURITY.md)
 
-部分历史文档记录了当时的产品结构与开发机验证条件，请结合日期阅读；当前主流程以本 README、ADR 0003 及其修订 ADR 0004、[ADR 0005](docs/decisions/0005-bounded-code-investigation.md) 及 [ADR 0006](docs/decisions/0006-study-practice-evidence.md) 为准。新增调查与成果链路的验证范围见 [B 包记录](docs/progress/REVIEW_B_20261017.md) 和 [C 包记录](docs/progress/REVIEW_C_20261017.md)。
+部分历史文档记录了当时的产品结构与开发机验证条件，请结合日期阅读；当前主流程以本 README、ADR 0003 及其修订 ADR 0004、[ADR 0005](docs/decisions/0005-bounded-code-investigation.md) 及 [ADR 0006](docs/decisions/0006-study-practice-evidence.md)、[ADR 0007](docs/decisions/0007-context-manifest-and-recall.md) 为准。新增调查与成果链路的验证范围见 [B 包记录](docs/progress/REVIEW_B_20261017.md)、[C 包记录](docs/progress/REVIEW_C_20261017.md) 与 [D 包上下文记录](docs/progress/REVIEW_D_20261017.md)。
 
 ## 许可证
 

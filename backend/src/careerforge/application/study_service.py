@@ -559,43 +559,21 @@ def start(
         reviews = [
             artifact_row(db, owner, row.id, i, "review") for i in module["project_review_ids"]
         ]
-        history = db.scalars(
-            select(StudyArtifact)
-            .where(
-                StudyArtifact.track_id == row.id,
-                StudyArtifact.kind == "tutor",
-                StudyArtifact.payload["plan_id"].astext == str(plan.id),
-                StudyArtifact.payload["module_key"].astext == body.module_key,
-            )
-            .order_by(StudyArtifact.created_at.desc())
-            .limit(3)
-        ).all()
         manifest.update(
             plan_id=str(plan.id),
             module=module,
             question=body.question,
             review_ids=[str(i.id) for i in reviews],
             scope=[i.payload["repository_snapshot_id"] for i in reviews],
-            history=[
-                {
-                    "question": i.payload["question"][:1000],
-                    "answer_excerpt": " ".join(b.get("text", "") for b in i.payload["blocks"])[
-                        :2500
-                    ],
-                    "previous_points": [
-                        {"title": p["title"], "explanation": p["explanation"][:500]}
-                        for p in i.payload["points"][:3]
-                    ],
-                    "history_truncated": True,
-                }
-                for i in reversed(history)
-            ],
         )
+        from careerforge.application.context_service import capture
+
+        manifest["context_scope"] = capture(db, owner, manifest)
     run = create_run(
         db,
         owner,
         ROLE_TYPES[body.role],
-        VERSION,
+        "agent-study-2.3" if body.role == "tutor" else VERSION,
         manifest,
         call_budget=manifest["model_call_limit"],
     )
@@ -639,6 +617,10 @@ def validate_run(db: Session, run: AgentRun) -> StudyTrack:
         )
         if not set(identifiers) <= valid:
             raise BusinessError(409, "STUDY_PROJECT_UNAVAILABLE", "审核项目已不可用。")
+    if manifest.get("context_scope"):
+        from careerforge.application.context_service import validate_catalog
+
+        validate_catalog(db, run.owner_id, manifest)
     return row
 
 

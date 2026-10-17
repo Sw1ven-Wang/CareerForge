@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Query, Request
 
 from careerforge.api.dependencies import Authenticated, Database, IdempotencyKey
 from careerforge.api.routes.planning import wrap
@@ -124,3 +124,38 @@ def close_attempt(
     user: Authenticated,
 ) -> Json:
     return wrap(request, practice.close_attempt(db, user.id, identifier, attempt_id, body))
+
+
+@router.get("/tracks/{identifier}/runs/{run_id}/context", response_model=Envelope)
+def context_trace(
+    identifier: UUID, run_id: UUID, request: Request, db: Database, user: Authenticated
+) -> Json:
+    from careerforge.application.context_service import detail as context_detail
+
+    return wrap(request, context_detail(db, user.id, identifier, run_id))
+
+
+@router.get("/tracks/{identifier}/runs/{run_id}/context/evidence", response_model=Envelope)
+def context_evidence(
+    identifier: UUID,
+    run_id: UUID,
+    request: Request,
+    db: Database,
+    user: Authenticated,
+    evidence_id: str = Query(min_length=1, max_length=100),
+    offset: int = Query(default=0, ge=0, le=2000000),
+    limit: int = Query(default=2500, ge=100, le=3500),
+) -> Json:
+    from careerforge.application.context_service import context_run, recall
+    from careerforge.schemas.context import ContextReadArgs
+
+    run = context_run(db, user.id, identifier, run_id)
+    return wrap(
+        request,
+        recall(
+            db,
+            user.id,
+            run.input_manifest,
+            ContextReadArgs(evidence_id=evidence_id, offset=offset, limit=limit),
+        ),
+    )

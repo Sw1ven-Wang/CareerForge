@@ -1,5 +1,7 @@
 # CareerForge V1：产品与实现文档包
 
+> 2026-10-17 审查 D 包上下文：ContextManifest、按需补读和方法加载、版本化证据回溯与无额外收费的已保存响应恢复。新导师版本 2.3，其他角色 2.2。详见 [D 包记录](progress/REVIEW_D_20261017.md) 与 [ADR 0007](decisions/0007-context-manifest-and-recall.md)。
+
 > 2026-10-17 审查 C 包：新模块接入冻结练习、多次尝试、成果提交、逐项人工验收和已有计划新版本；区分允许辅助与本人声明独立，保留用户自报进度。详见 [C 包记录](progress/REVIEW_C_20261017.md) 与 [ADR 0006](decisions/0006-study-practice-evidence.md)。
 
 > 2026-10-17 审查 B 包：有界符号调查、实现/测试补读、原文断言与潜在反证。默认每候选仍 1 次模型调用，多轮需显式选择。详见 [B 包记录](progress/REVIEW_B_20261017.md) 与 [ADR 0005](decisions/0005-bounded-code-investigation.md)。

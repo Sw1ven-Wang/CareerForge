@@ -57,8 +57,14 @@ def authorized(db: Session, run: AgentRun) -> None:
     if run.input_manifest.get("_revoked"):
         raise BusinessError(404, "NOT_FOUND", "输入已撤销。")
     data = run.input_manifest
-    if run.workflow_version == "agent-study-2.0":
+    if run.workflow_version in {
+        "agent-study-2.0",
+        "agent-study-2.1",
+        "agent-study-2.2",
+        "agent-study-2.3",
+    }:
         from careerforge.application.study_service import validate_run
+
         validate_run(db, run)
         return
     if run.workflow_type == "market_research" and "source_snapshot_ids" in data:

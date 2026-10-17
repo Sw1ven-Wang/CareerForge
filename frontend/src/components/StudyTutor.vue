@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api, mutation } from '../api/client'
 import { followRun } from '../api/runEvents'
+import ContextTrace from './ContextTrace.vue'
 import { type StudyTrack, type StudyPlan, type StudyModule, type Block, activeStates } from '../types/study'
 const props=defineProps<{track:StudyTrack;plan:StudyPlan;module:StudyModule}>()
 const emit=defineEmits<{changed:[];open:[id:string];point:[value:{citation_id:string;quote_start_line:number;quote_end_line:number}]}>()
@@ -14,7 +15,7 @@ watch(()=>props.track.active_run?.run_id, id=>{
  if(!id||id===observedRun||!active.value)return
  observedRun=id;controller?.abort();controller=new AbortController();events.value=[]
  void followRun(id,event=>{
-  const labels:Record<string,string>={'run.started':'Agent 开始读取上下文','stage.completed':'阶段结果已保存','study.tool':'已执行只读代码工具','run.finished':'本轮已结束','run.cancelled':'已停止','stage.failed':'结果未通过校验'}
+  const labels:Record<string,string>={'run.started':'Agent 开始读取上下文','stage.completed':'阶段结果已保存','study.context':'上下文与证据指针已保存','study.tool':'已执行只读代码工具','run.finished':'本轮已结束','run.cancelled':'已停止','stage.failed':'结果未通过校验'}
   if(labels[event.type])events.value.push(labels[event.type]+(event.type==='study.tool'?' · '+String(event.payload?.name??''):''))
   emit('changed')
  },()=>{},controller.signal)
@@ -42,9 +43,9 @@ function pos(block:Block,key:string){const i=block.nodes.findIndex(n=>n.key===ke
 <svg v-else-if="b.kind==='diagram'" :viewBox="'0 0 720 '+Math.ceil(b.nodes.length/2)*100" role="img" :aria-label="b.title||'Agent 学习图示'"><g v-for="(e,j) in b.edges" :key="'e'+j"><line :x1="pos(b,e.source).x+140" :y1="pos(b,e.source).y+32" :x2="pos(b,e.target).x+140" :y2="pos(b,e.target).y+32" stroke="#9aac9b" stroke-width="2"/><text :x="(pos(b,e.source).x+pos(b,e.target).x)/2+140" :y="(pos(b,e.source).y+pos(b,e.target).y)/2+25" text-anchor="middle" font-size="12" fill="#4e6a58">{{e.label}}</text></g><g v-for="n in b.nodes" :key="n.key"><rect :x="pos(b,n.key).x" :y="pos(b,n.key).y" width="280" height="64" rx="10" fill="#e7f1e8" stroke="#8db496"/><text :x="pos(b,n.key).x+140" :y="pos(b,n.key).y+37" text-anchor="middle" font-size="15" fill="#2c5840">{{n.label.length>19?n.label.slice(0,19)+'…':n.label}}</text><title>{{n.label}}</title></g></svg>
 <div v-else-if="b.kind==='table'" class="table-scroll"><table><thead><tr><th v-for="(c,j) in b.columns" :key="j">{{c}}</th></tr></thead><tbody><tr v-for="(r,j) in b.rows" :key="j"><td v-for="(cell,k) in r" :key="k">{{cell}}</td></tr></tbody></table></div></section>
 <article v-for="p in t.points" :key="p.citation_id+p.title" class="code-point"><strong>{{p.title}}</strong><p>{{p.explanation}}</p><small>引用定位已校验 · 语义支持未独立核验 · 无运行观察</small><pre>{{p.quote}}</pre><el-button link @click="emit('point',p)">{{p.path}}:{{p.quote_start_line}}–{{p.quote_end_line}} · 查看引用位置</el-button></article>
-<details v-if="t.limitations.length"><summary>范围与未知</summary><p v-for="l in t.limitations" :key="l" class="muted">{{l}}</p></details><div v-if="t.questions.length"><small>接下来可以问</small><el-button v-for="q in t.questions" :key="q" link @click="question=q">{{q}}</el-button></div></article>
+<ContextTrace v-if="t.context_run_id" :track-id="track.track_id" :run-id="t.context_run_id" @open="id=>emit('open',id)"/><details v-if="t.limitations.length"><summary>范围与未知</summary><p v-for="l in t.limitations" :key="l" class="muted">{{l}}</p></details><div v-if="t.questions.length"><small>接下来可以问</small><el-button v-for="q in t.questions" :key="q" link @click="question=q">{{q}}</el-button></div></article>
 <el-empty v-if="!turns.length" description="选择模块后，问一个问题开始学习。"/></div>
-<div v-if="active" class="live"><span class="pulse"></span> Agent 正在工作，工具进度实时更新；完整回答完成后显示。<el-button link @click="stop">停止本轮</el-button></div><ol v-if="events.length" class="muted"><li v-for="(e,i) in events.slice(-5)" :key="i">{{e}}</li></ol>
+<ContextTrace v-if="track.active_run?.role==='tutor'&&active" :key="track.active_run.run_id" :track-id="track.track_id" :run-id="track.active_run.run_id" @open="id=>emit('open',id)"/><div v-if="active" class="live"><span class="pulse"></span> Agent 正在工作，工具进度实时更新；完整回答完成后显示。<el-button link @click="stop">停止本轮</el-button></div><ol v-if="events.length" class="muted"><li v-for="(e,i) in events.slice(-5)" :key="i">{{e}}</li></ol>
 <el-input v-model="question" type="textarea" :rows="4" placeholder="这个模块为什么这样设计？请定位核心代码，并画出数据流。"/><div class="send"><el-button type="primary" :disabled="track.independent_attempt_active||active||!question.trim()" :loading="busy" @click="send">提问 / 继续学习</el-button></div>
 <details><summary>模型预算</summary><p>gpt-6.1-sol · low</p><label>最多调用 <el-input-number v-model="calls" :min="1" :max="3" size="small"/></label><label>每次输出 <el-input-number v-model="cap" :min="512" :max="8192" :step="512" size="small"/></label></details>
 <p class="muted">只读导学。切换自己的 IDE 后可编辑代码、请求补丁；命令执行仍需确认。</p>

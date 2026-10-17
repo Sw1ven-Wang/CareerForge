@@ -92,3 +92,6 @@ from careerforge.workflows.study import execute as execute_study  # noqa: E402
 
 for study_type in ("market_research", "project_research", "learning_path"):
     WORKFLOWS[(study_type, STUDY_VERSION)] = execute_study
+
+# New context assembly is isolated from pre-existing 2.2 paid-stage artifacts.
+WORKFLOWS[("learning_path", "agent-study-2.3")] = execute_study
