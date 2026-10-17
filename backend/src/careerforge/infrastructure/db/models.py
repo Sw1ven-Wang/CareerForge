@@ -7,12 +7,14 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     ForeignKeyConstraint,
+    Index,
     Integer,
     LargeBinary,
     String,
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -801,6 +803,13 @@ class SourceLibraryCategory(Timestamped, Base):
     __table_args__ = (
         UniqueConstraint("id", "owner_id"),
         UniqueConstraint("owner_id", "parent_id", "name"),
+        Index(
+            "uq_source_library_root_name",
+            "owner_id",
+            "name",
+            unique=True,
+            postgresql_where=text("parent_id IS NULL"),
+        ),
         ForeignKeyConstraint(
             ["parent_id", "owner_id"],
             ["source_library_categories.id", "source_library_categories.owner_id"],
@@ -846,6 +855,11 @@ class CodeKnowledgeChunk(Base):
             ["repository_snapshots.id", "repository_snapshots.owner_id"],
         ),
         UniqueConstraint("snapshot_id", "ordinal"),
+        Index(
+            "ix_code_knowledge_search",
+            text("to_tsvector('simple'::regconfig, search_text)"),
+            postgresql_using="gin",
+        ),
     )
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     owner_id: Mapped[UUID]
