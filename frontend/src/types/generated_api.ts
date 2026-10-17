@@ -2076,6 +2076,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/study/tracks/{identifier}/delegations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Delegation Reports */
+        get: operations["delegation_reports_api_v1_study_tracks__identifier__delegations_get"];
+        put?: never;
+        /** Delegate */
+        post: operations["delegate_api_v1_study_tracks__identifier__delegations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2419,6 +2437,34 @@ export interface components {
             required_artifact_types: string[];
             /** Limitations */
             limitations?: string[];
+        };
+        /** DelegationInput */
+        DelegationInput: {
+            /** Expected Revision */
+            expected_revision: number;
+            /** Objective */
+            objective: string;
+            /** Requirement Keys */
+            requirement_keys: string[];
+            /** Candidate Ids */
+            candidate_ids?: string[];
+            /** Allowed Roles */
+            allowed_roles?: ("requirement_analysis" | "code_investigation" | "evidence_review" | "learning_design")[];
+            /**
+             * Call Budget
+             * @default 6
+             */
+            call_budget: number;
+            /**
+             * Parent Call Limit
+             * @default 3
+             */
+            parent_call_limit: number;
+            /**
+             * Max Output Tokens
+             * @default 8192
+             */
+            max_output_tokens: number;
         };
         /** DuplicateDecisionInput */
         DuplicateDecisionInput: {
@@ -7944,6 +7990,74 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ReviewBatchInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delegation_reports_api_v1_study_tracks__identifier__delegations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delegate_api_v1_study_tracks__identifier__delegations_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string | null;
+            };
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DelegationInput"];
             };
         };
         responses: {

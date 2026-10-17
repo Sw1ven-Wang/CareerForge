@@ -17,10 +17,14 @@ const eventNames: Record<string, string> = {
   'run.resumed': '已接受决定，准备继续', 'run.recovering': '正在恢复执行',
   'learning.result_recovered': '已修复保存结果，原始失败记录保留',
   'knowledge.search': '已检索知识库', 'knowledge.read': '已读取代码原文', 'knowledge.related': '已查询结构候选',
-  'task.created':'子任务已建立','budget.reserved':'子任务额度已预留','budget.consumed':'调用已计入总消耗','budget.settled':'未用额度已释放','run.children_ready':'子任务结束，准备统一校验','task.joined':'子任务结果已汇总','stage.failed': '阶段失败，未自动重试',
+  'task.proposal_denied':'委派提议被范围或预算规则拒绝','task.result_ready':'子任务证据已暂存','task.created':'子任务已建立','budget.reserved':'子任务额度已预留','budget.consumed':'调用已计入总消耗','budget.settled':'未用额度已释放','run.children_ready':'子任务结束，准备统一校验','task.joined':'子任务结果已汇总','stage.failed': '阶段失败，未自动重试',
   'run.finished': '本次运行已结束', 'run.cancelled': '运行已取消',
 }
 const failureNames: Record<string,string> = {
+  invalid_structured_json: '模型返回内容不是有效 JSON，本轮已停止',
+  INVALID_DELEGATION_RESULT: '委派报告结构或原文依据未通过校验',
+  TASK_SCOPE_FORBIDDEN: '任务角色或资料范围超出授权',
+  FINAL_CALL_RESERVED: '子任务额度会挤占最终汇总，已拒绝',
   INVALID_LEARNING_EVIDENCE: '学习说明格式或原文引用未通过校验',
   PROVIDER_OUTPUT_OVER_LIMIT: '供应商返回用量超过请求上限，已停止后续调用',
   MODEL_RESULT_UNCERTAIN: '上次调用结果未保存，已停止自动重试',
@@ -64,7 +68,7 @@ async function cancel() {
     <el-tag v-if="run.workflow_version.startsWith('s02-demo-')" type="warning">合成流程演示</el-tag>
     <h2>运行记录</h2><p>关闭页面后任务仍会继续。重新登录可查看进度。</p>
     <p>已消耗 {{ run.usage.calls_reserved }} / {{ run.usage.call_limit }} 次调用额度 · 未用预留 {{run.usage.held_calls??0}}</p>
-    <section v-if="run.family?.children.length"><h3>子任务与预算结算</h3><p>{{run.family.accounting_note}}</p><article v-for="child in run.family.children" :key="child.run_id" style="margin:12px 0;padding:10px;border:1px solid #dce5dc"><router-link :to="'/runs/'+child.run_id">审核子任务 {{child.run_id.slice(0,8)}}</router-link> · {{names[child.status]??child.status}}<p>分配 {{child.allocated_calls}} · 消耗 {{child.consumed_calls}} · 未用预留 {{child.held_calls}} · 已释放 {{child.released_calls}}</p><small v-for="(receipt,i) in child.usage" :key="i">收据 {{i+1}} · {{receipt.status}} · 输入 {{receipt.usage?.input_tokens??'未知'}} / 输出 {{receipt.usage?.output_tokens??'未知'}}<br></small></article></section>
+    <section v-if="run.family?.children.length"><h3>子任务与预算结算</h3><p>{{run.family.accounting_note}}</p><article v-for="child in run.family.children" :key="child.run_id" style="margin:12px 0;padding:10px;border:1px solid #dce5dc"><router-link :to="'/runs/'+child.run_id">子任务 {{child.run_id.slice(0,8)}}</router-link> · {{names[child.status]??child.status}}<p>分配 {{child.allocated_calls}} · 消耗 {{child.consumed_calls}} · 未用预留 {{child.held_calls}} · 已释放 {{child.released_calls}}</p><small v-for="(receipt,i) in child.usage" :key="i">收据 {{i+1}} · {{receipt.status}} · 输入 {{receipt.usage?.input_tokens??'未知'}} / 输出 {{receipt.usage?.output_tokens??'未知'}}<br></small></article></section>
     <el-alert v-if="error" :title="error" type="warning" :closable="false" />
     <section v-if="run.waiting_input">
       <p v-if="run.waiting_input.question.draft?.draft">{{ run.waiting_input.question.draft.draft }}</p>

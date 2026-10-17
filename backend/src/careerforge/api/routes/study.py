@@ -176,3 +176,29 @@ def review_batch(
     from careerforge.application.review_batch_service import start as start_batch
 
     return wrap(request, start_batch(db, user.id, identifier, body, key))
+
+
+from careerforge.schemas.delegation import DelegationInput  # noqa: E402
+
+
+@router.post("/tracks/{identifier}/delegations", response_model=Envelope, status_code=202)
+def delegate(
+    identifier: UUID,
+    body: DelegationInput,
+    request: Request,
+    db: Database,
+    user: Authenticated,
+    key: IdempotencyKey,
+) -> Json:
+    from careerforge.application.autonomous_service import start as start_delegation
+
+    return wrap(request, start_delegation(db, user.id, identifier, body, key))
+
+
+@router.get("/tracks/{identifier}/delegations", response_model=Envelope)
+def delegation_reports(
+    identifier: UUID, request: Request, db: Database, user: Authenticated
+) -> Json:
+    from careerforge.application.autonomous_service import reports
+
+    return wrap(request, reports(db, service.track(db, user.id, identifier)))

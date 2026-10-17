@@ -51,9 +51,9 @@ def before_independent(db: Session, owner: UUID) -> None:
         select(AgentRun.id)
         .where(
             AgentRun.owner_id == owner,
-            AgentRun.status.in_(["queued", "running", "waiting_user"]),
+            AgentRun.status.in_(["queued", "running", "waiting_user", "waiting_children"]),
             (AgentRun.input_manifest["workspace_id"].astext.is_not(None))
-            | (AgentRun.input_manifest["role"].astext == "tutor"),
+            | (AgentRun.input_manifest["role"].astext.in_(["tutor", "delegate", "delegated_task"])),
         )
         .limit(1)
     )
@@ -138,8 +138,7 @@ def snapshot(db: Session, owner: UUID, row: LearningWorkspace, declaration: Json
         if declaration["external_help"] == "none"
         else "unknown",
         "observation_scope": (
-            "本系统请求与补丁记录；外部帮助和提示次数由本人声明，"
-            "不能证明其他设备未获帮助。"
+            "本系统请求与补丁记录；外部帮助和提示次数由本人声明，不能证明其他设备未获帮助。"
         ),
         "competence_verified": False,
     }

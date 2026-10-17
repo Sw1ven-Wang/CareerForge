@@ -195,6 +195,9 @@ class Runner:
         self.save_stage(key, value)
         return value
 
+    def instructions(self) -> str:
+        return RULES + ROLE_RULES[self.m["role"]]
+
     async def ask(
         self,
         key: str,
@@ -204,10 +207,13 @@ class Runner:
     ) -> Any:
         key = self.prefix + key
         prompt = (
-            RULES
-            + ROLE_RULES[self.m["role"]]
+            self.instructions()
             + "\nINPUT_UNTRUSTED_JSON\n"
-            + json.dumps(context, ensure_ascii=False, sort_keys=bool(self.m.get("context_scope")))
+            + json.dumps(
+                context,
+                ensure_ascii=False,
+                sort_keys=bool(self.m.get("context_scope") or self.m.get("delegation_scope")),
+            )
         )
         if self.m["role"] == "extract":
             prompt += (
@@ -236,6 +242,7 @@ class Runner:
                     "manifest": context["context_manifest"],
                     "context": context,
                     "request_hash": fingerprint(request.model_dump(mode="json")),
+                    "tools": request.tools,
                     "prompt_hash": digest(prompt),
                     "prompt_chars": len(prompt),
                     "estimated_input_tokens": len(prompt.encode("utf-8"))
@@ -254,7 +261,9 @@ class Runner:
                         "study.context",
                         ContextEvent(
                             action="assembled",
-                            task_id=self.m["context_scope"]["task"]["task_id"],
+                            task_id=self.m["context_scope"]["task"]["task_id"]
+                            if self.m.get("context_scope")
+                            else str(self.id),
                             reference="context:" + key,
                             content_hash=audit["request_hash"],
                             characters=len(prompt),
@@ -735,7 +744,9 @@ class Runner:
                             action="skill_loaded"
                             if name == "load_learning_skill"
                             else "evidence_read",
-                            task_id=self.m["context_scope"]["task"]["task_id"],
+                            task_id=self.m["context_scope"]["task"]["task_id"]
+                            if self.m.get("context_scope")
+                            else str(self.id),
                             reference=ref["evidence_id"],
                             content_hash=ref["content_hash"],
                             characters=len(ref["content"]),

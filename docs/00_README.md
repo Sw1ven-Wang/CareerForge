@@ -1,5 +1,7 @@
 # CareerForge V1：产品与实现文档包
 
+> 2026-10-17 D 包自主委派：父模型选择注册的只读角色、范围与预算；子任务返回原文证据并由父任务汇总，权限和总额度仍由服务端控制。见 [ADR 0009](decisions/0009-model-led-delegation.md) 与 [实施记录](progress/REVIEW_D_DELEGATION_20261017.md)。
+
 > 2026-10-17 D 包子任务：固定版本审核支持单层有界子任务、预算预留结算、取消与截止传播；最多两个子任务，父任务重验后统一发布。详见 [实施记录](progress/REVIEW_D_SUBTASKS_20261017.md) 与 [ADR 0008](decisions/0008-bounded-review-subtasks.md)。
 
 > 2026-10-17 审查 D 包上下文：ContextManifest、按需补读和方法加载、版本化证据回溯与无额外收费的已保存响应恢复。新导师版本 2.3，其他角色 2.2。详见 [D 包记录](progress/REVIEW_D_20261017.md) 与 [ADR 0007](decisions/0007-context-manifest-and-recall.md)。

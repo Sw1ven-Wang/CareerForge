@@ -101,3 +101,9 @@ from careerforge.workflows.review_batch import execute as execute_review_batch  
 
 WORKFLOWS[("project_research", BATCH_VERSION)] = execute_review_batch
 WORKFLOWS[("project_research", CHILD_VERSION)] = execute_study
+
+from careerforge.application.delegation_service import AUTO_CHILD_VERSION, AUTO_VERSION  # noqa: E402
+from careerforge.workflows.autonomous import execute as execute_delegation  # noqa: E402
+
+WORKFLOWS[("project_research", AUTO_VERSION)] = execute_delegation
+WORKFLOWS[("project_research", AUTO_CHILD_VERSION)] = execute_delegation

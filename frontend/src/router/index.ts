@@ -20,6 +20,6 @@ export default createRouter({ history: createWebHistory(), routes: [
   { path: '/planning', component: PlanningView },
   { path: '/mock-research', component: MockResearchView },
   { path: '/market', component: MarketResearchView },
-  { path: '/runs', component: RunsView },
+  { path: '/runs/:runId?', component: RunsView },
   { path: '/sources', component: SourceLibraryView },
 ] })

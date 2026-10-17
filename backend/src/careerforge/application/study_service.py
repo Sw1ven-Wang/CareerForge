@@ -592,6 +592,10 @@ def start(
 
 
 def validate_run(db: Session, run: AgentRun) -> StudyTrack:
+    if run.workflow_version in {"agent-delegation-1.0", "agent-delegation-task-1.0"}:
+        from careerforge.application.autonomous_service import validate_run as validate_delegation
+
+        return validate_delegation(db, run)
     row = track(db, run.owner_id, UUID(run.input_manifest["track_id"]))
     manifest = run.input_manifest
     validate_requirements(db, run.owner_id, manifest["sources"])

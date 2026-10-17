@@ -1,4 +1,4 @@
-"""One-level durable review delegation with root-first locking and monotonic call charges."""
+"""One-level durable delegation with root-first locking and monotonic call charges."""
 
 from uuid import UUID
 
@@ -18,6 +18,8 @@ from careerforge.infrastructure.db.models import (
 
 BATCH_VERSION = "agent-study-review-batch-1.0"
 CHILD_VERSION = "agent-study-review-child-1.0"
+AUTO_VERSION = "agent-delegation-1.0"
+AUTO_CHILD_VERSION = "agent-delegation-task-1.0"
 
 
 def lock_run(db: Session, identifier: UUID) -> AgentRun | None:
@@ -62,10 +64,10 @@ def create_child(
 
     if (
         parent.parent_run_id
-        or parent.workflow_version != BATCH_VERSION
+        or parent.workflow_version not in {BATCH_VERSION, AUTO_VERSION}
         or parent.status != "running"
     ):
-        raise BusinessError(409, "DELEGATION_FORBIDDEN", "仅有界审核父任务可分发一层子任务。")
+        raise BusinessError(409, "DELEGATION_FORBIDDEN", "仅受控父任务可分发一层子任务。")
     previous = db.scalar(
         select(RunAllocation).where(
             RunAllocation.parent_run_id == parent.id, RunAllocation.task_key == task_key
@@ -90,11 +92,25 @@ def create_child(
         raise BusinessError(409, "ROOT_BUDGET_UNAVAILABLE", "父任务剩余额度不足，未创建子任务。")
     if token_cap > parent.input_manifest["max_output_tokens"]:
         raise BusinessError(422, "CHILD_TOKEN_LIMIT", "子任务不能提高父任务输出上限。")
+    if parent.workflow_version == AUTO_VERSION:
+        from careerforge.application.autonomous_service import child_manifest
+        from careerforge.schemas.delegation import DelegateArgs
+
+        proposal = DelegateArgs.model_validate(manifest["delegation_scope"]["proposal"])
+        if (
+            proposal.task_key != task_key
+            or proposal.call_limit != calls
+            or fingerprint(child_manifest(parent, proposal)) != fingerprint(manifest)
+            or token_cap != manifest["max_output_tokens"]
+        ):
+            raise BusinessError(422, "TASK_SCOPE_FORBIDDEN", "委派必须沿用服务端生成的完整合同。")
+        if parent.call_budget - parent.calls_reserved - parent.held_calls - calls < 1:
+            raise BusinessError(409, "FINAL_CALL_RESERVED", "必须为父任务保留一次最终汇总额度。")
     child = create_run(
         db,
         parent.owner_id,
         "project_research",
-        CHILD_VERSION,
+        AUTO_CHILD_VERSION if parent.workflow_version == AUTO_VERSION else CHILD_VERSION,
         manifest,
         call_budget=calls,
         parent_run_id=parent.id,

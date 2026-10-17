@@ -1,6 +1,8 @@
 # D 包补齐：有界子任务与预算实施记录
 
-日期：2026-10-17。承接 [D 包上下文记录](REVIEW_D_20261017.md)，设计见 [ADR 0008](../decisions/0008-bounded-review-subtasks.md)。
+日期：2026-10-17。
+
+后续已增加模型自主委派的通用只读角色，见 [自主委派记录](REVIEW_D_DELEGATION_20261017.md)。下文对应前一轮固定审核批次。承接 [D 包上下文记录](REVIEW_D_20261017.md)，设计见 [ADR 0008](../decisions/0008-bounded-review-subtasks.md)。
 
 ## 已完成
 

@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api, apiPage, mutation } from '../api/client'
 import ReviewInvestigation from '../components/ReviewInvestigation.vue'
+import AutonomousDelegation from '../components/AutonomousDelegation.vue'
 import { type StudyTrack, intentNames, roleNames, activeStates } from '../types/study'
 const router=useRouter(),write=mutation()
 const tracks=ref<{track_id:string;name:string;available:boolean}[]>([]),id=ref(''),track=ref<StudyTrack|null>(null)
@@ -113,6 +114,7 @@ function learn(){if(latestPlan.value)void router.push({path:'/studio',query:{tra
 <el-alert v-if="track.active_run?.status==='failed'&&!track.extraction_preview&&!track.requirements?.recovery" title="本轮未发布结果。请在运行记录查看原因；系统没有自动追加收费重试。" type="warning" :closable="false"/>
 <el-alert v-if="track.extraction_preview?.budget_warning" :title="`供应商报告输出 ${track.extraction_preview.budget_warning.reported} token，超过请求上限 ${track.extraction_preview.budget_warning.requested}。本轮已停止，以下仅为未发布预览，调研与审核未启动。`" type="warning" :closable="false"/>
 <el-alert v-if="track.requirements?.recovery" :title="`原提取运行校验失败；已从保存结果恢复 ${track.requirements.requirements.length} 条有效需求，未追加模型调用。待核对 ${track.requirements.unresolved?.length??0} 条。`" type="info" :closable="false"/>
+<AutonomousDelegation :track="track" :token-cap="tokenCap" @updated="refresh"/>
 <div class="study-columns">
 <section class="surface study-card"><header><h2>① 技术需求</h2><el-button :disabled="running" :loading="busy" @click="run('extract')">{{track.requirements?'重新提取':'提取需求'}}</el-button></header><p class="muted">了解 / 熟悉 / 掌握是目标深度。推断会单独标注。</p><p class="source-chips"><span v-for="s in track.sources" :key="s.source_snapshot_id">{{s.title}}</span></p>
 <el-empty v-if="!displayedRequirements" description="尚未提取技术要求"/><p v-if="track.extraction_preview" class="muted">已校验 {{track.extraction_preview.requirements.length}} 条原文依据；{{track.extraction_preview.unresolved.length}} 条待核对。</p><el-tag v-if="track.extraction_preview" type="warning">未发布预览 · 不进入后续链路</el-tag>

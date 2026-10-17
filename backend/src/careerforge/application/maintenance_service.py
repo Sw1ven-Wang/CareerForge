@@ -64,6 +64,8 @@ def authorized(db: Session, run: AgentRun) -> None:
         "agent-study-2.3",
         "agent-study-review-batch-1.0",
         "agent-study-review-child-1.0",
+        "agent-delegation-1.0",
+        "agent-delegation-task-1.0",
     }:
         from careerforge.application.study_service import validate_run
 

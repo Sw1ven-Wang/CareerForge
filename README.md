@@ -34,6 +34,7 @@ flowchart LR
 - **内置 IDE**：同页查看计划、参考代码与问答，可切换自己的项目，编辑文件、审阅并应用 Agent 补丁。
 - **模块实践**：从叶模块冻结练习条件，建立独立的多次尝试；提交代码、运行记录、本人解释与迁移说明，逐项人工核对后更新已有计划版本。成果分别记录允许辅助条件、本人声明独立及迁移条件，不自动升级为能力掌握。
 - **受控执行**：命令逐条确认后在无网络 Docker 沙箱运行；桌面桥接不提供任意宿主 Shell。
+- **自主委派**：按问题选择只读角色、技术与固定源码范围；父模型分配预算，子任务交接原文证据，最终生成独立调查说明。总预算、取消传播和独立练习隔离由服务端控制。
 - **持久化运行**：保存阶段产物、事件、调用收据和预算；固定版本审核可分发最多两个子任务，预留并结算总额度，取消向下传播；不确定的模型请求不自动重复收费。
 
 新建方向默认按所选学习目标的代码位置覆盖规划，数量 5（可设 1–10）作为收集偏好；不足时需明确确认开始当前范围。可选择“必须达到指定数量”，历史方向也保留严格数量要求。数量达标仍不能替代目标覆盖；不无限搜索或调用模型。
@@ -152,7 +153,7 @@ scripts/      开发、演示、文档导出与运维工具
 - [本机 IDE 的边界](desktop/README.md)
 - [贡献指南](CONTRIBUTING.md) · [安全说明](SECURITY.md)
 
-部分历史文档记录了当时的产品结构与开发机验证条件，请结合日期阅读；当前主流程以本 README、ADR 0003 及其修订 ADR 0004、[ADR 0005](docs/decisions/0005-bounded-code-investigation.md) 及 [ADR 0006](docs/decisions/0006-study-practice-evidence.md)、[ADR 0007](docs/decisions/0007-context-manifest-and-recall.md)、[ADR 0008](docs/decisions/0008-bounded-review-subtasks.md) 为准。新增调查与成果链路的验证范围见 [B 包记录](docs/progress/REVIEW_B_20261017.md)、[C 包记录](docs/progress/REVIEW_C_20261017.md)、[D 包上下文记录](docs/progress/REVIEW_D_20261017.md) 与 [D 包子任务记录](docs/progress/REVIEW_D_SUBTASKS_20261017.md)。
+部分历史文档记录了当时的产品结构与开发机验证条件，请结合日期阅读；当前主流程以本 README、ADR 0003 及其修订 ADR 0004、[ADR 0005](docs/decisions/0005-bounded-code-investigation.md) 及 [ADR 0006](docs/decisions/0006-study-practice-evidence.md)、[ADR 0007](docs/decisions/0007-context-manifest-and-recall.md)、[ADR 0008](docs/decisions/0008-bounded-review-subtasks.md)、[ADR 0009](docs/decisions/0009-model-led-delegation.md) 为准。新增调查与成果链路的验证范围见 [B 包记录](docs/progress/REVIEW_B_20261017.md)、[C 包记录](docs/progress/REVIEW_C_20261017.md)、[D 包上下文记录](docs/progress/REVIEW_D_20261017.md)、[D 包子任务记录](docs/progress/REVIEW_D_SUBTASKS_20261017.md) 与 [自主委派记录](docs/progress/REVIEW_D_DELEGATION_20261017.md)。
 
 ## 许可证
 
