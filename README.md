@@ -1,6 +1,7 @@
 # CareerForge
 
-**把职业需求映射到开源实现的个人 Agent 学习工作台。**  
+**把职业需求映射到开源实现的个人 Agent 学习工作台。**
+
 An evidence-based agent workbench for learning from real open-source code.
 
 你导入岗位或技术资料，Agent 提取技术需求，发现并审核开源项目，再根据你选择的学习目标制定模块化计划。在同一页面阅读参考代码、查看计划、提问，以及在自己的项目里审阅并应用代码修改。
