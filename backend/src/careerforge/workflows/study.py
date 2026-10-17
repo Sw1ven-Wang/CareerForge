@@ -43,6 +43,7 @@ from careerforge.schemas.study import (
     TutorOutput,
     VisualBlock,
 )
+from careerforge.workflows.code_investigation import investigate
 from careerforge.workflows.job_agent import call as model_call
 from careerforge.workflows.studio_learning import tool_definitions
 
@@ -61,7 +62,12 @@ ROLE_RULES = {
     "discover": """你是开源项目调研 Agent。根据技术需求构造至多3个 GitHub 仓库检索查询，
 优先英文技术关键字，避免所有技术堆入同一个查询。每个查询关联需求key。
 查询由只读工具执行；你不能直接编造仓库。考虑实现质量、学习价值，而非仅看星数。""",
-    "review": """你是独立的项目相关性审核 Agent。研究已固定版本的文档与实际源码窗口。
+    "review": """你是独立的项目相关性审核 Agent。调查固定版本源码，跟踪符号、相关实现与测试。
+先明确机制、查定义和相关状态/调用候选、补读测试并寻找反证。只用本轮只读工具，不能执行仓库。
+候选摘要和静态同名关系不是已读原文或确定调用图。测试代码不是测试已通过。
+最终 counterevidence 填已读原文中的潜在反证；存在未解决反证、只有依赖提及
+或资料不足时用 uncertain/weak。
+停止原因、截断与读取范围必须如实说明，不能把预算用尽说成完整审查。
 判断它是否直接实现岗位技术需求的核心机制，而非仅提及同一关键词或作为依赖。
 strong必须有至少一项来自已读源码窗口的匹配，逐项摘录连续代码和准确行号、解释覆盖边界；
 weak表示关联弱；uncertain表示资料不足。记录技术栈、质量依据、许可证/活跃度局限。
@@ -398,13 +404,54 @@ class Runner:
 
             material = await self.io("review_material", fetch)
             candidate = material["candidate"]
-        reading = validation.excerpts(material["files"], self.m["requirements"])
+
+        async def decide(
+            key: str, context: dict[str, Any], tools: list[dict[str, Any]]
+        ) -> ModelResult:
+            return ModelResult.model_validate(await self.ask(key, context, tools=tools))
+
+        review_requirements = [
+            {k: r[k] for k in ("key", "technology", "keywords", "depth")}
+            for r in self.m["requirements"]
+        ]
+        reading = await investigate(
+            material["files"], review_requirements, self.m.get("review_call_limit", 1), decide
+        )
+        self.save_stage(self.prefix + "review_investigation", reading)
         output = await self.ask(
             "review",
-            {"requirements": self.m["requirements"], "candidate": candidate, "reading": reading},
+            {
+                "requirements": review_requirements,
+                "candidate": candidate,
+                "reading": reading,
+                "phase": "final_review",
+            },
             ReviewOutput,
         )
-        output, matches, checked = validation.partial_review(output, self.m, reading)
+        output, matches, checked = validation.partial_review(
+            output, self.m, reading, insufficient_to_uncertain=True
+        )
+        if reading["investigation"]["stop_reason"] == "unsupported" and output.verdict == "strong":
+            checked["original_model_verdict"] = output.verdict
+            output = output.model_copy(
+                update={
+                    "verdict": "uncertain",
+                    "summary": "调查停止判断与最终强相关判断不一致，待补证据。",
+                }
+            )
+        if reading["investigation"]["stop_reason"] in {
+            "model_budget",
+            "read_budget",
+            "tool_budget",
+        }:
+            output = output.model_copy(
+                update={
+                    "limitations": [
+                        *output.limitations[:9],
+                        "调查达到预算上限，保留尚未调查或不能判定的部分。",
+                    ]
+                }
+            )
         with self.factory.begin() as db:
             run = self.run(db)
             row = service.track(db, run.owner_id, UUID(self.m["track_id"]), True)

@@ -3074,6 +3074,11 @@ export interface components {
         /** RoleInput */
         RoleInput: {
             /**
+             * Review Call Limit
+             * @default 1
+             */
+            review_call_limit: number;
+            /**
              * Acknowledge Collection Gap
              * @default false
              */

@@ -1,5 +1,7 @@
 # CareerForge V1：产品与实现文档包
 
+> 2026-10-17 审查 B 包：有界符号调查、实现/测试补读、原文断言与潜在反证。默认每候选仍 1 次模型调用，多轮需显式选择。详见 [B 包记录](progress/REVIEW_B_20261017.md) 与 [ADR 0005](decisions/0005-bounded-code-investigation.md)。
+
 > 2026-10-17 审查 A 包：源码窗口按正文/符号定位，计划按所选目标的位置覆盖检查，保留明确数量要求；引用定位与语义支持分开展示。详见 [A 包记录](progress/REVIEW_A_20261017.md) 与 [ADR 0004](decisions/0004-coverage-and-evidence-levels.md)。
 
 > 2026-10-17 受限真实验证：每次输出上限提高到 8192；本轮 6 次模型调用，发布 15 条有效需求、发现 8 个候选、3 个强相关项目审核入库（目标 5 个）。部分引用失败经零调用恢复，详见 [真实验证记录](progress/AGENT_STUDY_LIVE_20261017.md)。

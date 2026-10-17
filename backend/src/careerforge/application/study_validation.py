@@ -135,18 +135,22 @@ def review_matches(
     matched = []
     for point in output.matches:
         windows = [r for r in reading["code"] if r["path"] == point.path]
-        exact = [w for w in windows if w["content"].count(point.quote) == 1]
-        if point.requirement_key not in keys or len(exact) != 1:
-            raise ValueError("review needs a unique literal quote in a read source window")
-        window = exact[0]
-        offset = window["content"].index(point.quote)
-        start = window["start_line"] + window["content"][:offset].count("\n")
-        end = start + point.quote.count("\n")
+        locations: set[tuple[int, int]] = set()
+        for window in windows:
+            offset = window["content"].find(point.quote)
+            while offset >= 0:
+                start = window["start_line"] + window["content"][:offset].count("\n")
+                locations.add((start, start + point.quote.count("\n")))
+                offset = window["content"].find(point.quote, offset + 1)
+        if point.requirement_key not in keys or len(locations) != 1:
+            raise ValueError("review needs a unique literal quote in read source locations")
+        start, end = next(iter(locations))
         match = {
             **point.model_dump(),
             "start_line": start,
             "end_line": end,
             "verification": evidence_verification(),
+            "file_hash": next((w["file_hash"] for w in windows if w.get("file_hash")), None),
         }
         if (start, end) != (point.start_line, point.end_line):
             match["line_normalization"] = {
@@ -161,7 +165,10 @@ def review_matches(
 
 
 def partial_review(
-    output: ReviewOutput, manifest: dict[str, Any], reading: dict[str, Any]
+    output: ReviewOutput,
+    manifest: dict[str, Any],
+    reading: dict[str, Any],
+    insufficient_to_uncertain: bool = False,
 ) -> tuple[ReviewOutput, list[dict[str, Any]], dict[str, Any]]:
     """Exclude unmatched claims; only grounded matches may support admission and plans."""
     valid: list[dict[str, Any]] = []
@@ -179,17 +186,67 @@ def partial_review(
                     "reason": "摘录不在已读源码中或不能唯一定位；未用于入库及计划。",
                 }
             )
+    original_verdict = output.verdict
     if output.verdict == "strong" and not valid:
-        raise ValueError("strong relevance requires grounded matches")
+        if not insufficient_to_uncertain:
+            raise ValueError("strong relevance requires grounded matches")
+        output = output.model_copy(
+            update={
+                "verdict": "uncertain",
+                "limitations": [
+                    *output.limitations[:9],
+                    "没有通过位置校验的实现依据，已降为资料不足。",
+                ],
+            }
+        )
+    counterevidence: list[dict[str, Any]] = []
+    unresolved_counterevidence: list[dict[str, Any]] = []
+    for point in output.counterevidence:
+        try:
+            counterevidence.extend(
+                review_matches(
+                    output.model_copy(update={"verdict": "uncertain", "matches": [point]}),
+                    manifest,
+                    reading,
+                )
+            )
+        except ValueError:
+            unresolved_counterevidence.append(
+                {
+                    "requirement_key": point.requirement_key,
+                    "path": point.path,
+                    "reason": "潜在反证未能定位到已读原文，未作为反证依据。",
+                }
+            )
+    if output.counterevidence and output.verdict == "strong":
+        output = output.model_copy(
+            update={
+                "verdict": "uncertain",
+                "limitations": [
+                    *output.limitations[:9],
+                    "原模型报告了潜在反证，尚未独立解决，暂不强相关入库。",
+                ],
+            }
+        )
+    unverified_summary = output.summary
+    if output.verdict != original_verdict:
+        output = output.model_copy(
+            update={"summary": "实现依据不足或存在待解决反证，暂不能支持强相关结论。"}
+        )
     metadata = {
         "validated": len(valid),
         "unresolved": unresolved,
         "location_validated": len(valid),
         "semantic_verified": 0,
         "runtime_observed": 0,
+        "original_model_verdict": original_verdict,
+        "counterevidence": counterevidence,
+        "unresolved_counterevidence": unresolved_counterevidence,
     }
+    if output.verdict != original_verdict:
+        metadata["unverified_model_summary"] = unverified_summary
     if unresolved:
-        metadata["unverified_model_summary"] = output.summary
+        metadata["unverified_model_summary"] = unverified_summary
         output = output.model_copy(
             update={
                 "summary": f"审核结论：{output.verdict}；{len(valid)} 项源码匹配已核验，"

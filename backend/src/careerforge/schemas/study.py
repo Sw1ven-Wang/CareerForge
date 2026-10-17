@@ -65,6 +65,7 @@ class CodeEvidence(InputModel):
 
 
 class ReviewOutput(InputModel):
+    counterevidence: list[CodeEvidence] = Field(default_factory=list, max_length=4)
     verdict: Literal["strong", "weak", "uncertain"]
     summary: str = Field(min_length=1, max_length=1000)
     technology_stack: list[str] = Field(min_length=1, max_length=20)
@@ -165,6 +166,7 @@ class TutorOutput(InputModel):
 
 
 class RoleInput(InputModel):
+    review_call_limit: int = Field(default=1, ge=1, le=3)
     acknowledge_collection_gap: bool = False
     research_requirement_keys: list[str] | None = Field(default=None, min_length=1, max_length=25)
     auto_review_count: int = Field(default=0, ge=0, le=5)

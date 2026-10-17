@@ -28,7 +28,7 @@ from careerforge.schemas.study import (
     TrackSettings,
 )
 
-VERSION = "agent-study-2.1"
+VERSION = "agent-study-2.2"
 ROLE_TYPES = {
     "extract": "market_research",
     "discover": "project_research",
@@ -443,11 +443,14 @@ def start(
         "model_call_limit": (
             body.model_call_limit
             if body.role == "tutor"
-            else 1 + body.auto_review_count
+            else 1 + body.auto_review_count * body.review_call_limit
             if body.role == "discover"
+            else body.review_call_limit
+            if body.role == "review"
             else 1
         ),
         "auto_review_count": body.auto_review_count if body.role == "discover" else 0,
+        "review_call_limit": body.review_call_limit,
         "synthetic": False,
     }
     if body.role != "extract":
@@ -782,6 +785,8 @@ def publish_review(
         "admitted": admitted,
         "highlights": [],
         "coverage": reading["coverage"],
+        "investigation": reading.get("investigation"),
+        "counterevidence": (evidence_validation or {}).get("counterevidence", []),
         "repository_snapshot_id": None,
     }
     if not license_known:
@@ -827,6 +832,15 @@ def publish_review(
             payload["highlights"].append(
                 {**match, "citation_id": str(citation.id), "commit": candidate["commit"]}
             )
+    from careerforge.application.review_evidence import claims_for_review
+
+    payload.update(
+        claims_for_review(
+            payload["highlights"] or matches,
+            (evidence_validation or {}).get("counterevidence", []),
+            candidate["commit"],
+        )
+    )
     item = put(db, row, "review", {**payload, "synthetic": synthetic}, run.id)
     row.revision += 1
     return item

@@ -3,12 +3,13 @@ import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api, apiPage, mutation } from '../api/client'
+import ReviewInvestigation from '../components/ReviewInvestigation.vue'
 import { type StudyTrack, intentNames, roleNames, activeStates } from '../types/study'
 const router=useRouter(),write=mutation()
 const tracks=ref<{track_id:string;name:string;available:boolean}[]>([]),id=ref(''),track=ref<StudyTrack|null>(null)
 const sources=ref<{source_id:string;title:string;read_status:string}[]>([]),sourceIds=ref<string[]>([]),name=ref('Agent 开发'),target=ref(5)
 const policy=ref<'coverage'|'strict_count'>('strict_count'),newPolicy=ref<'coverage'|'strict_count'>('coverage')
-const createOpen=ref(false),busy=ref(false),showReview=ref(''),tokenCap=ref(8192)
+const createOpen=ref(false),busy=ref(false),showReview=ref(''),tokenCap=ref(8192),reviewCalls=ref(1)
 const intent=ref('learn_project'),focus=ref(''),reqKeys=ref<string[]>([]),reviewIds=ref<string[]>([])
 const focusChunk=ref(''),focusHits=ref<{chunk_id:string;symbol:string;path:string;start_line:number}[]>([]),searchBusy=ref(false)
 const existing=ref<{repository_snapshot_id:string;name:string}[]>([]),existingId=ref('')
@@ -56,11 +57,13 @@ async function create(){
 async function run(role:string,candidateId?:string){
  if(!track.value)return
  try{
+ const callLimit=role==='discover'?1+5*reviewCalls.value:role==='review'?reviewCalls.value:1
  const gap=role==='plan'&&track.value.collection_policy==='coverage'&&!countMet.value
  const scopeNote=role==='plan'?`所选目标的位置覆盖 ${selectedCoverage.value.covered.length}/${reqKeys.value.length}；解释的语义支持未独立核验。${gap?`收集偏好尚差 ${track.value.target_count-track.value.approved_count} 个项目；确认只为当前选定范围制定计划。`:''}`:''
- await ElMessageBox.confirm(`${scopeNote} ${roleNames[role]}：最多 ${role==='discover'?6:1} 次模型调用，输出上限 ${tokenCap.value} token。${role==='discover'?'另执行最多 3 次 GitHub 公开仓库搜索并审核最多 5 个候选，达到目标即停止。':role==='review'?'读取候选的固定版本文档和代码，不执行项目。':''} 供应商按实际用量计费。`,'启动 Agent',{confirmButtonText:'启动本轮',cancelButtonText:'取消'})
+ await ElMessageBox.confirm(`${scopeNote} ${roleNames[role]}：最多 ${callLimit} 次模型调用，输出上限 ${tokenCap.value} token。${role==='discover'?'另执行最多 3 次 GitHub 公开仓库搜索并审核最多 5 个候选，达到目标即停止；每候选预算包含最终审核报告。':role==='review'?'调查固定版本的符号、相关实现与测试；最多12次只读工具/6次源码读取，不执行项目。':''} 供应商按实际用量计费。`,'启动 Agent',{confirmButtonText:'启动本轮',cancelButtonText:'取消'})
  busy.value=true
  const body:Record<string,unknown>={expected_revision:track.value.revision,role,max_output_tokens:tokenCap.value,model_call_limit:1}
+ if(role==='review'||role==='discover')body.review_call_limit=reviewCalls.value
  if(candidateId)body.candidate_id=candidateId
  if(role==='discover'){body.auto_review_count=5;if(researchKeys.value.length)body.research_requirement_keys=researchKeys.value}
  if(role==='plan'){body.acknowledge_collection_gap=gap;body.intent={kind:intent.value,focus:focus.value,focus_chunk_id:focusChunk.value||null,requirement_keys:reqKeys.value,project_review_ids:reviewIds.value}}
@@ -113,11 +116,11 @@ function learn(){if(latestPlan.value)void router.push({path:'/studio',query:{tra
 </section>
 <section class="surface study-card"><header><h2>② 开源项目研究与审核</h2><el-button type="primary" plain :disabled="!canResearch||running" :loading="busy" @click="run('discover')">调研并审核一批</el-button></header><p class="muted">先发现候选，再读取固定版本代码审核。强相关且质量条件满足才入库。</p>
 <div class="target-setting"><span>{{policy==='strict_count'?'严格数量要求':'收集偏好'}}</span><el-input-number v-model="target" :min="1" :max="10" size="small"/><el-select v-model="policy" aria-label="数量策略" style="width:200px"><el-option label="覆盖优先，数量为偏好" value="coverage"/><el-option label="必须达到指定数量" value="strict_count"/></el-select><el-button size="small" :disabled="running||(target===track.target_count&&policy===track.collection_policy)" @click="settings">保存策略</el-button><strong>{{track.approved_count}} 个已入库</strong></div>
-<p class="muted">已有方向沿用原严格数量要求，只有你保存策略才改变。调研默认补缺失位置的技术，也可在下方选择要补充的技术。</p>
+<p class="muted">新审核会记录符号调查与补读轨迹，历史审核不自动重跑。已有方向沿用原严格数量要求，只有你保存策略才改变。调研默认补缺失位置的技术，也可在下方选择要补充的技术。</p>
 <details open class="coverage"><summary>技术目标覆盖 · 已定位 {{track.coverage.located}} / {{track.coverage.total}}</summary><div class="table-scroll"><table><thead><tr><th>技术目标</th><th>代码位置</th><th>语义支持</th><th>运行观察</th></tr></thead><tbody><tr v-for="r in track.coverage.rows" :key="r.requirement_key"><td>{{r.technology}} · {{r.depth}}</td><td>{{r.located_project_ids.length?`${r.located_project_ids.length} 个审核项目`:'缺少依据'}}</td><td>{{r.located_project_ids.length?'未独立核验':'无依据'}}</td><td>无运行观察</td></tr></tbody></table></div><p class="muted">{{track.coverage.scope}}</p></details>
 <el-empty v-if="!track.candidates.length" description="等待技术关键词调研，或送审已有项目"/>
 <article v-for="c in track.candidates" :key="c.id" class="project"><div class="project-title"><a :href="c.github_url" target="_blank" rel="noopener noreferrer">{{c.full_name}}</a><el-tag size="small" :type="reviewed.get(c.id)?.admitted?'success':'info'">{{reviewed.get(c.id)?.admitted?'已入库':reviewed.get(c.id)?({strong:'相关但未入库',weak:'弱相关',uncertain:'待补证据'}[reviewed.get(c.id)!.verdict as 'strong'|'weak'|'uncertain']):'候选待审'}}</el-tag></div><p>{{c.description}}</p><small>★ {{c.stars??'未记录'}} · {{c.license??'许可证待核对'}} · {{c.origin==='user_import'?'人工项目':'GitHub 检索'}}</small><div><el-button size="small" :disabled="running" @click="run('review',c.id)">{{reviewed.has(c.id)?'重新审核':'审核此项目'}}</el-button><el-button v-if="reviewed.has(c.id)" link @click="showReview=showReview===c.id?'':c.id">审核依据</el-button></div>
-<div v-if="showReview===c.id&&reviewed.get(c.id)" class="audit"><p>{{reviewed.get(c.id)?.summary}}</p><el-tag size="small">代码位置已校验</el-tag> <el-tag size="small" type="warning">语义支持未独立核验</el-tag><p class="muted">相关性来自模型判断；静态摘录校验不能证明解释正确或代码实际运行。</p><small>技术栈：{{reviewed.get(c.id)?.technology_stack.join('、')}}</small><ul><li v-for="q in reviewed.get(c.id)?.quality_notes" :key="q">{{q}}</li></ul><el-button v-for="h in reviewed.get(c.id)?.highlights" :key="h.citation_id" link @click="router.push({path:'/studio',query:{citation:h.citation_id}})">{{h.requirement_key}} → {{h.path}}:{{h.start_line}}</el-button><p v-for="l in reviewed.get(c.id)?.limitations" :key="l" class="muted">{{l}}</p></div></article>
+<div v-if="showReview===c.id&&reviewed.get(c.id)" class="audit"><p>{{reviewed.get(c.id)?.summary}}</p><el-tag size="small">{{reviewed.get(c.id)?.evidence?.length||reviewed.get(c.id)?.highlights.length?'代码位置已校验':'尚无有效源码引用'}}</el-tag> <el-tag size="small" type="warning">语义支持未独立核验</el-tag><p class="muted">相关性来自模型判断；静态摘录校验不能证明解释正确或代码实际运行。</p><small>技术栈：{{reviewed.get(c.id)?.technology_stack.join('、')}}</small><ul><li v-for="q in reviewed.get(c.id)?.quality_notes" :key="q">{{q}}</li></ul><el-button v-for="h in reviewed.get(c.id)?.highlights" :key="h.citation_id" link @click="router.push({path:'/studio',query:{citation:h.citation_id}})">{{h.requirement_key}} → {{h.path}}:{{h.start_line}}</el-button><ReviewInvestigation :review="reviewed.get(c.id)!"/><p v-for="l in reviewed.get(c.id)?.limitations" :key="l" class="muted">{{l}}</p></div></article>
 <details><summary>送审已导入的开源项目</summary><div class="existing"><el-select v-model="existingId" placeholder="选择已有固定版本"><el-option v-for="p in existing" :key="p.repository_snapshot_id" :value="p.repository_snapshot_id" :label="p.name"/></el-select><el-button :disabled="!existingId||!track.requirements||running" @click="addCandidate">加入候选</el-button></div></details><p class="muted">{{pending.length}} 个候选待审；继续调研只使用当前选定技术或位置覆盖缺口。</p>
 </section>
 </div>
@@ -127,7 +130,7 @@ function learn(){if(latestPlan.value)void router.push({path:'/studio',query:{tra
 <div class="plan-actions"><el-button type="primary" :disabled="!ready||running||!reqKeys.length||!reviewIds.length||(['function','technical_design'].includes(intent)&&!focus.trim())||(intent==='function'&&!focusChunk)" :loading="busy" @click="run('plan')">制定模块化计划</el-button><span class="muted">不自动更改已有计划；新计划保留为独立版本。</span></div>
 <div v-if="latestPlan" class="plan-result"><div><h3>{{latestPlan.title}}</h3><el-tag v-if="latestPlan.synthetic" type="warning">离线模拟</el-tag><p>{{latestPlan.summary}}</p><small>{{latestPlan.modules.length}} 个分级模块 · {{intentNames[latestPlan.intent.kind]}}</small></div><el-button type="primary" @click="learn">进入学习 · 计划 / 代码 / Agent</el-button></div>
 </section>
-<details class="budget"><summary>本轮模型设置</summary><span>gpt-6.1-sol · low · 提取 / 计划 / 单项审核各 1 次；调研批次最多 6 次</span><el-input-number v-model="tokenCap" :min="512" :max="8192" :step="512"/><small>输出 token 上限；导师问答单独设置。金额取决于供应商。</small></details>
+<details class="budget"><summary>本轮模型设置</summary><span>gpt-6.1-sol · low · 提取 / 计划各 1 次；单项审核默认 1 次，增加后才启用模型多轮补读</span><el-input-number v-model="tokenCap" :min="512" :max="8192" :step="512"/><small>输出 token 上限；导师问答单独设置。金额取决于供应商。</small><label>每候选审核模型调用上限（含最终报告）</label><el-input-number v-model="reviewCalls" :min="1" :max="3"/><small>1 次：先确定性补读，再生成报告；2–3 次：允许模型选择补读。批次最多 {{1+5*reviewCalls}} 次，启动前再次确认。</small></details>
 </template>
 <el-dialog v-model="createOpen" title="从人工需求开始" width="560px"><el-form label-position="top"><el-form-item label="学习方向名称"><el-input v-model="name"/></el-form-item><el-form-item label="人工导入的正文（最多 5 份，固定当前版本）"><el-select v-model="sourceIds" multiple :multiple-limit="5" style="width:100%"><el-option v-for="s in sources" :key="s.source_id" :value="s.source_id" :label="s.title||'未命名资料'"/></el-select></el-form-item><router-link to="/sources" @click="createOpen=false">先导入岗位正文 →</router-link><el-form-item label="项目收集数量"><el-input-number v-model="target" :min="1" :max="10"/></el-form-item><el-form-item label="数量策略"><el-select v-model="newPolicy"><el-option label="覆盖优先，数量作为偏好" value="coverage"/><el-option label="必须达到指定数量" value="strict_count"/></el-select></el-form-item></el-form><template #footer><el-button @click="createOpen=false">取消</el-button><el-button type="primary" :disabled="!name.trim()||!sourceIds.length" :loading="busy" @click="create">创建方向</el-button></template></el-dialog>
 </template>

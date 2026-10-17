@@ -10361,6 +10361,13 @@
       },
       "RoleInput": {
         "properties": {
+          "review_call_limit": {
+            "type": "integer",
+            "maximum": 3.0,
+            "minimum": 1.0,
+            "title": "Review Call Limit",
+            "default": 1
+          },
           "acknowledge_collection_gap": {
             "type": "boolean",
             "title": "Acknowledge Collection Gap",
