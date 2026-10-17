@@ -117,6 +117,9 @@ class KnowledgeReadArgs(KnowledgeChunkArgs):
 
 
 class PracticeSubmissionInput(InputModel):
+    external_help: Literal["none", "used", "unknown"] = "unknown"
+    reported_hint_count: int = Field(default=0, ge=0, le=10000)
+    assistance_note: str = Field(default="", max_length=2000)
     expected_revision: int = Field(ge=1)
     summary: str = Field(min_length=1, max_length=8000)
     command_ids: list[UUID] = Field(default_factory=list, max_length=10)

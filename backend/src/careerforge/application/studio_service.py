@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 
 from sqlalchemy.orm import Session
 
+from careerforge.application import assistance_service as assistance
 from careerforge.application.common import fingerprint, idempotency
 from careerforge.application.ownership import owned
 from careerforge.application.planning_service import objective_version
@@ -195,7 +196,8 @@ def require_practice(db: Session, owner: UUID, row: LearningWorkspace, item: Jso
 def propose_command(db: Session, owner: UUID, identifier: UUID, body: CommandInput) -> Json:
     row = workspace(db, owner, identifier, True)
     revision(row, body.expected_revision)
-    require_practice(db, owner, row, {"practice_id": body.practice_id})
+    practice_id = assistance.bound_practice(row, body.practice_id)
+    require_practice(db, owner, row, {"practice_id": practice_id})
     append(
         row,
         {
@@ -204,7 +206,7 @@ def propose_command(db: Session, owner: UUID, identifier: UUID, body: CommandInp
             "status": "pending",
             "argv": command_argv(body.argv),
             "reason": body.reason,
-            "practice_id": str(body.practice_id) if body.practice_id else None,
+            "practice_id": str(practice_id) if practice_id else None,
             "revision": row.revision,
         },
     )
@@ -217,6 +219,7 @@ def apply(db: Session, owner: UUID, identifier: UUID, action_id: UUID, body: Con
     if item["kind"] != "patch" or body.confirmation != "APPLY":
         raise BusinessError(422, "PATCH_CONFIRMATION_REQUIRED", "请审阅并确认应用补丁。")
     require_practice(db, owner, row, item)
+    assistance.guard_patch(row, item)
     if item["status"] == "applied":
         return detail(row, db)
     revision(row, body.expected_revision)
@@ -250,6 +253,17 @@ def start_agent(
     if record.response_summary:
         return record.response_summary
     revision(row, body.expected_revision)
+    assistance.guard_agent(db, owner, row)
+    bound = assistance.bound_practice(row, body.practice_id)
+    if bound:
+        practice_item = action(row, bound)
+        body = body.model_copy(
+            update={
+                "practice_id": bound,
+                "objective_version_id": body.objective_version_id
+                or UUID(practice_item["objective_version_id"]),
+            }
+        )
     settings = get_settings()
     if not settings.real_agent_enabled or not settings.openai_api_key.get_secret_value():
         raise BusinessError(409, "REAL_AGENT_DISABLED", "真实 Agent 未配置。")
@@ -383,6 +397,8 @@ def save_reply(db: Session, run: AgentRun, result: ModelResult) -> Json:
             {
                 "id": str(uuid4()),
                 "kind": "patch",
+                "origin": "agent",
+                "run_id": str(run.id),
                 "practice_id": run.input_manifest.get("practice_id"),
                 "status": "pending",
                 "edits": [e.model_dump() for e in reply.edits],

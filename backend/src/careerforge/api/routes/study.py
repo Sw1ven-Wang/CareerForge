@@ -84,3 +84,43 @@ def recover(
     key: IdempotencyKey,
 ) -> Json:
     return wrap(request, service.recover_extraction(db, user.id, identifier, body, key))
+
+
+from careerforge.application import study_practice_service as practice  # noqa: E402
+from careerforge.schemas.study_practice import AttemptCloseInput, ModuleAttemptInput  # noqa: E402
+
+
+@router.get("/tracks/{identifier}/attempts", response_model=Envelope)
+def module_attempts(
+    identifier: UUID,
+    plan_id: UUID,
+    module_key: str,
+    request: Request,
+    db: Database,
+    user: Authenticated,
+) -> Json:
+    return wrap(request, practice.attempts(db, user.id, identifier, plan_id, module_key))
+
+
+@router.post("/tracks/{identifier}/attempts", response_model=Envelope, status_code=201)
+def start_attempt(
+    identifier: UUID,
+    body: ModuleAttemptInput,
+    request: Request,
+    db: Database,
+    user: Authenticated,
+    key: IdempotencyKey,
+) -> Json:
+    return wrap(request, practice.create_attempt(db, user.id, identifier, body, key))
+
+
+@router.post("/tracks/{identifier}/attempts/{attempt_id}/close", response_model=Envelope)
+def close_attempt(
+    identifier: UUID,
+    attempt_id: UUID,
+    body: AttemptCloseInput,
+    request: Request,
+    db: Database,
+    user: Authenticated,
+) -> Json:
+    return wrap(request, practice.close_attempt(db, user.id, identifier, attempt_id, body))

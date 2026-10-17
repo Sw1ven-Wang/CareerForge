@@ -7,7 +7,7 @@ type Project={project_id:string;name:string;directory:string;files:string[];limi
 type LocalFile={path:string;content:string;hash:string|null}
 type Receipt={operation_id:string;backup_directory:string;files:LocalFile[]}
 type Mirror={workspace_id:string;revision:number;files:Record<string,string>}
-const props=defineProps<{workspace:Mirror|null;canSwitch:()=>Promise<boolean>}>()
+const props=defineProps<{workspace:Mirror|null;practiceBound?:boolean;independent?:boolean;canSwitch:()=>Promise<boolean>}>()
 const emit=defineEmits<{bound:[id:string];synced:[id:string];retry:[id:string]}>()
 const invoke=(window as unknown as {__TAURI__?:{core:{invoke:<T>(command:string,args?:unknown)=>Promise<T>}}}).__TAURI__?.core.invoke
 const project=ref<Project|null>(null),boundId=ref(''),current=ref<LocalFile|null>(null),editor=ref(''),filter=ref(''),busy=ref(false),agentPaths=ref<string[]>([]),runPaths=ref<string[]>([]),backup=ref(''),pending=ref<Receipt|null>(null)
@@ -19,10 +19,10 @@ const paths=computed(()=>project.value?.files.filter(p=>p.toLowerCase().includes
 async function call<T>(command:string,args:Record<string,unknown>={}){if(!invoke||!project.value)throw new Error('请先选择本机项目目录');return invoke<T>(command,{projectId:project.value.project_id,...args})}
 async function canLeave(){if(!dirty.value)return true;try{await ElMessageBox.confirm('本机文件有未保存修改，是否放弃编辑内容？','未保存的代码',{confirmButtonText:'放弃修改',cancelButtonText:'继续编辑'});return true}catch{return false}}
 async function disconnect(){if(project.value&&invoke)await invoke('local_project_close',{projectId:project.value.project_id}).catch(()=>{});project.value=null;current.value=null;boundId.value='';pending.value=null;hashes.value={}}
-async function choose(){if(!invoke||!await props.canSwitch())return;busy.value=true;try{
+async function choose(){if(props.independent){ElMessage.warning('独立尝试使用新建练习副本，不绑定本机项目');return}if(!invoke||!await props.canSwitch())return;busy.value=true;try{
   const selected=await invoke<Project|null>('local_project_pick');if(!selected)return
   project.value=selected;current.value=null;editor.value='';hashes.value={};pending.value=null;agentPaths.value=[];runPaths.value=[]
-  const value=await write<{workspace_id:string}>('/studio/workspaces','POST',{name:('[本机] '+selected.name).slice(0,100),files:{}})
+  const value=props.practiceBound&&props.workspace?props.workspace:await write<{workspace_id:string}>('/studio/workspaces','POST',{name:('[本机] '+selected.name).slice(0,100),files:{}})
   boundId.value=value.workspace_id;emit('bound',value.workspace_id)
   ElMessage.success('目录已打开；读取和保存留在本机，选择文件并发送时才交给 Agent')
 }catch(e){ElMessage.error(String(e))}finally{busy.value=false}}

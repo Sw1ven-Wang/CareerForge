@@ -1,0 +1,3 @@
+export type Assistance={help_mode:string;effective_help?:string;external_help?:string;reported_hint_count?:number;system_agent_requests?:number;system_tutor_turns?:number;system_applied_agent_patches?:number;exercise_version?:number;exercise_kind?:string;ended_at?:string|null;conditions?:string;observation_scope?:string;files_hash?:string}
+export type LearningEvidence={learning_state:string;assistance?:Assistance|null;competence_verified:boolean;assessment_source?:string}
+export const learningStates:Record<string,string>={not_submitted:'尚未提交',needs_review:'待验收或需复核',assisted_completion:'允许辅助条件下完成',independent_completion_declared:'本人申报独立完成，已人工核对',transfer_passed_declared_independent:'本人申报独立迁移，已人工核对',accepted_help_unknown:'已人工核对，帮助情况未明确',unavailable:'依据不可用'}

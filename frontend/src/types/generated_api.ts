@@ -1990,6 +1990,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/study/tracks/{identifier}/attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Module Attempts */
+        get: operations["module_attempts_api_v1_study_tracks__identifier__attempts_get"];
+        put?: never;
+        /** Start Attempt */
+        post: operations["start_attempt_api_v1_study_tracks__identifier__attempts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/study/tracks/{identifier}/attempts/{attempt_id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Close Attempt */
+        post: operations["close_attempt_api_v1_study_tracks__identifier__attempts__attempt_id__close_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2019,6 +2054,13 @@ export interface components {
              * @constant
              */
             budget_profile: "development_small";
+        };
+        /** AttemptCloseInput */
+        AttemptCloseInput: {
+            /** Expected Revision */
+            expected_revision: number;
+            /** Reason */
+            reason: string;
         };
         /** Body_upload_api_v1_attachments_post */
         Body_upload_api_v1_attachments_post: {
@@ -2723,6 +2765,44 @@ export interface components {
             /** Published At Raw */
             published_at_raw?: string | null;
         };
+        /** ModuleAttemptInput */
+        ModuleAttemptInput: {
+            /** Expected Revision */
+            expected_revision: number;
+            /**
+             * Plan Id
+             * Format: uuid
+             */
+            plan_id: string;
+            /** Module Key */
+            module_key: string;
+            /** Instruction */
+            instruction: string;
+            /** Acceptance */
+            acceptance: string[];
+            /**
+             * Exercise Kind
+             * @default practice
+             * @enum {string}
+             */
+            exercise_kind: "practice" | "transfer";
+            /**
+             * Variation
+             * @default
+             */
+            variation: string;
+            /**
+             * Help Mode
+             * @default agent_assisted
+             * @enum {string}
+             */
+            help_mode: "agent_assisted" | "independent";
+            /**
+             * Scope Acknowledged
+             * @constant
+             */
+            scope_acknowledged: true;
+        };
         /** ModuleProgress */
         ModuleProgress: {
             /** Expected Revision */
@@ -2884,6 +2964,22 @@ export interface components {
         };
         /** PracticeSubmissionInput */
         PracticeSubmissionInput: {
+            /**
+             * External Help
+             * @default unknown
+             * @enum {string}
+             */
+            external_help: "none" | "used" | "unknown";
+            /**
+             * Reported Hint Count
+             * @default 0
+             */
+            reported_hint_count: number;
+            /**
+             * Assistance Note
+             * @default
+             */
+            assistance_note: string;
             /** Expected Revision */
             expected_revision: number;
             /** Summary */
@@ -7566,6 +7662,113 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ExtractionRecovery"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    module_attempts_api_v1_study_tracks__identifier__attempts_get: {
+        parameters: {
+            query: {
+                plan_id: string;
+                module_key: string;
+            };
+            header?: never;
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_attempt_api_v1_study_tracks__identifier__attempts_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string | null;
+            };
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModuleAttemptInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    close_attempt_api_v1_study_tracks__identifier__attempts__attempt_id__close_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                identifier: string;
+                attempt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AttemptCloseInput"];
             };
         };
         responses: {

@@ -316,12 +316,22 @@ def detail(db: Session, row: StudyTrack) -> dict[str, Any]:
             continue
         if not set(item.payload.get("review_ids", [])) <= accepted_ids:
             continue
-        (plans if item.kind == "plan" else turns).append(packed(item))
+        value = packed(item)
+        if item.kind == "plan" and value.get("module_outcomes"):
+            from careerforge.application.studio_delivery_service import effective_outcome
+
+            value["module_outcomes"] = {
+                k: effective_outcome(db, row.owner_id, v)
+                for k, v in value["module_outcomes"].items()
+            }
+        (plans if item.kind == "plan" else turns).append(value)
     run = (
         db.get(AgentRun, UUID(row.payload["active_run_id"]))
         if row.payload.get("active_run_id")
         else None
     )
+    from careerforge.application.assistance_service import active_independent
+
     return {
         "track_id": str(row.id),
         "name": row.name,
@@ -341,6 +351,7 @@ def detail(db: Session, row: StudyTrack) -> dict[str, Any]:
         "plans": plans,
         "turns": turns,
         "progress": row.payload.get("progress", {}),
+        "independent_attempt_active": active_independent(db, row.owner_id) is not None,
         "active_run": {
             "run_id": str(run.id),
             "status": run.status,
@@ -431,6 +442,10 @@ def start(
     settings = get_settings()
     if not settings.real_agent_enabled or not settings.openai_api_key.get_secret_value():
         raise BusinessError(409, "REAL_AGENT_DISABLED", "真实 Agent 未配置。")
+    if body.role == "tutor":
+        from careerforge.application.assistance_service import guard_agent
+
+        guard_agent(db, owner)
     source_values = read_requirements(db, owner, row.payload["source_snapshot_ids"])
     manifest: Json = {
         "track_id": str(row.id),

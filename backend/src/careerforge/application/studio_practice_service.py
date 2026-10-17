@@ -37,6 +37,10 @@ def validate(
     item = studio.action(row, identifier)
     if item["kind"] != "practice":
         raise BusinessError(404, "NOT_FOUND", "练习不存在。")
+    if item.get("origin") == "study_module":
+        from careerforge.application.study_practice_service import validate as validate_module
+
+        return validate_module(db, owner, row, item)
     report = valid_report(db, owner, row, item["report_id"])
     index = item["exercise_index"]
     if (
@@ -130,6 +134,10 @@ def context(
     db: Session, owner: UUID, row: LearningWorkspace, identifier: UUID | str
 ) -> tuple[Json, list[Json], Json]:
     item, report = validate(db, owner, row, identifier)
+    if item.get("origin") == "study_module":
+        from careerforge.application.study_practice_service import context as module_context
+
+        return module_context(db, owner, row, item)
     references = [citation_detail(db, owner, UUID(i)) for i in item["citation_ids"]]
     return (
         item,

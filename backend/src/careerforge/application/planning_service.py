@@ -148,6 +148,13 @@ def revoke_evidence(
 
 def objective_version(db: Session, owner: UUID, identifier: UUID) -> LearningObjectiveVersion:
     row = owned(db, LearningObjectiveVersion, owner, identifier)
+    if row.payload.get("study_basis"):
+        from careerforge.application.study_practice_service import spec_current
+
+        basis = row.payload["study_basis"]
+        spec = spec_current(db, owner, basis["exercise_spec_id"])
+        if spec.payload["content_hash"] != basis["content_hash"]:
+            raise BusinessError(409, "EXERCISE_SOURCE_CHANGED", "练习定义已变化。")
     if row.payload.get("planning_basis"):
         from careerforge.application.job_contract_service import read
 

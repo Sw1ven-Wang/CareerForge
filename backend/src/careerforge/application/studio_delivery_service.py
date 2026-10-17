@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from careerforge.application import assistance_service as assistance
 from careerforge.application import attachment_service
 from careerforge.application import build_service as build
 from careerforge.application import planning_service as planning
@@ -72,6 +73,14 @@ def validate_snapshot(db: Session, owner: UUID, saved: Submission) -> None:
         raise BusinessError(409, "SUBMISSION_HASH_MISMATCH", "代码快照完整性校验失败。")
     attachment = attachment_service.available(db, owner, UUID(snapshot["code_attachment_id"]))
     bundle = json.loads((attachment.body or b"").decode("utf-8"))
+    profile = saved.payload.get("study_evidence")
+    if profile and (
+        snapshot.get("assistance_hash") != fingerprint(profile)
+        or bundle.get("study_evidence") != profile
+        or profile["practice_id"] != snapshot["practice_id"]
+        or profile["source_hash"] != item["source_hash"]
+    ):
+        raise BusinessError(409, "ASSISTANCE_HASH_MISMATCH", "帮助条件快照校验失败。")
     if bundle["files"] != snapshot["files"] or bundle["files_hash"] != snapshot["files_hash"]:
         raise BusinessError(409, "SUBMISSION_HASH_MISMATCH", "代码附件与快照不一致。")
 
@@ -159,7 +168,31 @@ def detail(
         command["matches_current_code"] = bool(
             command.get("execution_input_hash") == fingerprint(workspace.payload["files"])
         )
+    effective = bool(
+        task
+        and saved
+        and task.status == "accepted"
+        and task.current_submission_id == saved.id
+        and task.effective_confirmation_id
+    )
+    target_plans = plans(db, owner, item["objective_version_id"])
+    if item.get("origin") == "study_module":
+        from careerforge.application.study_practice_service import plan_target
+
+        target_plans = plan_target(db, owner, item)
     return {
+        "learning_evidence": {
+            "learning_state": assistance.learning_state(
+                saved.payload.get("study_evidence"), effective
+            )
+            if saved
+            else "not_submitted",
+            "assistance": saved.payload.get("study_evidence")
+            if saved
+            else workspace.payload.get("study_attempt"),
+            "competence_verified": False,
+            "assessment_source": "same_account_human_review" if effective else "not_accepted",
+        },
         "practice_id": item["id"],
         "exercise": item["exercise"],
         "workspace_revision": workspace.revision,
@@ -186,7 +219,7 @@ def detail(
         else None,
         "assessment": build.assessment_detail(db, owner, proposal.id) if proposal else None,
         "assessment_run_id": saved.payload.get("assessment_run_id") if saved else None,
-        "plans": plans(db, owner, item["objective_version_id"]),
+        "plans": target_plans,
     }
 
 
@@ -211,6 +244,7 @@ def submit(
             db, owner, workspace_id, practice_id, UUID(record.response_summary["submission_id"])
         )
     studio.revision(workspace, body.expected_revision)
+    profile = assistance.snapshot(db, owner, workspace, body.model_dump(mode="json"))
     files = dict(workspace.payload["files"])
     if not files:
         raise BusinessError(422, "CODE_REQUIRED", "请先保存要提交的练习代码。")
@@ -257,6 +291,7 @@ def submit(
         "practice_id": str(practice_id),
         "files_hash": files_hash,
         "files": files,
+        "study_evidence": profile,
     }
     encoded = json.dumps(bundle, ensure_ascii=False, sort_keys=True).encode("utf-8")
     if len(encoded) > attachment_service.MAX_BYTES:
@@ -351,10 +386,12 @@ def submit(
         "source_hash": item["source_hash"],
         "code_attachment_id": code_attachment["attachment_id"],
         "commands": commands,
+        "assistance_hash": fingerprint(profile) if profile else None,
     }
     saved.payload = {
         **saved.payload,
         "workspace_snapshot": snapshot,
+        "study_evidence": profile,
         "execution_records": [
             {**v, "execution_provenance": "careerforge_sandbox"}
             for v in saved.payload["execution_records"]
@@ -368,6 +405,7 @@ def submit(
         str(uuid4()),
     )
     saved.payload = {**saved.payload, "assessment_run_id": run["run_id"]}
+    assistance.end_after_submission(db, workspace)
     workspace.revision += 1
     record.response_summary = {"submission_id": str(saved.id)}
     return detail(db, owner, workspace_id, practice_id, saved.id)
@@ -428,12 +466,22 @@ def effective_outcome(db: Session, owner: UUID, entry: Json) -> Json:
             and task.current_task_version_id == saved.task_version_id
             and str(saved.id) == entry["submission_id"]
         )
-        return {**entry, "effective": valid, "status": "accepted" if valid else "needs_review"}
+        return {
+            **entry,
+            "effective": valid,
+            "status": "accepted" if valid else "needs_review",
+            "learning_state": assistance.learning_state(saved.payload.get("study_evidence"), valid),
+            "assistance": saved.payload.get("study_evidence"),
+            "competence_verified": False,
+        }
     except (BusinessError, ValueError, KeyError):
         return {
             "objective_version_id": entry.get("objective_version_id"),
             "effective": False,
             "status": "unavailable",
+            "learning_state": "unavailable",
+            "competence_verified": False,
+            "assistance": None,
         }
 
 
@@ -446,6 +494,12 @@ def update_plan(
     key: str | None,
 ) -> Json:
     _, item = roots(db, owner, workspace_id, practice_id)
+    if item.get("origin") == "study_module":
+        from careerforge.application.study_practice_service import update_plan as update_module_plan
+
+        return update_module_plan(
+            db, owner, workspace_id, practice_id, body.model_dump(mode="json"), key
+        )
     record = idempotency(
         db, owner, f"studio.delivery_plan:{practice_id}", key, body.model_dump(mode="json")
     )

@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 export type Practice = {
-  id: string; kind: string; status: string; objective_title?: string; objective_version_id?: string
+  id: string; origin?:string; kind: string; status: string; objective_title?: string; objective_version_id?: string
   exercise?: string; citation_ids?: string[]; note?: string; synthetic_source?: boolean
 }
-type Related = { id: string; kind: string; status: string; practice_id?: string; exit_code?: number; argv?: string[] }
+type Related = { id: string; origin?:string; kind: string; status: string; practice_id?: string; exit_code?: number; argv?: string[] }
 const props=defineProps<{practice:Practice;actions:Related[];selected:boolean;busy:boolean}>()
 const emit=defineEmits<{resume:[];save:[note:string];open:[id:string];delivery:[]}>()
 const note=ref(props.practice.note??'')

@@ -7353,6 +7353,198 @@
           }
         }
       }
+    },
+    "/api/v1/study/tracks/{identifier}/attempts": {
+      "get": {
+        "tags": [
+          "agent-study"
+        ],
+        "summary": "Module Attempts",
+        "operationId": "module_attempts_api_v1_study_tracks__identifier__attempts_get",
+        "parameters": [
+          {
+            "name": "identifier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Identifier"
+            }
+          },
+          {
+            "name": "plan_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Plan Id"
+            }
+          },
+          {
+            "name": "module_key",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Module Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "agent-study"
+        ],
+        "summary": "Start Attempt",
+        "operationId": "start_attempt_api_v1_study_tracks__identifier__attempts_post",
+        "parameters": [
+          {
+            "name": "identifier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Identifier"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModuleAttemptInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/study/tracks/{identifier}/attempts/{attempt_id}/close": {
+      "post": {
+        "tags": [
+          "agent-study"
+        ],
+        "summary": "Close Attempt",
+        "operationId": "close_attempt_api_v1_study_tracks__identifier__attempts__attempt_id__close_post",
+        "parameters": [
+          {
+            "name": "identifier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Identifier"
+            }
+          },
+          {
+            "name": "attempt_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Attempt Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttemptCloseInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -7416,6 +7608,28 @@
           "market_report_id"
         ],
         "title": "AlignmentInput"
+      },
+      "AttemptCloseInput": {
+        "properties": {
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Revision"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected_revision",
+          "reason"
+        ],
+        "title": "AttemptCloseInput"
       },
       "Body_upload_api_v1_attachments_post": {
         "properties": {
@@ -9433,6 +9647,83 @@
         "type": "object",
         "title": "MetadataOverride"
       },
+      "ModuleAttemptInput": {
+        "properties": {
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Revision"
+          },
+          "plan_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Plan Id"
+          },
+          "module_key": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Module Key"
+          },
+          "instruction": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Instruction"
+          },
+          "acceptance": {
+            "items": {
+              "type": "string",
+              "maxLength": 1000,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 6,
+            "minItems": 1,
+            "title": "Acceptance"
+          },
+          "exercise_kind": {
+            "type": "string",
+            "enum": [
+              "practice",
+              "transfer"
+            ],
+            "title": "Exercise Kind",
+            "default": "practice"
+          },
+          "variation": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Variation",
+            "default": ""
+          },
+          "help_mode": {
+            "type": "string",
+            "enum": [
+              "agent_assisted",
+              "independent"
+            ],
+            "title": "Help Mode",
+            "default": "agent_assisted"
+          },
+          "scope_acknowledged": {
+            "type": "boolean",
+            "const": true,
+            "title": "Scope Acknowledged"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected_revision",
+          "plan_id",
+          "module_key",
+          "instruction",
+          "acceptance",
+          "scope_acknowledged"
+        ],
+        "title": "ModuleAttemptInput"
+      },
       "ModuleProgress": {
         "properties": {
           "expected_revision": {
@@ -9849,6 +10140,29 @@
       },
       "PracticeSubmissionInput": {
         "properties": {
+          "external_help": {
+            "type": "string",
+            "enum": [
+              "none",
+              "used",
+              "unknown"
+            ],
+            "title": "External Help",
+            "default": "unknown"
+          },
+          "reported_hint_count": {
+            "type": "integer",
+            "maximum": 10000.0,
+            "minimum": 0.0,
+            "title": "Reported Hint Count",
+            "default": 0
+          },
+          "assistance_note": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Assistance Note",
+            "default": ""
+          },
           "expected_revision": {
             "type": "integer",
             "minimum": 1.0,

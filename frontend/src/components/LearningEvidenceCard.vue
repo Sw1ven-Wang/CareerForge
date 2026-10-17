@@ -1,0 +1,6 @@
+<script setup lang="ts">
+import {learningStates,type LearningEvidence} from '../types/practice'
+defineProps<{evidence:LearningEvidence}>()
+</script>
+<template><section class="evidence"><strong>{{learningStates[evidence.learning_state]??evidence.learning_state}}</strong><template v-if="evidence.assistance"><p>练习版本 {{evidence.assistance.exercise_version??'历史'}} · {{evidence.assistance.help_mode==='independent'?'独立模式':'允许 Agent 辅助'}}</p><p v-if="evidence.assistance.effective_help">本系统 Agent 请求 {{evidence.assistance.system_agent_requests??0}} 次 · 导师回答 {{evidence.assistance.system_tutor_turns??0}} 次 · 应用 Agent 补丁 {{evidence.assistance.system_applied_agent_patches??0}} 组</p><p v-if="evidence.assistance.external_help">外部帮助：{{({none:'本人声明未使用',used:'本人声明使用过',unknown:'未明确'} as Record<string,string>)[evidence.assistance.external_help]}} · 本人申报提示 {{evidence.assistance.reported_hint_count??0}} 次</p><small>{{evidence.assistance.observation_scope??evidence.assistance.conditions}}</small></template><small>记录指定版本和条件下的成果；不自动判定职业能力或整体掌握程度。</small></section></template>
+<style scoped>.evidence{margin:12px 0;padding:12px;border:1px solid #cfded3;border-radius:8px;background:#f1f7f2;font-size:12px}.evidence p{margin:6px 0;line-height:1.7}.evidence small{display:block;color:#6c7e70;line-height:1.8}</style>

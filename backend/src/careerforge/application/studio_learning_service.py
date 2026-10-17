@@ -138,6 +138,9 @@ def start(
         )
     if workspace.revision != body.expected_revision:
         raise BusinessError(409, "WORKSPACE_CHANGED", "工作区已变化，请刷新。")
+    from careerforge.application.assistance_service import guard_agent
+
+    guard_agent(db, owner, workspace)
     settings = get_settings()
     if not settings.real_agent_enabled or not settings.openai_api_key.get_secret_value():
         raise BusinessError(409, "REAL_AGENT_DISABLED", "真实 Agent 未配置。")
