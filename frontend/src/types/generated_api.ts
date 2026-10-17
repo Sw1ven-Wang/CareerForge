@@ -2059,6 +2059,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/study/tracks/{identifier}/review-batches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Review Batch */
+        post: operations["review_batch_api_v1_study_tracks__identifier__review_batches_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3191,6 +3208,25 @@ export interface components {
             response: {
                 [key: string]: unknown;
             };
+        };
+        /** ReviewBatchInput */
+        ReviewBatchInput: {
+            /** Expected Revision */
+            expected_revision: number;
+            /** Candidate Ids */
+            candidate_ids: string[];
+            /**
+             * Per Child Call Limit
+             * @default 1
+             */
+            per_child_call_limit: number;
+            /** Call Budget */
+            call_budget: number;
+            /**
+             * Max Output Tokens
+             * @default 8192
+             */
+            max_output_tokens: number;
         };
         /** RevocationInput */
         RevocationInput: {
@@ -7876,6 +7912,43 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    review_batch_api_v1_study_tracks__identifier__review_batches_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string | null;
+            };
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewBatchInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };

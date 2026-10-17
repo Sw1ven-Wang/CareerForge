@@ -161,12 +161,21 @@ class AgentRun(Timestamped, Base):
             ["goal_version_id", "owner_id"],
             ["career_goal_versions.id", "career_goal_versions.owner_id"],
         ),
+        ForeignKeyConstraint(
+            ["parent_run_id", "owner_id"],
+            ["agent_runs.id", "agent_runs.owner_id"],
+            name="fk_run_parent_owner",
+        ),
         CheckConstraint(
-            "call_budget >= 0 AND calls_reserved >= 0 AND calls_reserved <= call_budget",
+            "parent_run_id IS NULL OR parent_run_id <> id", name="ck_run_parent_distinct"
+        ),
+        CheckConstraint(
+            "call_budget >= 0 AND calls_reserved >= 0 AND held_calls >= 0 "
+            "AND calls_reserved + held_calls <= call_budget",
             name="ck_run_budget",
         ),
         CheckConstraint(
-            "status IN ('queued','running','waiting_user','succeeded',"
+            "status IN ('queued','running','waiting_user','waiting_children','succeeded',"
             "'partially_succeeded','failed','budget_stopped','cancelled')",
             name="ck_run_status",
         ),
@@ -174,6 +183,9 @@ class AgentRun(Timestamped, Base):
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
     goal_version_id: Mapped[UUID | None]
+    parent_run_id: Mapped[UUID | None] = mapped_column(index=True)
+    deadline_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    held_calls: Mapped[int] = mapped_column(default=0, server_default=text("0"))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.clock_timestamp()
     )
@@ -190,6 +202,36 @@ class AgentRun(Timestamped, Base):
     min_event_seq: Mapped[int] = mapped_column(default=1)
     call_budget: Mapped[int] = mapped_column(default=3)
     calls_reserved: Mapped[int] = mapped_column(default=0)
+
+
+class RunAllocation(Timestamped, Base):
+    __tablename__ = "run_allocations"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["parent_run_id", "owner_id"], ["agent_runs.id", "agent_runs.owner_id"]
+        ),
+        ForeignKeyConstraint(
+            ["child_run_id", "owner_id"], ["agent_runs.id", "agent_runs.owner_id"]
+        ),
+        UniqueConstraint("parent_run_id", "task_key"),
+        UniqueConstraint("child_run_id"),
+        CheckConstraint(
+            "allocated_calls > 0 AND released_calls >= 0 AND released_calls <= allocated_calls",
+            name="ck_allocation_calls",
+        ),
+        CheckConstraint(
+            "output_token_limit >= 512 AND output_token_limit <= 8192", name="ck_allocation_tokens"
+        ),
+    )
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
+    parent_run_id: Mapped[UUID] = mapped_column(index=True)
+    child_run_id: Mapped[UUID]
+    task_key: Mapped[str] = mapped_column(String(100))
+    allocated_calls: Mapped[int]
+    output_token_limit: Mapped[int]
+    released_calls: Mapped[int] = mapped_column(default=0)
+    settled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class RunAttempt(Timestamped, Base):

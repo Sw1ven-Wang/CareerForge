@@ -63,7 +63,10 @@ def result(db: Session, run: AgentRun) -> dict[str, Any]:
                 "input_manifest_hash": run.input_manifest_hash,
                 "expires_at": None,
             }
+    from careerforge.application.delegation_service import family_state
+
     return {
+        "family": family_state(db, run),
         "run_id": str(run.id),
         "run_type": run.workflow_type,
         "workflow_version": run.workflow_version,
@@ -99,7 +102,11 @@ def result(db: Session, run: AgentRun) -> dict[str, Any]:
             for a in stages
             if a.stage_key == "result"
         ],
-        "usage": {"call_limit": run.call_budget, "calls_reserved": run.calls_reserved},
+        "usage": {
+            "call_limit": run.call_budget,
+            "calls_reserved": run.calls_reserved,
+            "held_calls": run.held_calls,
+        },
         "error_summary": {"code": "INPUT_REVOKED", "message": "输入已撤销，历史正文不可用"}
         if run.input_manifest.get("_revoked")
         else None,

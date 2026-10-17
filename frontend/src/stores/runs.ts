@@ -4,7 +4,8 @@ import { apiPage } from '../api/client'
 export interface Run {
   run_id: string; run_type: string; status: string; version: number; workflow_version: string
   input_manifest_hash: string; created_at: string; updated_at: string
-  usage: { call_limit: number; calls_reserved: number }
+  usage: { call_limit: number; calls_reserved: number; held_calls?:number }
+  family?:{parent_run_id:string|null;root_run_id:string;held_calls:number;available_calls:number;consumed_calls:number;accounting_note:string;children:{run_id:string;task_key:string;status:string;allocated_calls:number;consumed_calls:number;held_calls:number;released_calls:number;settled:boolean;usage:{status:string;usage:{input_tokens?:number;output_tokens?:number}|null}[]}[]}
   stage_summary: { stage_key: string; status: string }[]
   waiting_input: null | { wait_request_id: string; question: { text?: string; synthetic?: boolean; draft?: { draft?: string } }
     response_schema: { properties: { choice: { enum: string[] } } } }

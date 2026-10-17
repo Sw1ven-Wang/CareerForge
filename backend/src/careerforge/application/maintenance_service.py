@@ -62,6 +62,8 @@ def authorized(db: Session, run: AgentRun) -> None:
         "agent-study-2.1",
         "agent-study-2.2",
         "agent-study-2.3",
+        "agent-study-review-batch-1.0",
+        "agent-study-review-child-1.0",
     }:
         from careerforge.application.study_service import validate_run
 
@@ -169,11 +171,15 @@ def clean_once(db: Session, limit: int = 100) -> dict[str, int]:
     for run in page(
         db,
         AgentRun,
-        select(AgentRun)
-        .where(~AgentRun.input_manifest.has_key("_revoked"))
-        .with_for_update(skip_locked=True),
+        select(AgentRun).where(~AgentRun.input_manifest.has_key("_revoked")),
         limit,
     ):
+        from careerforge.application.delegation_service import lock_run
+
+        locked = lock_run(db, run.id)
+        if locked is None:
+            continue
+        run = locked
         try:
             authorized(db, run)
         except BusinessError as error:

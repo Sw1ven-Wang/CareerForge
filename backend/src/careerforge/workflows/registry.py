@@ -95,3 +95,9 @@ for study_type in ("market_research", "project_research", "learning_path"):
 
 # New context assembly is isolated from pre-existing 2.2 paid-stage artifacts.
 WORKFLOWS[("learning_path", "agent-study-2.3")] = execute_study
+
+from careerforge.application.delegation_service import BATCH_VERSION, CHILD_VERSION  # noqa: E402
+from careerforge.workflows.review_batch import execute as execute_review_batch  # noqa: E402
+
+WORKFLOWS[("project_research", BATCH_VERSION)] = execute_review_batch
+WORKFLOWS[("project_research", CHILD_VERSION)] = execute_study

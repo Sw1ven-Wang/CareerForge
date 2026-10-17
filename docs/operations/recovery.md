@@ -11,3 +11,9 @@
 排查顺序：在 `/runs` 看状态与事件 → 核对输入是否可读 → 看 `docker compose logs --tail 50 worker dispatcher` → 允许 dispatcher 重试 outbox 与 reaper。不要手改任务 accepted、租约或阶段正文。
 
 证据：S02/S03 已有真实 Linux Celery、SIGKILL、接管与重放验证。本轮未反复杀进程；真实 Linux Worker 完成七个新业务 run，含返修补交与重新规划。最终整体回归暴露的并发确认旧对象问题已修复为锁后 populate_existing，专用竞争用例得到 201/409 且只写一份 Review/Confirmation。
+
+## 固定版本审核子任务
+
+审核批次父任务在 `waiting_children` 时不占 Worker。最后一个子任务结算后由 outbox 唤醒；重复投递沿用相同子任务键与阶段产物。父任务取消或 15 分钟截止将撤销活跃子任务租约，释放尚未使用的预留；已发出或结果未知的请求不退额度。不能保证中断供应商在途请求，迟到响应只允许补记计量。
+
+在 `/runs` 查看父子任务和预算账本。不要手工修改 `held_calls`、`calls_reserved` 或 `run_allocations`，也不要把未知收据改为零费用。子任务暂存结果只有父任务持有效租约并重验输入后才能发布；父任务取消后不能单独恢复子任务入库。新部署须先备份数据库并运行迁移 `cf201017a002`。详见 [ADR 0008](../decisions/0008-bounded-review-subtasks.md)。

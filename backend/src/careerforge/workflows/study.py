@@ -130,8 +130,14 @@ def tutor_tools(context_enabled: bool) -> list[dict[str, Any]]:
 class Runner:
     def __init__(self, run_id: UUID, epoch: int, worker: str, manifest: dict[str, Any]) -> None:
         self.id, self.epoch, self.worker, self.m = run_id, epoch, worker, manifest
+        from careerforge.application.delegation_service import CHILD_VERSION
+
         self.version = (
-            context_rules.TUTOR_VERSION if manifest.get("context_scope") else service.VERSION
+            CHILD_VERSION
+            if manifest.get("delegated_review")
+            else context_rules.TUTOR_VERSION
+            if manifest.get("context_scope")
+            else service.VERSION
         )
         self.recalls: list[dict[str, Any]] = []
         self.skills: list[dict[str, Any]] = []
@@ -147,6 +153,10 @@ class Runner:
 
     def run(self, db: Session) -> AgentRun:
         run = leased(db, self.id, self.epoch, self.worker)
+        if run.workflow_version != self.version:
+            raise BusinessError(
+                409, "WORKFLOW_VERSION_CHANGED", "阶段版本与运行合同不一致，停止执行。"
+            )
         service.validate_run(db, run)
         if self.m["role"] == "tutor" and not self.m.get("context_scope"):
             raise BusinessError(
@@ -535,6 +545,36 @@ class Runner:
         with self.factory.begin() as db:
             run = self.run(db)
             row = service.track(db, run.owner_id, UUID(self.m["track_id"]), True)
+            if run.parent_run_id:
+                commit_stage(
+                    db,
+                    self.id,
+                    self.epoch,
+                    self.worker,
+                    "result",
+                    self.version,
+                    {
+                        "output": output.model_dump(mode="json"),
+                        "reading": reading,
+                        "material": material,
+                        "evidence_validation": checked,
+                        "synthetic": self.synthetic,
+                    },
+                )
+                event(
+                    db,
+                    run,
+                    "task.result_ready",
+                    {
+                        "candidate_id": self.m["candidate_id"],
+                        "verdict": output.verdict,
+                        "published": False,
+                    },
+                )
+                transition(
+                    db, run, "succeeded" if output.verdict == "strong" else "partially_succeeded"
+                )
+                return
             item = service.publish_review(
                 db,
                 run,

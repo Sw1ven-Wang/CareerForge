@@ -159,3 +159,20 @@ def context_evidence(
             ContextReadArgs(evidence_id=evidence_id, offset=offset, limit=limit),
         ),
     )
+
+
+from careerforge.schemas.subtasks import ReviewBatchInput  # noqa: E402
+
+
+@router.post("/tracks/{identifier}/review-batches", response_model=Envelope, status_code=202)
+def review_batch(
+    identifier: UUID,
+    body: ReviewBatchInput,
+    request: Request,
+    db: Database,
+    user: Authenticated,
+    key: IdempotencyKey,
+) -> Json:
+    from careerforge.application.review_batch_service import start as start_batch
+
+    return wrap(request, start_batch(db, user.id, identifier, body, key))

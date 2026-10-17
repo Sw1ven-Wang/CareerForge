@@ -28,10 +28,10 @@ def db_now(db: Session) -> datetime:
 
 
 def owned_run(db: Session, owner: UUID, run_id: UUID) -> AgentRun:
-    run = db.scalar(
-        select(AgentRun).where(AgentRun.id == run_id, AgentRun.owner_id == owner).with_for_update()
-    )
-    if run is None:
+    from careerforge.application.delegation_service import lock_run
+
+    run = lock_run(db, run_id)
+    if run is None or run.owner_id != owner:
         raise BusinessError(404, "NOT_FOUND", "运行不存在。")
     return run
 
@@ -53,6 +53,10 @@ def transition(db: Session, run: AgentRun, status: str, event_kind: str | None =
     if status in TERMINAL and status != "cancelled":
         kind = "run.finished"
     event(db, run, event_kind or kind, {"status": status, "version": run.version})
+    if status in TERMINAL:
+        from careerforge.application.delegation_service import terminal
+
+        terminal(db, run)
 
 
 def create_run(
@@ -63,6 +67,8 @@ def create_run(
     manifest: dict[str, Any],
     call_budget: int = 3,
     goal_version_id: UUID | None = None,
+    parent_run_id: UUID | None = None,
+    deadline_at: datetime | None = None,
 ) -> AgentRun:
     if (
         workflow_type
@@ -73,6 +79,8 @@ def create_run(
     run = AgentRun(
         owner_id=owner,
         goal_version_id=goal_version_id,
+        parent_run_id=parent_run_id,
+        deadline_at=deadline_at,
         workflow_type=workflow_type,
         workflow_version=workflow_version,
         input_manifest=manifest,
@@ -87,8 +95,18 @@ def create_run(
 
 
 def claim(db: Session, run_id: UUID, worker: str, lease_seconds: int = 60) -> int | None:
-    run = db.scalar(select(AgentRun).where(AgentRun.id == run_id).with_for_update())
+    from careerforge.application.delegation_service import lock_run
+
+    run = lock_run(db, run_id)
     if run is None or run.status != "queued":
+        return None
+    if run.parent_run_id:
+        from careerforge.application.delegation_service import parent_guard
+
+        parent_guard(db, run)
+    if run.deadline_at and run.deadline_at <= db_now(db):
+        run.epoch += 1
+        transition(db, run, "failed", event_kind="task.deadline_exceeded")
         return None
     run.epoch += 1
     transition(db, run, "running")
@@ -99,7 +117,9 @@ def claim(db: Session, run_id: UUID, worker: str, lease_seconds: int = 60) -> in
 
 
 def leased(db: Session, run_id: UUID, epoch: int, worker: str) -> AgentRun:
-    run = db.scalar(select(AgentRun).where(AgentRun.id == run_id).with_for_update())
+    from careerforge.application.delegation_service import lock_run
+
+    run = lock_run(db, run_id)
     if (
         run is None
         or run.status != "running"
@@ -109,6 +129,10 @@ def leased(db: Session, run_id: UUID, epoch: int, worker: str) -> AgentRun:
         or run.lease_until <= db_now(db)
     ):
         raise LeaseLost("Expired or replaced execution lease")
+    if run.parent_run_id:
+        from careerforge.application.delegation_service import parent_guard
+
+        parent_guard(db, run)
     return run
 
 
@@ -120,14 +144,19 @@ def heartbeat(db: Session, run_id: UUID, epoch: int, worker: str) -> None:
 def reap(db: Session, limit: int = 100) -> int:
     from sqlalchemy import func
 
-    runs = db.scalars(
-        select(AgentRun)
+    from careerforge.application.delegation_service import expire_roots, lock_run
+
+    expire_roots(db)
+    identifiers = db.scalars(
+        select(AgentRun.id)
         .where(AgentRun.status == "running", AgentRun.lease_until <= func.clock_timestamp())
         .limit(limit)
-        .with_for_update(skip_locked=True)
     ).all()
     count = 0
-    for run in runs:
+    for identifier in identifiers:
+        run = lock_run(db, identifier)
+        if run is None:
+            continue
         # Recheck under row lock: the candidate scan grants no execution rights.
         if run.status != "running" or run.lease_until is None or run.lease_until > db_now(db):
             continue
@@ -289,9 +318,13 @@ def reserve_call(
     db: Session, run_id: UUID, epoch: int, worker: str, request: dict[str, Any]
 ) -> UUID | None:
     run = leased(db, run_id, epoch, worker)
-    if run.calls_reserved >= run.call_budget:
+    if run.calls_reserved + run.held_calls >= run.call_budget:
         transition(db, run, "budget_stopped")
         return None
+    if run.parent_run_id:
+        from careerforge.application.delegation_service import charge_child
+
+        charge_child(db, run, request)
     run.calls_reserved += 1
     row = ModelCallReceipt(run_id=run.id, epoch=epoch, request_hash=fingerprint(request))
     db.add(row)

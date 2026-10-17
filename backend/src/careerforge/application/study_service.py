@@ -131,7 +131,7 @@ def approved(db: Session, row: StudyTrack) -> list[StudyArtifact]:
 def idle(db: Session, row: StudyTrack) -> None:
     identifier = row.payload.get("active_run_id")
     run = db.get(AgentRun, UUID(identifier)) if identifier else None
-    if run and run.status in {"queued", "running", "waiting_user"}:
+    if run and run.status in {"queued", "running", "waiting_user", "waiting_children"}:
         raise BusinessError(409, "STUDY_RUN_ACTIVE", "此方向已有 Agent 运行，请等待或取消。")
 
 
@@ -617,6 +617,14 @@ def validate_run(db: Session, run: AgentRun) -> StudyTrack:
         )
         if not set(identifiers) <= valid:
             raise BusinessError(409, "STUDY_PROJECT_UNAVAILABLE", "审核项目已不可用。")
+    if manifest["role"] == "review_batch":
+        from careerforge.application.review_batch_service import validate_parent_scope
+
+        validate_parent_scope(db, run)
+    if run.parent_run_id:
+        from careerforge.application.review_batch_service import validate_child
+
+        validate_child(db, run)
     if manifest.get("context_scope"):
         from careerforge.application.context_service import validate_catalog
 
