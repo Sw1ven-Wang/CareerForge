@@ -35,6 +35,7 @@ ROLE_TYPES = {
     "review": "project_research",
     "plan": "learning_path",
     "tutor": "learning_path",
+    "reconcile": "learning_path",
 }
 
 
@@ -312,11 +313,20 @@ def detail(db: Session, row: StudyTrack) -> dict[str, Any]:
     for item in items:
         if item.kind not in {"plan", "tutor"}:
             continue
-        if item.payload.get("requirements_id") != current_id:
-            continue
-        if not set(item.payload.get("review_ids", [])) <= accepted_ids:
+        try:
+            plan = (
+                item
+                if item.kind == "plan"
+                else artifact_row(db, row.owner_id, row.id, item.payload["plan_id"], "plan")
+            )
+            validate_plan_scope(db, row, plan)
+        except BusinessError:
             continue
         value = packed(item)
+        if item.kind == "plan":
+            from careerforge.application.study_versions import metadata
+
+            value.update(metadata(db, item, current_id))
         if item.kind == "plan" and value.get("module_outcomes"):
             from careerforge.application.studio_delivery_service import effective_outcome
 
@@ -349,7 +359,10 @@ def detail(db: Session, row: StudyTrack) -> dict[str, Any]:
         "reviews": [visible_review(db, row.owner_id, i, accepted_ids) for i in reviews],
         "approved_projects": [packed(i) for i in accepted],
         "plans": plans,
+        "active_plan_id": row.payload.get("active_plan_id"),
         "turns": turns,
+        "reconciliations": [packed(i) for i in items if i.kind == "reconciliation"],
+        "recheck_pending": bool(row.payload.get("recheck_pending")),
         "progress": row.payload.get("progress", {}),
         "independent_attempt_active": active_independent(db, row.owner_id) is not None,
         "active_run": {
@@ -421,11 +434,11 @@ def add_candidate(
 
 
 def validate_plan_scope(db: Session, row: StudyTrack, plan: StudyArtifact) -> None:
-    if plan.payload["requirements_id"] != row.payload.get("requirements_id"):
-        raise BusinessError(409, "STUDY_PLAN_STALE", "技术需求已更新，请重新制定计划。")
-    valid_ids = {str(i.id) for i in approved(db, row)}
-    if not set(plan.payload["review_ids"]) <= valid_ids:
-        raise BusinessError(409, "STUDY_PROJECT_UNAVAILABLE", "计划引用的审核项目已不可用。")
+    from careerforge.application.study_versions import frozen_scope
+
+    if plan.track_id != row.id or plan.owner_id != row.owner_id:
+        raise BusinessError(404, "NOT_FOUND", "计划不属于当前学习方向。")
+    frozen_scope(db, plan)
 
 
 def start(
@@ -447,16 +460,21 @@ def start(
 
         guard_agent(db, owner)
     source_values = read_requirements(db, owner, row.payload["source_snapshot_ids"])
+    from careerforge.infrastructure.runtime_capabilities import capabilities
+
     manifest: Json = {
         "track_id": str(row.id),
         "role": body.role,
+        "runtime_capabilities": capabilities(),
         "source_snapshot_ids": [s["source_snapshot_id"] for s in source_values],
         "sources": source_values,
         "model": settings.model_name,
         "base_url": settings.openai_base_url,
         "max_output_tokens": min(body.max_output_tokens, settings.study_max_output_tokens),
         "model_call_limit": (
-            body.model_call_limit
+            max(1, body.recheck_call_budget)
+            if body.role == "reconcile"
+            else body.model_call_limit
             if body.role == "tutor"
             else 1 + body.auto_review_count * body.review_call_limit
             if body.role == "discover"
@@ -523,6 +541,11 @@ def start(
             raise BusinessError(422, "INVALID_PLAN_SCOPE", "所选技术或项目不属于当前审核版本。")
         manifest["intent"] = body.intent.model_dump(mode="json")
         manifest["projects"] = [packed(i) for i in accepted if str(i.id) in selected]
+        from careerforge.infrastructure.runtime_capabilities import planning
+
+        manifest["runtime_capabilities"] = planning(
+            manifest["intent"], manifest["requirements"], manifest["projects"]
+        )
         if body.intent.focus_chunk_id:
             from pathlib import PurePosixPath
 
@@ -559,7 +582,14 @@ def start(
         reviews = [
             artifact_row(db, owner, row.id, i, "review") for i in module["project_review_ids"]
         ]
+        plan_requirements = artifact_row(
+            db, owner, row.id, plan.payload["requirements_id"], "requirements"
+        )
         manifest.update(
+            requirements_id=str(plan_requirements.id),
+            requirements=plan_requirements.payload["requirements"],
+            intent=plan.payload["intent"],
+            reading=body.reading.model_dump(mode="json") if body.reading else {},
             plan_id=str(plan.id),
             module=module,
             question=body.question,
@@ -569,6 +599,15 @@ def start(
         from careerforge.application.context_service import capture
 
         manifest["context_scope"] = capture(db, owner, manifest)
+    if body.role in {"extract", "review", "discover", "reconcile"}:
+        from careerforge.application.study_versions import heads
+
+        manifest["recheck_plan_ids"] = [str(p.id) for p in heads(db, owner, row.id)]
+        manifest["recheck_call_budget"] = body.recheck_call_budget
+        if body.role != "reconcile":
+            manifest["model_call_limit"] += body.recheck_call_budget
+        elif not body.recheck_call_budget:
+            raise BusinessError(422, "RECHECK_BUDGET_REQUIRED", "请明确本轮重审调用额度。")
     run = create_run(
         db,
         owner,
@@ -577,7 +616,15 @@ def start(
         manifest,
         call_budget=manifest["model_call_limit"],
     )
-    row.payload = {**row.payload, "active_run_id": str(run.id)}
+    row.payload = {
+        **row.payload,
+        "active_run_id": str(run.id),
+        **(
+            {"recheck_pending": manifest["recheck_plan_ids"]}
+            if manifest.get("recheck_plan_ids")
+            else {}
+        ),
+    }
     row.revision += 1
     response = {
         "run_id": str(run.id),
@@ -601,6 +648,7 @@ def validate_run(db: Session, run: AgentRun) -> StudyTrack:
     validate_requirements(db, run.owner_id, manifest["sources"])
     if (
         manifest.get("requirements_id")
+        and manifest["role"] != "tutor"
         and row.payload.get("requirements_id") != manifest["requirements_id"]
     ):
         raise BusinessError(409, "STUDY_REQUIREMENTS_CHANGED", "需求版本已变化。")
@@ -613,7 +661,15 @@ def validate_run(db: Session, run: AgentRun) -> StudyTrack:
             db, run.owner_id, UUID(manifest["candidate"]["repository_snapshot_id"])
         )
     if manifest["role"] in {"plan", "tutor"}:
-        valid = {str(i.id) for i in approved(db, row)}
+        if manifest["role"] == "tutor":
+            validate_plan_scope(
+                db, row, artifact_row(db, run.owner_id, row.id, manifest["plan_id"], "plan")
+            )
+        valid = (
+            {str(i.id) for i in approved(db, row)}
+            if manifest["role"] == "plan"
+            else set(manifest["review_ids"])
+        )
         identifiers = (
             [p["id"] for p in manifest["projects"]]
             if manifest["role"] == "plan"

@@ -26,7 +26,14 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with: { version: "0.12.5", python-version: "3.12" }
       - uses: actions/setup-node@v4
-        with: { node-version: "24", cache: npm, cache-dependency-path: frontend/package-lock.json }
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            coding-agent/package-lock.json
+      - run: npm ci --prefix coding-agent --ignore-scripts --no-audit --no-fund
+      - run: npm --prefix coding-agent run check
       - run: uv sync --project backend --locked
       - run: uv run --project backend alembic -c backend/alembic.ini upgrade head
       - run: uv run --project backend alembic -c backend/alembic.ini check

@@ -1,9 +1,13 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useRoute } from 'vue-router'
 import { api } from './api/client'
 import { useSession } from './stores/session'
 const session = useSession()
+const route = useRoute()
+const studio = computed(() => route.path === '/studio')
+const menuOpen = ref(false)
 const credentials = reactive({ email: '', password: '' })
 const registering = ref(false), busy = ref(false)
 onMounted(() => session.refresh())
@@ -23,7 +27,7 @@ async function logout() {
 <template>
   <div v-if="!session.ready" class="loading">正在读取工作台…</div>
   <main v-else-if="!session.user" class="login-shell">
-    <section class="login-intro"><div class="brand"><span class="brand-mark">C</span> CareerForge</div>
+    <section class="login-intro"><div class="brand"><span class="brand-mark" aria-hidden="true">✦</span> CareerForge</div>
       <span class="eyebrow">从岗位要求，到可展示的成果</span><h1>把下一步学习，<br>变成一份可信证据。</h1>
       <p>保存真实材料，明确学习目标，在自己的项目里完成实践。每项判断，都有出处和适用范围。</p>
       <div class="intro-flow">岗位材料 <span>→</span> 学习目标 <span>→</span> 实践证据</div>
@@ -36,12 +40,12 @@ async function logout() {
       </el-form><el-button link class="auth-switch" @click="registering = !registering">{{ registering ? '已有账号，去登录' : '第一次使用？创建账号' }}</el-button>
     </section>
   </main>
-  <div v-else class="app-shell">
-    <aside class="sidebar"><div class="brand"><span class="brand-mark">C</span> CareerForge</div><p class="sidebar-caption">从需求找到开源实现</p>
-      <nav aria-label="工作台导航">
+  <div v-else class="app-shell" :class="{'studio-shell':studio,'menu-open':menuOpen}">
+    <aside v-if="!studio" class="sidebar"><router-link to="/agent" class="brand"><span class="brand-mark" aria-hidden="true">✦</span><span>CareerForge<small>BUILD SKILLS FROM CODE</small></span></router-link><p class="sidebar-caption">个人 Agent 学习工作台</p>
+      <nav aria-label="工作台导航" @click="menuOpen=false"><span class="navigation-label">工作空间</span>
         <router-link to="/agent">◈ Agent 工作台</router-link>
         <router-link to="/sources">▤ 需求资料</router-link>
-        <router-link to="/knowledge">▧ 开源项目</router-link>
+        <router-link to="/knowledge">⌘ 开源项目</router-link>
         <details class="sidebar-group"><summary>更多</summary><div class="sidebar-group-links">
           <router-link to="/studio">学习 IDE</router-link>
           <router-link to="/planning">历史学习计划</router-link>
@@ -52,7 +56,7 @@ async function logout() {
       </nav>
       <div class="sidebar-bottom"><span class="status-dot"></span> 个人空间<br><small>{{ session.user.email }}</small><el-button link @click="logout">退出登录</el-button></div>
     </aside>
-    <main class="main-content"><header class="topbar"><span>职业需求 → 技术要求 → 开源实现 → 模块化学习</span><el-tag type="info" effect="plain">本机学习工作台</el-tag></header><router-view /></main>
+    <main class="main-content"><header v-if="!studio" class="topbar"><button class="mobile-menu" aria-label="展开导航" @click="menuOpen=!menuOpen">☰</button><span>工作空间 <i>/</i> {{route.path==='/sources'?'需求资料':route.path==='/knowledge'?'开源项目':route.path==='/runs'?'运行记录':'Agent 学习工作台'}}</span><router-link class="open-studio" to="/studio">打开学习工作台 ↗</router-link></header><router-view :key="studio ? String(route.query.track??'library') : route.path"/></main>
   </div>
 </template>
 

@@ -2,24 +2,25 @@ import json
 from uuid import UUID, uuid4
 
 import pytest
+from sqlalchemy.orm import Session
+from test_market_research import post
+from test_owner_scope import clients as clients
+from test_studio_learning_agent import setup_learning
+
 from careerforge.application import studio_service as studio
 from careerforge.application.studio_learning_service import validate_guide
 from careerforge.config.settings import get_settings
 from careerforge.infrastructure.db.models import LearningWorkspace
 from careerforge.infrastructure.db.session import get_engine
 from careerforge.infrastructure.llm.openai_compatible import OpenAICompatibleProvider
-from careerforge.schemas.model_io import ModelResult, Usage
+from careerforge.schemas.model_io import ModelResult, ToolCall, Usage
 from careerforge.schemas.studio import LearningGuide
 from careerforge.workflows.studio_agent import execute
-from sqlalchemy.orm import Session
-from test_market_research import post
-from test_owner_scope import clients as clients
-from test_studio_learning_agent import setup_learning
 
 pytestmark = pytest.mark.infrastructure
 
 
-def test_report_practice_patch_command_and_revocation(clients, monkeypatch):
+def test_report_practice_patch_command_and_revocation(clients, monkeypatch, offline_python_sandbox):
     a, b = clients
     project, workspace, learning_request = setup_learning(a, monkeypatch)
     wid, objective = workspace["workspace_id"], learning_request["objective_version_id"]
@@ -77,29 +78,35 @@ def test_report_practice_patch_command_and_revocation(clients, monkeypatch):
 
     async def complete(self, request):
         calls.append(request)
-        context = json.loads(request.prompt[request.prompt.index('{"files"') :])
+        context = json.loads(request.messages[-1]["content"])
         assert context["practice"]["exercise"] == guide.practice[0]
         assert context["practice"]["synthetic_source"] is True
         assert context["references"][0]["citation_id"] == cid
         assert request.max_output_tokens == get_settings().model_max_output_tokens
         return ModelResult(
             provider="offline-mock",
-            finish_reason="stop",
+            finish_reason="tool_calls",
             synthetic=True,
             usage=Usage(input_tokens=100, output_tokens=50, status="known"),
-            structured={
-                "answer": "按当前练习提出小型变更，尚未执行。",
-                "citation_ids": [cid],
-                "edits": [
-                    {
-                        "path": "mine.py",
-                        "before": "print(1)\n",
-                        "after": "print(2)\n",
-                        "reason": "practice",
-                    }
-                ],
-                "commands": [{"argv": ["python", "mine.py"], "reason": "observe"}],
-            },
+            tool_calls=[
+                ToolCall(
+                    id="proposal",
+                    name="submit_reply",
+                    arguments={
+                        "answer": "按当前练习提出小型变更，尚未执行。",
+                        "citation_ids": [cid],
+                        "edits": [
+                            {
+                                "path": "mine.py",
+                                "before": "print(1)\n",
+                                "after": "print(2)\n",
+                                "reason": "practice",
+                            }
+                        ],
+                        "commands": [{"argv": ["python", "mine.py"], "reason": "observe"}],
+                    },
+                )
+            ],
         )
 
     monkeypatch.setattr(OpenAICompatibleProvider, "complete", complete)

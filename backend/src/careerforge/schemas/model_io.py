@@ -46,3 +46,4 @@ class ModelRequest(ContractModel):
     reasoning_effort: Literal["low", "medium", "high"] | None = None
     tools: list[dict[str, Any]] = Field(default_factory=list)
     response_schema: dict[str, Any] | None = None
+    messages: list[dict[str, Any]] | None = Field(default=None, min_length=1, max_length=100)

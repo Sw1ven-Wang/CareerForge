@@ -472,6 +472,11 @@ def materials(saved: Submission, criterion_id: UUID | None = None) -> set[str]:
         result.add("explanation_answer")
     if data.get("transfer_notes"):
         result.add("transfer_note")
+    report = data.get("workspace_snapshot", {}).get("report")
+    if report and report.get("content", "").strip():
+        result.add("learning_report")
+        if report.get("references"):
+            result.add("source_evidence")
     if (data["code_commit"] or data.get("workspace_snapshot")) and data["attachment_ids"]:
         result.add("code_artifact")
     return result

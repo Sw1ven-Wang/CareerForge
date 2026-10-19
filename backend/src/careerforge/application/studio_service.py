@@ -28,7 +28,8 @@ from careerforge.schemas.studio import (
     WorkspaceSnapshotInput,
 )
 
-VERSION = "learning-studio-agent-1.0"
+LEGACY_VERSION = "learning-studio-agent-1.0"
+VERSION = "learning-studio-pi-1.0"
 BLOCKED = {".git", ".env", ".aws", ".ssh", ".codex", "node_modules", ".venv", "__pycache__"}
 
 
@@ -86,7 +87,42 @@ def detail(row: LearningWorkspace, db: Session | None = None) -> Json:
                 item = visible(db, row.owner_id, row, item)
             actions.append(item)
         value["actions"] = actions
+        active = active_workspace_run(db, row.owner_id, row.id)
+        value["active_run"] = (
+            {"run_id": str(active.id), "status": active.status, "version": active.version}
+            if active
+            else None
+        )
     return value
+
+
+def active_workspace_run(db: Session, owner: UUID, identifier: UUID) -> "AgentRun | None":
+    from sqlalchemy import select
+
+    from careerforge.infrastructure.db.models import AgentRun
+
+    return db.scalar(
+        select(AgentRun)
+        .where(
+            AgentRun.owner_id == owner,
+            AgentRun.input_manifest["workspace_id"].astext == str(identifier),
+            AgentRun.status.in_(["queued", "running", "waiting_user", "waiting_children"]),
+        )
+        .order_by(AgentRun.created_at)
+        .limit(1)
+    )
+
+
+def guard_workspace_run(db: Session, owner: UUID, row: LearningWorkspace) -> None:
+    active = active_workspace_run(db, owner, row.id)
+    if active:
+        raise BusinessError(
+            409,
+            "WORKSPACE_AGENT_ACTIVE",
+            "工作区已有任务 " + str(active.id) + "（" + active.status + "），请等待或取消。",
+        )
+    if len(row.payload["actions"]) > 94:
+        raise BusinessError(422, "ACTION_LIMIT", "记录容量不足，未调用模型；请整理或创建新工作区。")
 
 
 def create(db: Session, owner: UUID, body: WorkspaceInput, key: str | None) -> Json:
@@ -137,7 +173,7 @@ def sync_snapshot(
         .where(
             AgentRun.owner_id == owner,
             AgentRun.input_manifest["workspace_id"].astext == str(identifier),
-            AgentRun.status.in_(["queued", "running", "waiting_user"]),
+            AgentRun.status.in_(["queued", "running", "waiting_user", "waiting_children"]),
         )
         .limit(1)
     )
@@ -198,9 +234,13 @@ def propose_command(db: Session, owner: UUID, identifier: UUID, body: CommandInp
     revision(row, body.expected_revision)
     practice_id = assistance.bound_practice(row, body.practice_id)
     require_practice(db, owner, row, {"practice_id": practice_id})
+    from careerforge.infrastructure.runtime_capabilities import check_command
+
+    capability = check_command(command_argv(body.argv))
     append(
         row,
         {
+            "runtime_capabilities": capability,
             "id": str(uuid4()),
             "kind": "command",
             "status": "pending",
@@ -253,6 +293,7 @@ def start_agent(
     if record.response_summary:
         return record.response_summary
     revision(row, body.expected_revision)
+    guard_workspace_run(db, owner, row)
     assistance.guard_agent(db, owner, row)
     bound = assistance.bound_practice(row, body.practice_id)
     if bound:
@@ -287,6 +328,8 @@ def start_agent(
         if body.objective_version_id
         else None
     )
+    from careerforge.infrastructure.runtime_capabilities import capabilities as runtime_capabilities
+
     context = {
         "files": files,
         "file_tree": sorted(row.payload["files"]),
@@ -307,6 +350,7 @@ def start_agent(
         ],
         "instruction": body.instruction,
         "practice": practice_context,
+        "runtime_capabilities": runtime_capabilities(),
     }
     if row.payload.get("selected_files_only"):
         context["recent_actions"] = []
@@ -328,8 +372,13 @@ def start_agent(
         "model": settings.model_name,
         "base_url": settings.openai_base_url,
         "max_output_tokens": settings.model_max_output_tokens,
+        "coding_engine": "pi-sdk-1.3.0",
+        "coding_call_limit": body.coding_call_limit,
+        "reasoning_effort": "low",
     }
-    run = create_run(db, owner, "project_research", VERSION, manifest, call_budget=1)
+    run = create_run(
+        db, owner, "project_research", VERSION, manifest, call_budget=body.coding_call_limit
+    )
     record.response_summary = {"run_id": str(run.id), "status": run.status}
     return record.response_summary
 
@@ -351,7 +400,9 @@ def validate_context(db: Session, run: AgentRun) -> LearningWorkspace:
     return row
 
 
-def save_reply(db: Session, run: AgentRun, result: ModelResult) -> Json:
+def validate_reply(
+    db: Session, run: AgentRun, result: ModelResult
+) -> tuple[LearningWorkspace, AgentReply, list[list[str]]]:
     row = validate_context(db, run)
     reply = AgentReply.model_validate(result.structured)
     if not set(reply.citation_ids).issubset(run.input_manifest["citation_ids"]):
@@ -375,6 +426,11 @@ def save_reply(db: Session, run: AgentRun, result: ModelResult) -> Json:
             candidate_files[edit.path] = edit.after
     validate_files(candidate_files)
     commands = [command_argv(c.argv) for c in reply.commands]
+    return row, reply, commands
+
+
+def save_reply(db: Session, run: AgentRun, result: ModelResult) -> Json:
+    row, reply, commands = validate_reply(db, run, result)
     append(
         row,
         {
@@ -445,6 +501,9 @@ def execute_command(
             raise BusinessError(422, "ACTION_LIMIT", "请创建新的练习工作区。")
         files = dict(row.payload["files"])
         argv = command_argv(item["argv"])
+        from careerforge.infrastructure.runtime_capabilities import check_command
+
+        check_command(argv, executing=True)
         update_action(
             row,
             action_id,

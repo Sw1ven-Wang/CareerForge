@@ -5293,6 +5293,27 @@
         }
       }
     },
+    "/api/v1/studio/runtime-capabilities": {
+      "get": {
+        "tags": [
+          "learning-studio"
+        ],
+        "summary": "Runtime Capabilities",
+        "operationId": "runtime_capabilities_api_v1_studio_runtime_capabilities_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/studio/workspaces": {
       "get": {
         "tags": [
@@ -9730,6 +9751,23 @@
       },
       "LearningIntent": {
         "properties": {
+          "execution_runtime": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "python",
+                  "node",
+                  "go",
+                  "rust"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Execution Runtime"
+          },
           "focus_chunk_id": {
             "anyOf": [
               {
@@ -10720,6 +10758,103 @@
         ],
         "title": "ProjectResearchInput"
       },
+      "ReadingSelection": {
+        "properties": {
+          "repository_snapshot_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repository Snapshot Id"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path"
+          },
+          "view_intent": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "build_project",
+                  "learn_project",
+                  "technical_design",
+                  "function"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "View Intent"
+          },
+          "step_index": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 7.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Step Index"
+          },
+          "citation_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Citation Id"
+          },
+          "start_line": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Line"
+          },
+          "end_line": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Line"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ReadingSelection"
+      },
       "RecommendationFeedback": {
         "properties": {
           "action": {
@@ -11119,6 +11254,23 @@
       },
       "RoleInput": {
         "properties": {
+          "reading": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReadingSelection"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "recheck_call_budget": {
+            "type": "integer",
+            "maximum": 10.0,
+            "minimum": 0.0,
+            "title": "Recheck Call Budget",
+            "default": 0
+          },
           "review_call_limit": {
             "type": "integer",
             "maximum": 3.0,
@@ -11166,7 +11318,8 @@
               "discover",
               "review",
               "plan",
-              "tutor"
+              "tutor",
+              "reconcile"
             ],
             "title": "Role"
           },
@@ -11561,6 +11714,13 @@
             "minimum": 2.0,
             "title": "Model Call Limit",
             "default": 4
+          },
+          "coding_call_limit": {
+            "type": "integer",
+            "maximum": 4.0,
+            "minimum": 1.0,
+            "title": "Coding Call Limit",
+            "default": 1
           }
         },
         "additionalProperties": false,

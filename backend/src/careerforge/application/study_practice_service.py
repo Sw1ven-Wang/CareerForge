@@ -107,12 +107,33 @@ def create_attempt(
     module = next((m for m in plan.payload["modules"] if m["key"] == body.module_key), None)
     if not module or any(m["parent_key"] == body.module_key for m in plan.payload["modules"]):
         raise BusinessError(422, "LEAF_MODULE_REQUIRED", "请选择一个有代码依据的叶模块开始练习。")
-    highlights = [h for review in study.approved(db, track) for h in review.payload["highlights"]]
+    # The selected immutable plan authorizes its own frozen reviews, including historical ones.
+    highlights = [
+        h
+        for rid in plan.payload["review_ids"]
+        for h in study.artifact_row(db, owner, track_id, rid, "review").payload["highlights"]
+    ]
     highlights += plan.payload.get("focus_highlights", [])
     selected = {h["citation_id"] for h in highlights if h["citation_id"] in module["highlight_ids"]}
     if not selected or not set(module["highlight_ids"]) <= selected:
         raise BusinessError(409, "EXERCISE_REFERENCE_REQUIRED", "模块的代码依据不可用。")
     references = [citation_detail(db, owner, UUID(i)) for i in sorted(selected)]
+    from careerforge.application.study_exercises import profile
+
+    exercise_profile = profile(plan.payload["intent"]["kind"], module, body.exercise_kind)
+    if exercise_profile["execution_required"]:
+        from careerforge.infrastructure.runtime_capabilities import planning as runtime_plan
+
+        runtime_plan(
+            plan.payload["intent"],
+            study.artifact_row(
+                db, owner, track_id, plan.payload["requirements_id"], "requirements"
+            ).payload["requirements"],
+            [
+                study.packed(study.artifact_row(db, owner, track_id, i, "review"))
+                for i in plan.payload["review_ids"]
+            ],
+        )
     core = {
         "plan_id": str(plan.id),
         "module_key": body.module_key,
@@ -125,6 +146,7 @@ def create_attempt(
             "variation": body.variation,
             "deliverable": module["deliverable"],
             "module": module,
+            "profile": exercise_profile,
         },
         "references": [
             {
@@ -176,38 +198,25 @@ def create_attempt(
         criteria = [
             CriterionInput.model_validate(
                 dict(
-                    dimension=dimension,
-                    scenario=scenario,
-                    expected_behavior=expected,
-                    pass_rule="逐项核对冻结材料，记录操作、观察、环境与本次代码哈希。",
+                    dimension=c["dimension"],
+                    scenario=c["scenario"],
+                    expected_behavior=conditions
+                    if c["dimension"] == "artifact"
+                    else (
+                        body.variation
+                        if c["dimension"] == "transfer"
+                        else "本人解释机制、依据、取舍与未验证边界。"
+                    ),
+                    pass_rule="核对本次冻结材料与范围，记录本人观察及成果版本。",
                     fail_rule="材料显示条件未满足。",
-                    unknown_rule="缺材料或无法确认本人贡献时保持未知。",
+                    unknown_rule="缺少材料时保持未知。",
                     critical=True,
                     allowed_methods=["human_review"],
-                    required_artifact_types=materials,
-                    limitations=["同账号人工自验不等于第三方认证；帮助条件单独记录。"],
+                    required_artifact_types=c["materials"],
+                    limitations=["同账号自验不等于第三方认证；帮助条件单独记录。"],
                 )
             )
-            for dimension, scenario, expected, materials in [
-                (
-                    "artifact",
-                    "本次代码与运行观察",
-                    conditions,
-                    ["code_artifact", "execution_record"],
-                ),
-                (
-                    "explanation",
-                    "本人解释实现与失败边界",
-                    "解释关键机制、取舍和未验证部分。",
-                    ["explanation_answer"],
-                ),
-                (
-                    "transfer",
-                    "本人迁移或差异说明",
-                    body.variation or "说明与参考实现的差异及适用边界。",
-                    ["transfer_note"],
-                ),
-            ]
+            for c in exercise_profile["criteria"]
         ]
         objective_root = LearningObjective(owner_id=owner, goal_id=goal.goal_id)
         db.add(objective_root)
@@ -348,7 +357,10 @@ def attempts(
             continue
         try:
             spec = spec_current(db, owner, attempt.payload["exercise_spec_id"])
-            if spec.payload["module_hash"] != fingerprint(module):
+            from careerforge.application.study_versions import compatible
+
+            origin = study.artifact_row(db, owner, track_id, spec.payload["plan_id"], "plan")
+            if not compatible(db, origin, plan, module_key):
                 continue
             row = studio.workspace(db, owner, UUID(attempt.payload["workspace_id"]))
             state = delivery.detail(db, owner, row.id, UUID(attempt.payload["practice_id"]))
@@ -377,14 +389,17 @@ def attempts(
 def plan_target(db: Session, owner: UUID, item: Json) -> list[Json]:
     spec = spec_current(db, owner, item["exercise_spec_id"])
     track = study.track(db, owner, spec.track_id)
-    identifier = track.payload.get("active_plan_id") or spec.payload["plan_id"]
-    plan = study.artifact_row(db, owner, track.id, identifier, "plan")
+    from careerforge.application.study_versions import versions
+
+    origin = study.artifact_row(db, owner, track.id, spec.payload["plan_id"], "plan")
+    plan = versions(db, origin)[-1]
     study.validate_plan_scope(db, track, plan)
     module = next(
         (m for m in plan.payload["modules"] if m["key"] == spec.payload["module_key"]), None
     )
-    if not module or fingerprint(module) != spec.payload["module_hash"]:
-        return []
+    from careerforge.application.study_versions import compatible
+
+    scope_compatible = bool(module and compatible(db, origin, plan, spec.payload["module_key"]))
     return [
         {
             "plan_id": str(plan.id),
@@ -393,6 +408,7 @@ def plan_target(db: Session, owner: UUID, item: Json) -> list[Json]:
             "version_no": plan.payload.get("revision_no", 1),
             "kind": "study",
             "title": plan.payload["title"],
+            "scope_compatible": scope_compatible,
         }
     ]
 
@@ -454,6 +470,7 @@ def update_plan(
     if not delivery.effective_outcome(db, owner, entry)["effective"]:
         raise BusinessError(409, "ACCEPTANCE_REQUIRED", "验收已失效，请重新核对。")
     source = study.artifact_row(db, owner, track.id, body["base_plan_version_id"], "plan")
+    compatible = target[0]["scope_compatible"]
     updated = study.put(
         db,
         track,
@@ -462,8 +479,22 @@ def update_plan(
             **source.payload,
             "module_outcomes": {
                 **source.payload.get("module_outcomes", {}),
-                spec.payload["module_key"]: entry,
+                **({spec.payload["module_key"]: entry} if compatible else {}),
             },
+            "historical_outcomes": [
+                *source.payload.get("historical_outcomes", []),
+                *(
+                    []
+                    if compatible
+                    else [
+                        {
+                            **entry,
+                            "needs_review": True,
+                            "reason": "已验收的是旧练习范围，不代表当前模块已通过。",
+                        }
+                    ]
+                ),
+            ],
             "source_plan_id": str(source.id),
             "revision_no": source.payload.get("revision_no", 1) + 1,
             "update_reason": body["reason"],
@@ -476,7 +507,16 @@ def update_plan(
         prior = progress.get(f"{source.id}:{module['key']}")
         if prior:
             progress[f"{updated.id}:{module['key']}"] = dict(prior)
-    track.payload = {**track.payload, "active_plan_id": str(updated.id), "progress": progress}
+    from careerforge.application.study_versions import family
+
+    active_id = track.payload.get("active_plan_id")
+    active = study.artifact_row(db, owner, track.id, active_id, "plan") if active_id else None
+    activate = not active or family(db, active) == family(db, source)
+    track.payload = {
+        **track.payload,
+        "progress": progress,
+        **({"active_plan_id": str(updated.id)} if activate else {}),
+    }
     track.revision += 1
     record.response_summary = {"plan_version_id": str(updated.id)}
     return {

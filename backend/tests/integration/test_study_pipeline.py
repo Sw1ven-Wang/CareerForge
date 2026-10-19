@@ -5,21 +5,22 @@ from uuid import UUID
 
 import httpx
 import pytest
-from careerforge.config.settings import get_settings
-from careerforge.infrastructure.llm.openai_compatible import OpenAICompatibleProvider
-from careerforge.infrastructure.repository import github_research
-from careerforge.schemas.model_io import ToolCall
-from careerforge.workflows import study
 from pydantic import SecretStr
 from test_market_research import post, source
 from test_owner_scope import clients as clients
 from test_studio_learning_agent import model_result
 
+from careerforge.config.settings import get_settings
+from careerforge.infrastructure.llm.openai_compatible import OpenAICompatibleProvider
+from careerforge.infrastructure.repository import github_research
+from careerforge.schemas.model_io import ToolCall
+from careerforge.workflows import study
+
 pytestmark = pytest.mark.infrastructure
 CODE = "def execute_tool(tool, arguments):\n    return tool(**arguments)\n"
 
 
-def test_requirement_review_plan_tutor_chain(clients, monkeypatch):
+def test_requirement_review_plan_tutor_chain(clients, monkeypatch, offline_python_sandbox):
     a, b = clients
     settings = get_settings()
     monkeypatch.setattr(settings, "real_agent_enabled", True)
@@ -328,7 +329,9 @@ def test_requirement_review_plan_tutor_chain(clients, monkeypatch):
     assert progress.status_code == 200, progress.text
     assert not progress.json()["data"]["progress"][plan["id"] + ":leaf"]["competence_verified"]
     state = run("extract")
-    assert state["approved_count"] == 0 and state["plans"] == [] and state["candidates"] == []
+    assert state["approved_count"] == 0 and state["candidates"] == []
+    assert state["recheck_pending"] and state["active_plan_id"] == plan["id"]
+    assert any(p["id"] == plan["id"] and p["historical_requirements"] for p in state["plans"])
     deleted = a.request(
         "DELETE",
         f"/api/v1/sources/{imported['source_id']}",

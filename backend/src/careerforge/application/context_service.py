@@ -28,6 +28,15 @@ def attempt_data(db: Session, owner: UUID, item: StudyArtifact) -> Json:
         db, owner, UUID(item.payload["workspace_id"]), UUID(item.payload["practice_id"])
     )
     saved = data["submission"]
+    task = data["task"]
+    acceptance = (
+        {
+            "confirmation_id": task["effective_confirmation_id"],
+            "submission_id": saved["submission_id"],
+        }
+        if task and saved and task["effective_confirmation_id"] and task["status"] == "accepted"
+        else None
+    )
     return {
         "attempt_id": str(item.id),
         "exercise_spec_id": str(spec.id),
@@ -50,6 +59,7 @@ def attempt_data(db: Session, owner: UUID, item: StudyArtifact) -> Json:
         if saved
         else None,
         "assessment": data["assessment"],
+        "acceptance_reference": acceptance,
         "source": "same_account_review_and_declarations",
         "competence_verified": False,
     }
@@ -65,42 +75,131 @@ def source_data(db: Session, owner: UUID, manifest: Json, pointer: Json) -> Json
         return skill
     item = study.artifact_row(db, owner, UUID(manifest["track_id"]), pointer["source_id"])
     if item.kind == "tutor" and pointer["kind"] == "tutor_turn":
-        if (
-            item.payload["plan_id"] != manifest["plan_id"]
-            or item.payload["module_key"] != manifest["module"]["key"]
-            or item.payload["requirements_id"] != manifest["requirements_id"]
-            or not set(item.payload["review_ids"]) <= set(manifest["review_ids"])
+        from careerforge.application.study_versions import compatible
+
+        prior = study.artifact_row(
+            db, owner, UUID(manifest["track_id"]), item.payload["plan_id"], "plan"
+        )
+        current = study.artifact_row(
+            db, owner, UUID(manifest["track_id"]), manifest["plan_id"], "plan"
+        )
+        study.validate_plan_scope(db, study.track(db, owner, current.track_id), prior)
+        if item.payload["module_key"] != manifest["module"]["key"] or not compatible(
+            db, prior, current, manifest["module"]["key"]
         ):
-            raise BusinessError(404, "NOT_FOUND", "历史回答不在当前模块范围。")
+            raise BusinessError(404, "NOT_FOUND", "历史回答不在兼容的模块版本范围。")
         return dict(item.payload)
     if item.kind == "attempt" and pointer["kind"] == "attempt":
         from careerforge.application.study_practice_service import spec_current
 
         spec = spec_current(db, owner, item.payload["exercise_spec_id"])
-        if spec.payload["module_hash"] != fingerprint(manifest["module"]):
-            raise BusinessError(404, "NOT_FOUND", "练习不在当前模块版本范围。")
+        from careerforge.application.study_versions import compatible
+
+        origin = study.artifact_row(
+            db, owner, UUID(manifest["track_id"]), spec.payload["plan_id"], "plan"
+        )
+        selected_plan = study.artifact_row(
+            db, owner, UUID(manifest["track_id"]), manifest["plan_id"], "plan"
+        )
+        if not compatible(db, origin, selected_plan, manifest["module"]["key"]):
+            raise BusinessError(404, "NOT_FOUND", "练习不在当前兼容模块范围。")
+        if pointer.get("snapshot_id"):
+            saved_observation = study.artifact_row(
+                db, owner, UUID(manifest["track_id"]), pointer["snapshot_id"], "context_observation"
+            )
+            if saved_observation.payload["attempt_id"] != str(item.id):
+                raise BusinessError(404, "NOT_FOUND", "上下文快照与练习不一致。")
+            frozen = saved_observation.payload["value"]
+            if frozen.get("submission"):
+                from careerforge.application.build_service import submission
+
+                submission(db, owner, UUID(frozen["submission"]["submission_id"]))
+            if frozen.get("acceptance_reference"):
+                from careerforge.application.build_service import assessment
+                from careerforge.infrastructure.db.models import AssessmentConfirmation
+
+                ref = frozen["acceptance_reference"]
+                confirmation = db.scalar(
+                    select(AssessmentConfirmation).where(
+                        AssessmentConfirmation.id == UUID(ref["confirmation_id"]),
+                        AssessmentConfirmation.owner_id == owner,
+                    )
+                )
+                if (
+                    not confirmation
+                    or confirmation.revoked_at is not None
+                    or confirmation.decision != "accept"
+                ):
+                    raise BusinessError(
+                        409, "CONTEXT_ACCEPTANCE_REVOKED", "历史验收已撤销，请重新提问。"
+                    )
+                proposal = assessment(db, owner, confirmation.assessment_id)
+                if str(proposal.submission_id) != ref["submission_id"]:
+                    raise BusinessError(
+                        409, "CONTEXT_ACCEPTANCE_REVOKED", "历史验收已撤销，请重新提问。"
+                    )
+            return dict(frozen)
         return attempt_data(db, owner, item)
+
     raise BusinessError(404, "NOT_FOUND", "证据类型不匹配。")
 
 
 def capture(db: Session, owner: UUID, manifest: Json) -> Json:
     catalog: list[Json] = []
     learning: list[Json] = []
+    from careerforge.application import study_service as study
+    from careerforge.application.study_versions import compatible, versions
+
+    plan = study.artifact_row(db, owner, UUID(manifest["track_id"]), manifest["plan_id"], "plan")
+    history_ids = [
+        str(p.id) for p in versions(db, plan) if compatible(db, p, plan, manifest["module"]["key"])
+    ]
+    selection = dict(manifest.get("reading", {}))
+    index = selection.get("step_index")
+    if index is not None and index >= len(manifest["module"]["steps"]):
+        raise BusinessError(422, "READING_STEP_INVALID", "当前阅读步骤不属于此模块。")
+    if selection.get("repository_snapshot_id") and selection.get("path"):
+        from careerforge.application.repository_service import code_citation
+
+        if selection["repository_snapshot_id"] not in manifest["scope"]:
+            raise BusinessError(
+                422, "READING_SCOPE_INVALID", "当前文件不在模块审核项目中，请先切换学习范围。"
+            )
+        start = selection.get("start_line") or 1
+        end = selection.get("end_line") or start
+        if end < start or end - start >= 200:
+            raise BusinessError(422, "READING_RANGE_INVALID", "每次最多选择200行原文。")
+        selected = code_citation(
+            db, owner, UUID(selection["repository_snapshot_id"]), selection["path"], start, end
+        )
+        selection["citation_id"] = str(selected.id)
+    if selection.get("citation_id"):
+        from careerforge.application.repository_service import citation_detail
+
+        citation = citation_detail(db, owner, UUID(selection["citation_id"]))
+        if citation["repository_snapshot_id"] not in manifest["scope"]:
+            raise BusinessError(
+                422, "READING_SCOPE_INVALID", "选中代码不在当前模块的审核项目范围。"
+            )
+        first = selection.get("start_line") or citation["start_line"]
+        last = selection.get("end_line") or citation["end_line"]
+        if not citation["start_line"] <= first <= last <= citation["end_line"]:
+            raise BusinessError(422, "READING_RANGE_INVALID", "选中行必须处于已提供的引用范围。")
+        selection["source"] = citation
+    manifest["reading"] = selection
     recent = db.scalars(
         select(StudyArtifact)
         .where(
             StudyArtifact.owner_id == owner,
             StudyArtifact.track_id == UUID(manifest["track_id"]),
             StudyArtifact.kind == "tutor",
-            StudyArtifact.payload["plan_id"].astext == manifest["plan_id"],
+            StudyArtifact.payload["plan_id"].astext.in_(history_ids),
             StudyArtifact.payload["module_key"].astext == manifest["module"]["key"],
         )
         .order_by(StudyArtifact.created_at.desc(), StudyArtifact.id.desc())
         .limit(8)
     ).all()
     for item in reversed(recent):
-        if item.payload.get("requirements_id") != manifest["requirements_id"]:
-            continue
         summary = (
             item.payload["question"][:180]
             + " | "
@@ -142,7 +241,14 @@ def capture(db: Session, owner: UUID, manifest: Json) -> Json:
             + "；"
             + value["learning_evidence"]["learning_state"]
         )
+        saved_observation = study.put(
+            db,
+            study.track(db, owner, UUID(manifest["track_id"])),
+            "context_observation",
+            {"attempt_id": str(item.id), "value": value},
+        )
         ref = EvidencePointer(
+            snapshot_id=saved_observation.id,
             evidence_id="attempt:" + str(item.id),
             kind="attempt",
             source_id=str(item.id),
@@ -178,6 +284,8 @@ def capture(db: Session, owner: UUID, manifest: Json) -> Json:
         plan_id=manifest["plan_id"],
         module_key=manifest["module"]["key"],
         module_hash=fingerprint(manifest["module"]),
+        learning_intent=manifest.get("intent") or plan.payload["intent"],
+        reading_selection=selection,
         scope=manifest["scope"],
         allowed_tools=TOOLS,
         model_call_limit=manifest["model_call_limit"],
@@ -207,6 +315,11 @@ def validate_catalog(db: Session, owner: UUID, manifest: Json) -> None:
         or task.max_output_tokens != manifest["max_output_tokens"]
         or task.scope != manifest["scope"]
         or task.allowed_tools != TOOLS
+        or bool(
+            task.learning_intent
+            and task.learning_intent != manifest.get("intent", task.learning_intent)
+        )
+        or bool(task.reading_selection and task.reading_selection != manifest.get("reading", {}))
     ):
         raise BusinessError(409, "CONTEXT_SCOPE_CHANGED", "上下文任务范围已变化。")
     for ref in frozen["catalog"]:

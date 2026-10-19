@@ -14,7 +14,8 @@ from careerforge.application.run_service import (
     leased,
     transition,
 )
-from careerforge.application.studio_service import VERSION, save_reply, validate_context
+from careerforge.application.studio_service import LEGACY_VERSION as VERSION
+from careerforge.application.studio_service import save_reply, validate_context
 from careerforge.domain.errors import BusinessError
 from careerforge.domain.runs import LeaseLost
 from careerforge.infrastructure.db.session import get_engine
@@ -24,7 +25,7 @@ from careerforge.schemas.studio import AgentReply
 from careerforge.workflows.job_agent import call
 
 
-def execute(run_id: UUID, worker: str) -> None:
+def execute_legacy(run_id: UUID, worker: str) -> None:
     factory = sessionmaker(get_engine(), expire_on_commit=False)
     with factory.begin() as db:
         epoch = claim(db, run_id, worker)
@@ -106,3 +107,14 @@ def execute(run_id: UUID, worker: str) -> None:
                 transition(db, run, "failed")
             except LeaseLost:
                 return
+
+
+def execute(run_id: UUID, worker: str) -> None:
+    """Dispatch frozen historical runs without silently migrating their contract."""
+    from careerforge.infrastructure.db.models import AgentRun
+    from careerforge.workflows.pi_coding import execute as execute_pi
+
+    with sessionmaker(get_engine())() as db:
+        run = db.get(AgentRun, run_id)
+        legacy = run is not None and run.workflow_version == VERSION
+    (execute_legacy if legacy else execute_pi)(run_id, worker)

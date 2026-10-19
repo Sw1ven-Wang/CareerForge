@@ -41,7 +41,9 @@ services:
       migrate: { condition: service_completed_successfully }
     profiles: ["app"]
   worker:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: coding-agent/Dockerfile
     env_file:
       - path: .env
         required: false

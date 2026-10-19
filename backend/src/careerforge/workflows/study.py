@@ -58,6 +58,15 @@ RULES = """你是 CareerForge 的有界学习 Agent。只履行当前角色。
 输出简洁中文；引用 ID、路径、行号必须来自实际提供的资料，不可编造。
 """
 ROLE_RULES = {
+    "reconcile": """你是需求、项目与历史计划的重审 Agent。遵守原学习意图和明确范围。
+检查当前需求变化与深度、项目实际实现和计划覆盖。对每个原 review_id 给出 ReviewOutput。
+所有项目匹配与反证只能引用本轮 read_sources 连续唯一原文。仅重读旧窗口，不能假称完整项目调查。
+不足则 status=needs_evidence，不虚构引用。
+可用则 usable，调整则 adjusted，返回完整新 plan。
+新计划模块只引用输入原 review_id 与已有 citation_id，服务器验证后重绑新审核版本。
+覆盖 intent.requirement_keys；保留目标深度、可观察条件、最多三级结构。
+禁止复制完成状态或修改本人代码。
+可用/调整必须返回覆盖全部选定需求的计划。保持原学习意图；不以模型判断升级用户能力。""",
     "extract": """从人工导入的正文提取技术要求，合并同义技术。每项有唯一 key、可搜索技术关键词，
 及原文连续唯一摘录。不要把泛化推断的技术当作原文要求。
 将目标深度分为了解/熟悉/掌握；原文明确出现对应词才用 explicit，否则用 inferred 并解释推断。
@@ -84,7 +93,9 @@ technical_design聚焦指定设计及取舍；function聚焦指定函数、依�
 每个模块只关联所选需求key和审核项目id，叶模块必须有已给出的源码highlight_ids（citation_id）。
 function意图必须使用purpose=user_selected_focus的代码引用，围绕用户选中的实际实现设计叶模块。
 包括具体步骤、产物、可观察验收条件；全部所选需求必须覆盖。输出最多10个模块，尽量简短。
-不编造源码路径，不声称完成学习。planning_scope仅表示位置覆盖，语义支持尚未独立核验。""",
+不编造源码路径，不声称完成学习。planning_scope仅表示位置覆盖，语义支持尚未独立核验。
+阅读与设计计划以报告和解释为产物，不强制写代码；实现计划必须遵守 runtime_capabilities。
+沙箱仅支持已上报工具、小型离线文件副本，不规划下载依赖或整仓长时间构建。""",
     "tutor": """你是交互指导学习 Agent。围绕当前计划模块回答问题，结合前几轮问答。
 自主使用search_code发现，再read_code取得可引用原文；related_code只是候选，不证明运行调用。
 优先解释关键代码和设计取舍。无依据保留未知。
@@ -317,12 +328,16 @@ class Runner:
         with self.factory.begin() as db:
             run = self.run(db)
             row = service.track(db, run.owner_id, UUID(self.m["track_id"]), True)
+            continuation = kind == "requirements" and bool(self.m.get("recheck_plan_ids"))
+            stage = "primary_result" if continuation else "result"
+            if artifact(db, run, stage, self.version):
+                return
             item = service.put(db, row, kind, {**payload, "synthetic": self.synthetic}, run.id)
             if kind == "requirements":
                 row.payload = {
                     **row.payload,
                     "requirements_id": str(item.id),
-                    "active_plan_id": None,
+                    "active_plan_id": row.payload.get("active_plan_id"),
                 }
             elif kind == "plan":
                 row.payload = {**row.payload, "active_plan_id": str(item.id)}
@@ -332,14 +347,22 @@ class Runner:
                 self.id,
                 self.epoch,
                 self.worker,
-                "result",
+                stage,
                 self.version,
                 {"study_artifact_id": str(item.id), "kind": kind},
             )
             event(
                 db, run, "study." + kind, {"artifact_id": str(item.id), "synthetic": self.synthetic}
             )
-            transition(db, run, terminal)
+            if continuation:
+                row.payload = {**row.payload, "recheck_pending": self.m["recheck_plan_ids"]}
+            else:
+                transition(db, run, terminal)
+
+    async def reconcile(self) -> None:
+        from careerforge.workflows.study_reconciliation import reconcile
+
+        await reconcile(self)
 
     async def extract(self) -> None:
         output = await self.ask("extract", {"sources": self.m["sources"]}, ExtractOutput)
@@ -355,6 +378,9 @@ class Runner:
             },
             "partially_succeeded" if values["unresolved"] else "succeeded",
         )
+
+        if self.m.get("recheck_plan_ids"):
+            await self.reconcile()
 
     async def discover(self) -> None:
         output = await self.ask(
@@ -454,7 +480,8 @@ class Runner:
                 "target_count": row.payload["target_count"],
                 "coverage": located,
             }
-            commit_stage(db, self.id, self.epoch, self.worker, "result", self.version, result)
+            if not self.m.get("recheck_plan_ids"):
+                commit_stage(db, self.id, self.epoch, self.worker, "result", self.version, result)
             status = (
                 "succeeded"
                 if not located["missing_keys"]
@@ -466,7 +493,14 @@ class Runner:
             )
             if not batch["review_candidate_ids"] and batch["candidates_added"]:
                 status = "succeeded"
-            transition(db, run, status)
+            if self.m.get("recheck_plan_ids"):
+                commit_stage(
+                    db, self.id, self.epoch, self.worker, "primary_result", self.version, result
+                )
+            else:
+                transition(db, run, status)
+        if self.m.get("recheck_plan_ids"):
+            await self.reconcile()
 
     async def review(self, finish: bool = True) -> None:
         candidate = dict(self.m["candidate"])
@@ -602,13 +636,21 @@ class Runner:
                 self.id,
                 self.epoch,
                 self.worker,
-                ("result" if finish else "reviewed:" + self.m["candidate_id"]),
+                (
+                    "primary_result"
+                    if finish and self.m.get("recheck_plan_ids")
+                    else "result"
+                    if finish
+                    else "reviewed:" + self.m["candidate_id"]
+                ),
                 self.version,
                 {"study_artifact_id": str(item.id), "admitted": admitted},
             )
             event(db, run, "study.review", {"verdict": output.verdict, "admitted": admitted})
-            if finish:
+            if finish and not self.m.get("recheck_plan_ids"):
                 transition(db, run, "succeeded" if admitted else "partially_succeeded")
+        if finish and self.m.get("recheck_plan_ids"):
+            await self.reconcile()
 
     async def plan(self) -> None:
         focus_highlights = []
@@ -643,6 +685,7 @@ class Runner:
                 "requirements": self.m["requirements"],
                 "intent": self.m["intent"],
                 "planning_scope": self.m["planning_scope"],
+                "runtime_capabilities": self.m.get("runtime_capabilities", {}),
                 "projects": self.m["projects"],
             },
             PlanOutput,
@@ -657,6 +700,7 @@ class Runner:
                 "requirements_id": self.m["requirements_id"],
                 "review_ids": [p["id"] for p in self.m["projects"]],
                 "planning_scope": self.m["planning_scope"],
+                "runtime_capabilities": self.m.get("runtime_capabilities", {}),
             },
         )
 
@@ -772,6 +816,14 @@ class Runner:
         ]
         query = " ".join([*keywords, module["title"], self.m["question"][:100]])[:300]
         self.tool("seed", "search_code", {"query": query})
+        focus = self.m.get("reading", {}).get("source")
+        if focus:
+            with self.factory.begin() as db:
+                run = self.run(db)
+                actual = repositories.citation_detail(db, run.owner_id, UUID(focus["citation_id"]))
+            if actual["commit"] != focus["commit"]:
+                raise BusinessError(409, "READING_CHANGED", "当前引用已变化。")
+            self.sources[actual["citation_id"]] = actual
         if self.m["model_call_limit"] == 1 and self.trace[-1].get("results"):
             self.tool(
                 "seed:read",
@@ -790,6 +842,8 @@ class Runner:
                     frozen["task"],
                     {
                         "module": module,
+                        "learning_intent": self.m.get("intent", {}),
+                        "reading_selection": self.m.get("reading", {}),
                         "question": self.m["question"],
                         "pending": {
                             "current_question_unanswered": True,
@@ -900,7 +954,12 @@ def execute(run_id: UUID, worker: str) -> None:
             if artifact(db, run, "result", runner.version):
                 transition(db, run, "succeeded")
                 return
-        asyncio.run(runner.execute())
+        with factory.begin() as db:
+            resume_recheck = bool(
+                artifact(db, runner.run(db), "primary_result", runner.version)
+                and manifest.get("recheck_plan_ids")
+            )
+        asyncio.run(runner.reconcile() if resume_recheck else runner.execute())
     except LeaseLost:
         return
     except (BusinessError, ModelError, ValueError, ValidationError, KeyError) as error:

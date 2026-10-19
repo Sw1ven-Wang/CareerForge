@@ -23,8 +23,22 @@ def main() -> None:
     MAIL.chmod(0o700)
     for name in ("ready", "job.json"):
         (MAIL / name).unlink(missing_ok=True)
+    from careerforge.infrastructure.runtime_capabilities import inventory
+
+    detected = inventory()
+
+    def report() -> None:
+        tmp_caps = MAIL / "capabilities.tmp"
+        tmp_caps.write_text(json.dumps({**detected, "reported_at": time.time()}))
+        tmp_caps.replace(MAIL / "capabilities.json")
+
+    report()
+    last_report = time.monotonic()
     (MAIL / "ready").write_text(str(uuid4()))
     while not (MAIL / "job.json").exists():
+        if time.monotonic() - last_report >= 1:
+            report()
+            last_report = time.monotonic()
         time.sleep(0.2)
     job = json.loads((MAIL / "job.json").read_text())
     (MAIL / "ready").unlink(missing_ok=True)

@@ -1442,6 +1442,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/studio/runtime-capabilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Runtime Capabilities */
+        get: operations["runtime_capabilities_api_v1_studio_runtime_capabilities_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/studio/workspaces": {
         parameters: {
             query?: never;
@@ -2768,6 +2785,8 @@ export interface components {
         };
         /** LearningIntent */
         LearningIntent: {
+            /** Execution Runtime */
+            execution_runtime?: ("python" | "node" | "go" | "rust") | null;
             /** Focus Chunk Id */
             focus_chunk_id?: string | null;
             /**
@@ -3127,6 +3146,23 @@ export interface components {
              */
             budget_profile: "development_small";
         };
+        /** ReadingSelection */
+        ReadingSelection: {
+            /** Repository Snapshot Id */
+            repository_snapshot_id?: string | null;
+            /** Path */
+            path?: string | null;
+            /** View Intent */
+            view_intent?: ("build_project" | "learn_project" | "technical_design" | "function") | null;
+            /** Step Index */
+            step_index?: number | null;
+            /** Citation Id */
+            citation_id?: string | null;
+            /** Start Line */
+            start_line?: number | null;
+            /** End Line */
+            end_line?: number | null;
+        };
         /** RecommendationFeedback */
         RecommendationFeedback: {
             /**
@@ -3285,6 +3321,12 @@ export interface components {
         };
         /** RoleInput */
         RoleInput: {
+            reading?: components["schemas"]["ReadingSelection"] | null;
+            /**
+             * Recheck Call Budget
+             * @default 0
+             */
+            recheck_call_budget: number;
             /**
              * Review Call Limit
              * @default 1
@@ -3308,7 +3350,7 @@ export interface components {
              * Role
              * @enum {string}
              */
-            role: "extract" | "discover" | "review" | "plan" | "tutor";
+            role: "extract" | "discover" | "review" | "plan" | "tutor" | "reconcile";
             /** Candidate Id */
             candidate_id?: string | null;
             intent?: components["schemas"]["LearningIntent"] | null;
@@ -3426,6 +3468,11 @@ export interface components {
              * @default 4
              */
             model_call_limit: number;
+            /**
+             * Coding Call Limit
+             * @default 1
+             */
+            coding_call_limit: number;
         };
         /** TimeBudget */
         TimeBudget: {
@@ -6585,6 +6632,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    runtime_capabilities_api_v1_studio_runtime_capabilities_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"];
                 };
             };
         };

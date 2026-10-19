@@ -29,6 +29,7 @@ class StudioAgentInput(InputModel):
     source_snapshot_ids: list[UUID] = Field(default_factory=list, max_length=3)
     knowledge_snapshot_ids: list[UUID] = Field(default_factory=list, max_length=10)
     model_call_limit: int = Field(default=4, ge=2, le=4)
+    coding_call_limit: int = Field(default=1, ge=1, le=4)
 
 
 class Edit(InputModel):

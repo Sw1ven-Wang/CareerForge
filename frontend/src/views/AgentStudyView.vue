@@ -3,6 +3,7 @@ import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api, apiPage, mutation } from '../api/client'
+import {type RuntimeCapabilities,runtimeSummary} from '../types/runtime'
 import ReviewInvestigation from '../components/ReviewInvestigation.vue'
 import AutonomousDelegation from '../components/AutonomousDelegation.vue'
 import { type StudyTrack, intentNames, roleNames, activeStates } from '../types/study'
@@ -12,6 +13,7 @@ const sources=ref<{source_id:string;title:string;read_status:string}[]>([]),sour
 const policy=ref<'coverage'|'strict_count'>('strict_count'),newPolicy=ref<'coverage'|'strict_count'>('coverage')
 const batchCandidates=ref<string[]>([])
 const createOpen=ref(false),busy=ref(false),showReview=ref(''),tokenCap=ref(8192),reviewCalls=ref(1)
+const runtime=ref<RuntimeCapabilities|null>(null),executionRuntime=ref('python'),recheckCalls=ref(3)
 const intent=ref('learn_project'),focus=ref(''),reqKeys=ref<string[]>([]),reviewIds=ref<string[]>([])
 const focusChunk=ref(''),focusHits=ref<{chunk_id:string;symbol:string;path:string;start_line:number}[]>([]),searchBusy=ref(false)
 const existing=ref<{repository_snapshot_id:string;name:string}[]>([]),existingId=ref('')
@@ -28,7 +30,7 @@ const canResearch=computed(()=>!!track.value?.requirements&&(researchKeys.value.
 const reviewed=computed(()=>new Map(track.value?.reviews.map(r=>[r.candidate_id,r])??[]))
 const pending=computed(()=>track.value?.candidates.filter(c=>!reviewed.value.has(c.id))??[])
 const displayedRequirements=computed(()=>track.value?.requirements??track.value?.extraction_preview)
-const latestPlan=computed(()=>track.value?.plans.at(-1))
+const latestPlan=computed(()=>track.value?.plans.find(p=>p.id===track.value?.active_plan_id)??track.value?.plans.at(-1))
 let timer:ReturnType<typeof setTimeout>|undefined,alive=true,loadNo=0
 async function refresh(){
  clearTimeout(timer)
@@ -48,7 +50,7 @@ async function reviewBatch(){
  }catch(e){if(e!=='cancel'&&e!=='close')ElMessage.error(String(e))}finally{busy.value=false}
 }
 async function load(){
- try{tracks.value=await api('/study/tracks');sources.value=(await apiPage<{source_id:string;title:string;read_status:string}>('/sources')).data.filter(s=>s.read_status==='available');existing.value=await api('/knowledge/projects')
+ try{runtime.value=await api('/studio/runtime-capabilities');tracks.value=await api('/study/tracks');sources.value=(await apiPage<{source_id:string;title:string;read_status:string}>('/sources')).data.filter(s=>s.read_status==='available');existing.value=await api('/knowledge/projects')
  if(!id.value)id.value=tracks.value.find(t=>t.available)?.track_id??''
  else await refresh()
  }catch(e){ElMessage.error(String(e))}
@@ -66,16 +68,18 @@ async function create(){
 async function run(role:string,candidateId?:string){
  if(!track.value)return
  try{
- const callLimit=role==='discover'?1+5*reviewCalls.value:role==='review'?reviewCalls.value:1
+ const baseCalls=role==='reconcile'?0:role==='discover'?1+5*reviewCalls.value:role==='review'?reviewCalls.value:1
+ const recheck=role==='reconcile'||(['extract','review','discover'].includes(role)&&track.value.plans.length>0)?recheckCalls.value:0
+ const callLimit=baseCalls+recheck
  const gap=role==='plan'&&track.value.collection_policy==='coverage'&&!countMet.value
  const scopeNote=role==='plan'?`所选目标的位置覆盖 ${selectedCoverage.value.covered.length}/${reqKeys.value.length}；解释的语义支持未独立核验。${gap?`收集偏好尚差 ${track.value.target_count-track.value.approved_count} 个项目；确认只为当前选定范围制定计划。`:''}`:''
- await ElMessageBox.confirm(`${scopeNote} ${roleNames[role]}：最多 ${callLimit} 次模型调用，输出上限 ${tokenCap.value} token。${role==='discover'?'另执行最多 3 次 GitHub 公开仓库搜索并审核最多 5 个候选，达到目标即停止；每候选预算包含最终审核报告。':role==='review'?'调查固定版本的符号、相关实现与测试；最多12次只读工具/6次源码读取，不执行项目。':''} 供应商按实际用量计费。`,'启动 Agent',{confirmButtonText:'启动本轮',cancelButtonText:'取消'})
+ await ElMessageBox.confirm(`${scopeNote} ${roleNames[role]}：最多 ${callLimit} 次模型调用，输出上限 ${tokenCap.value} token。${role==='discover'?'另执行最多 3 次 GitHub 公开仓库搜索并审核最多 5 个候选，达到目标即停止；每候选预算包含最终审核报告。':role==='review'?'调查固定版本的符号、相关实现与测试；最多12次只读工具/6次源码读取，不执行项目。':''}${recheck?'含最多 '+recheck+' 次历史计划重审；不足时保留待重审，不追加调用。':''} 供应商按实际用量计费。`,'启动 Agent',{confirmButtonText:'启动本轮',cancelButtonText:'取消'})
  busy.value=true
- const body:Record<string,unknown>={expected_revision:track.value.revision,role,max_output_tokens:tokenCap.value,model_call_limit:1}
+ const body:Record<string,unknown>={expected_revision:track.value.revision,role,max_output_tokens:tokenCap.value,model_call_limit:1,recheck_call_budget:recheck}
  if(role==='review'||role==='discover')body.review_call_limit=reviewCalls.value
  if(candidateId)body.candidate_id=candidateId
  if(role==='discover'){body.auto_review_count=5;if(researchKeys.value.length)body.research_requirement_keys=researchKeys.value}
- if(role==='plan'){body.acknowledge_collection_gap=gap;body.intent={kind:intent.value,focus:focus.value,focus_chunk_id:focusChunk.value||null,requirement_keys:reqKeys.value,project_review_ids:reviewIds.value}}
+ if(role==='plan'){body.acknowledge_collection_gap=gap;body.intent={execution_runtime:['build_project','function'].includes(intent.value)?executionRuntime.value:null,kind:intent.value,focus:focus.value,focus_chunk_id:focusChunk.value||null,requirement_keys:reqKeys.value,project_review_ids:reviewIds.value}}
  await write('/study/tracks/'+id.value+'/runs','POST',body);await refresh()
  }catch(e){if(e!=='cancel'&&e!=='close')ElMessage.error(String(e))}finally{busy.value=false}
 }
@@ -134,7 +138,7 @@ function learn(){if(latestPlan.value)void router.push({path:'/studio',query:{tra
 <details><summary>用子任务审核固定版本（最多两个）</summary><p class="muted">独立上下文、统一预留与结算；取消父任务会停止全部子任务。候选需已有导入或审核留存的固定版本，结果由父任务统一校验后入库。</p><el-select v-model="batchCandidates" multiple :multiple-limit="2" placeholder="选择要审核的候选"><el-option v-for="c in track.candidates" :key="c.id" :value="c.id" :label="c.full_name"/></el-select><el-button :disabled="running||!batchCandidates.length" :loading="busy" @click="reviewBatch">预留额度并启动审核批次</el-button></details><details><summary>送审已导入的开源项目</summary><div class="existing"><el-select v-model="existingId" placeholder="选择已有固定版本"><el-option v-for="p in existing" :key="p.repository_snapshot_id" :value="p.repository_snapshot_id" :label="p.name"/></el-select><el-button :disabled="!existingId||!track.requirements||running" @click="addCandidate">加入候选</el-button></div></details><p class="muted">{{pending.length}} 个候选待审；继续调研只使用当前选定技术或位置覆盖缺口。</p>
 </section>
 </div>
-<section class="surface study-card planning-card"><header><h2>③ 选择你要学什么</h2><el-tag v-if="track.collection_policy==='strict_count'&&!countMet">严格要求：还差 {{Math.max(0,track.target_count-track.approved_count)}} 个项目</el-tag><el-tag v-else-if="!countMet" type="info">数量为偏好，可确认开始已覆盖范围</el-tag></header><div class="intent-options"><button v-for="(label,key) in intentNames" :key="key" :class="{chosen:intent===key}" @click="intent=key">{{label}}</button></div><div class="plan-inputs"><el-select v-model="reqKeys" multiple placeholder="选择技术需求"><el-option v-for="r in track.requirements?.requirements" :key="r.key" :value="r.key" :label="r.technology+' · '+r.depth"/></el-select><el-select v-model="reviewIds" multiple placeholder="选择审核通过的参考项目"><el-option v-for="p in approved" :key="p.id" :value="p.id" :label="p.candidate.full_name"/></el-select></div><el-input v-model="focus" type="textarea" :rows="2" :placeholder="intent==='function'?'例如：工具注册函数的参数校验与调用实现':intent==='technical_design'?'例如：Agent 工具权限和状态恢复设计':'补充你的学习目标、已有基础或时间安排（可选）'"/>
+<section v-if="track.plans.length" class="surface study-card"><h2>历史计划重审</h2><p class="muted">重新提取或审核后在本轮总预算内重审需求覆盖与项目匹配，生成计划新版本；原尝试与人工成果保留。</p><label>重审调用上限 <el-input-number v-model="recheckCalls" :min="1" :max="10"/></label><el-button :disabled="running||busy" @click="run('reconcile')">重审已有计划</el-button><el-tag v-if="track.recheck_pending" type="warning">仍有计划待重审，未自动追加额度</el-tag><article v-for="result in track.reconciliations?.slice(-10).reverse()" :key="result.id"><el-tag>{{result.status==='needs_evidence'?'待补依据':result.status==='adjusted'?'已调整':'继续可用'}}</el-tag><p>{{result.summary}}</p><small v-if="result.missing_keys?.length">缺口：{{result.missing_keys.join('、')}}</small><el-button v-if="result.new_plan_id" link @click="router.push({path:'/studio',query:{track:id,study_plan:result.new_plan_id}})">查看计划新版本</el-button></article></section><section class="surface study-card planning-card"><header><h2>③ 选择你要学什么</h2><el-tag v-if="track.collection_policy==='strict_count'&&!countMet">严格要求：还差 {{Math.max(0,track.target_count-track.approved_count)}} 个项目</el-tag><el-tag v-else-if="!countMet" type="info">数量为偏好，可确认开始已覆盖范围</el-tag></header><div class="intent-options"><button v-for="(label,key) in intentNames" :key="key" :class="{chosen:intent===key}" @click="intent=key">{{label}}</button></div><p class="muted">{{runtimeSummary(runtime)}}</p><el-select v-if="['build_project','function'].includes(intent)" v-model="executionRuntime" placeholder="实现任务使用的环境"><el-option v-for="name in ['python','node','go','rust']" :key="name" :label="name+(runtime?.tools[name]?' · 沙箱可用':' · 当前不可执行')" :value="name"/></el-select><div class="plan-inputs"><el-select v-model="reqKeys" multiple placeholder="选择技术需求"><el-option v-for="r in track.requirements?.requirements" :key="r.key" :value="r.key" :label="r.technology+' · '+r.depth"/></el-select><el-select v-model="reviewIds" multiple placeholder="选择审核通过的参考项目"><el-option v-for="p in approved" :key="p.id" :value="p.id" :label="p.candidate.full_name"/></el-select></div><el-input v-model="focus" type="textarea" :rows="2" :placeholder="intent==='function'?'例如：工具注册函数的参数校验与调用实现':intent==='technical_design'?'例如：Agent 工具权限和状态恢复设计':'补充你的学习目标、已有基础或时间安排（可选）'"/>
 <p v-if="reqKeys.length" class="muted">所选目标的位置覆盖 {{selectedCoverage.covered.length}} / {{reqKeys.length}}。{{selectedCoverage.missing.length?'缺少代码依据：'+selectedCoverage.missing.join('、'):'全部已有代码位置；语义支持仍未独立核验。'}}</p>
 <div v-if="['function','technical_design'].includes(intent)" class="focus-index"><el-button :disabled="!focus.trim()||!reviewIds.length" :loading="searchBusy" @click="findFocus">从所选项目检索实现索引</el-button><el-select v-if="focusHits.length" v-model="focusChunk" clearable placeholder="选择具体函数 / 实现片段"><el-option v-for="h in focusHits" :key="h.chunk_id" :value="h.chunk_id" :label="h.symbol+' · '+h.path+':'+h.start_line"/></el-select><small>函数学习必须选定实际代码；非 Python 代码按文本窗口定位。</small></div>
 <div class="plan-actions"><el-button type="primary" :disabled="!ready||running||!reqKeys.length||!reviewIds.length||(['function','technical_design'].includes(intent)&&!focus.trim())||(intent==='function'&&!focusChunk)" :loading="busy" @click="run('plan')">制定模块化计划</el-button><span class="muted">不自动更改已有计划；新计划保留为独立版本。</span></div>

@@ -80,7 +80,7 @@ def authorized(db: Session, run: AgentRun) -> None:
             from careerforge.application.studio_learning_service import validate_inputs
 
             validate_inputs(db, run)
-        elif run.workflow_version == "learning-studio-agent-1.0":
+        elif run.workflow_version in {"learning-studio-agent-1.0", "learning-studio-pi-1.0"}:
             from careerforge.application.studio_service import workspace
 
             row = workspace(db, run.owner_id, UUID(data["workspace_id"]))

@@ -9,7 +9,7 @@ from careerforge.schemas.resources import InputModel
 
 Depth = Literal["了解", "熟悉", "掌握"]
 Intent = Literal["build_project", "learn_project", "technical_design", "function"]
-Role = Literal["extract", "discover", "review", "plan", "tutor"]
+Role = Literal["extract", "discover", "review", "plan", "tutor", "reconcile"]
 
 
 class TrackInput(InputModel):
@@ -75,6 +75,7 @@ class ReviewOutput(InputModel):
 
 
 class LearningIntent(InputModel):
+    execution_runtime: Literal["python", "node", "go", "rust"] | None = None
     focus_chunk_id: UUID | None = None
     kind: Intent
     requirement_keys: list[str] = Field(min_length=1, max_length=25)
@@ -165,7 +166,19 @@ class TutorOutput(InputModel):
     limitations: list[str] = Field(default_factory=list, max_length=10)
 
 
+class ReadingSelection(InputModel):
+    repository_snapshot_id: UUID | None = None
+    path: str | None = Field(default=None, max_length=1000)
+    view_intent: Intent | None = None
+    step_index: int | None = Field(default=None, ge=0, le=7)
+    citation_id: UUID | None = None
+    start_line: int | None = Field(default=None, ge=1)
+    end_line: int | None = Field(default=None, ge=1)
+
+
 class RoleInput(InputModel):
+    reading: ReadingSelection | None = None
+    recheck_call_budget: int = Field(default=0, ge=0, le=10)
     review_call_limit: int = Field(default=1, ge=1, le=3)
     acknowledge_collection_gap: bool = False
     research_requirement_keys: list[str] | None = Field(default=None, min_length=1, max_length=25)
@@ -197,3 +210,16 @@ class ModuleProgress(InputModel):
 class ExtractionRecovery(InputModel):
     expected_revision: int = Field(ge=1)
     run_id: UUID
+
+
+class ProjectRecheck(InputModel):
+    review_id: str
+    review: ReviewOutput
+
+
+class ReconciliationOutput(InputModel):
+    status: Literal["usable", "adjusted", "needs_evidence"]
+    summary: str = Field(min_length=1, max_length=1000)
+    project_reviews: list[ProjectRecheck] = Field(max_length=10)
+    plan: PlanOutput | None = None
+    limitations: list[str] = Field(default_factory=list, max_length=10)

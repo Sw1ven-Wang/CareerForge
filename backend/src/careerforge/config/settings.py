@@ -43,6 +43,8 @@ class Settings(BaseSettings):
         default=SecretStr(""),
         validation_alias=AliasChoices("CAREERFORGE_TAVILY_API_KEY", "TAVILY_API_KEY"),
     )
+    pi_node_executable: str = "node"
+    pi_runtime_dir: Path = Path(__file__).resolve().parents[4] / "coding-agent"
     maintenance_enabled: bool = False
     redis_url: SecretStr = SecretStr("redis://127.0.0.1:56379/0")
 

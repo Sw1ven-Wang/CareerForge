@@ -1,22 +1,23 @@
 from uuid import UUID
 
 import pytest
-from careerforge.application import studio_service as service
-from careerforge.config.settings import get_settings
-from careerforge.domain.errors import BusinessError
-from careerforge.infrastructure.db.session import get_engine
-from careerforge.infrastructure.llm.openai_compatible import OpenAICompatibleProvider
-from careerforge.schemas.model_io import ModelResult
-from careerforge.workflows.studio_agent import execute
 from pydantic import SecretStr
 from sqlalchemy.orm import Session
 from test_market_research import post
 from test_owner_scope import clients as clients
 
+from careerforge.application import studio_service as service
+from careerforge.config.settings import get_settings
+from careerforge.domain.errors import BusinessError
+from careerforge.infrastructure.db.session import get_engine
+from careerforge.infrastructure.llm.openai_compatible import OpenAICompatibleProvider
+from careerforge.schemas.model_io import ModelResult, ToolCall
+from careerforge.workflows.studio_agent import execute
+
 pytestmark = pytest.mark.infrastructure
 
 
-def test_reviewed_patch_and_confirmed_command(clients, monkeypatch):
+def test_reviewed_patch_and_confirmed_command(clients, monkeypatch, offline_python_sandbox):
     a, b = clients
     settings = get_settings()
     monkeypatch.setattr(settings, "real_agent_enabled", True)
@@ -40,20 +41,26 @@ def test_reviewed_patch_and_confirmed_command(clients, monkeypatch):
         calls.append(request)
         return ModelResult(
             provider="mock",
-            finish_reason="stop",
-            structured={
-                "answer": "Proposed change; not executed",
-                "citation_ids": [],
-                "edits": [
-                    {
-                        "path": "main.py",
-                        "before": "print(1)\n",
-                        "after": "print(2)\n",
-                        "reason": "practice",
-                    }
-                ],
-                "commands": [{"argv": ["python", "main.py"], "reason": "observe output"}],
-            },
+            finish_reason="tool_calls",
+            tool_calls=[
+                ToolCall(
+                    id="proposal",
+                    name="submit_reply",
+                    arguments={
+                        "answer": "Proposed change; not executed",
+                        "citation_ids": [],
+                        "edits": [
+                            {
+                                "path": "main.py",
+                                "before": "print(1)\n",
+                                "after": "print(2)\n",
+                                "reason": "practice",
+                            }
+                        ],
+                        "commands": [{"argv": ["python", "main.py"], "reason": "observe output"}],
+                    },
+                )
+            ],
         )
 
     monkeypatch.setattr(OpenAICompatibleProvider, "complete", complete)

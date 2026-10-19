@@ -1,0 +1,13 @@
+# Only controller/backend sources enter the Worker build context; no .env or user data.
+**
+!backend/
+!backend/pyproject.toml
+!backend/uv.lock
+!backend/alembic.ini
+!backend/src/
+!backend/src/**
+!coding-agent/
+!coding-agent/package.json
+!coding-agent/package-lock.json
+!coding-agent/runner.mjs
+!coding-agent/install_node.py

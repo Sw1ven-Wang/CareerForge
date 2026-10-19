@@ -1,13 +1,39 @@
 import json
 
 import httpx
+import pytest
+
 from careerforge.infrastructure.llm.openai_compatible import OpenAICompatibleProvider
 from careerforge.schemas.model_io import ModelRequest
 
 
-async def test_reasoning_request_preserves_configured_model_and_low():
+@pytest.mark.parametrize(
+    "messages",
+    [
+        None,
+        [
+            {"role": "system", "content": "Pi offline rules"},
+            {"role": "user", "content": "Inspect a selected file"},
+            {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [
+                    {
+                        "id": "read",
+                        "type": "function",
+                        "function": {"name": "read_file", "arguments": '{"path":"main.py"}'},
+                    }
+                ],
+            },
+            {"role": "tool", "tool_call_id": "read", "content": "print(1)"},
+        ],
+    ],
+)
+async def test_reasoning_request_preserves_configured_model_and_low(messages):
     def respond(request):
         body = json.loads(request.content)
+        assert body["messages"] == (messages or [{"role": "user", "content": "Return JSON"}])
+        assert body["tools"][0]["function"]["name"] == "submit_reply"
         assert body["model"] == "supplier-exact-model-id"
         assert body["reasoning_effort"] == "low"
         assert body["max_completion_tokens"] == 2048
@@ -29,6 +55,16 @@ async def test_reasoning_request_preserves_configured_model_and_low():
             ModelRequest(
                 model="supplier-exact-model-id",
                 prompt="Return JSON",
+                messages=messages,
+                tools=[
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": "submit_reply",
+                            "parameters": {"type": "object", "properties": {}},
+                        },
+                    }
+                ],
                 reasoning_effort="low",
                 max_output_tokens=2048,
             )

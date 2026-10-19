@@ -25,6 +25,13 @@ from careerforge.schemas.studio import (
 router = APIRouter(prefix="/api/v1/studio", tags=["learning-studio"])
 
 
+@router.get("/runtime-capabilities", response_model=Envelope)
+def runtime_capabilities(request: Request, user: Authenticated) -> Json:
+    from careerforge.infrastructure.runtime_capabilities import capabilities
+
+    return wrap(request, capabilities())
+
+
 @router.get("/workspaces", response_model=Envelope)
 def listing(request: Request, db: Database, user: Authenticated) -> Json:
     rows = db.scalars(

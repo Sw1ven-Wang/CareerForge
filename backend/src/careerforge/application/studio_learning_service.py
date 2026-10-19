@@ -138,6 +138,9 @@ def start(
         )
     if workspace.revision != body.expected_revision:
         raise BusinessError(409, "WORKSPACE_CHANGED", "工作区已变化，请刷新。")
+    from careerforge.application.studio_service import guard_workspace_run
+
+    guard_workspace_run(db, owner, workspace)
     from careerforge.application.assistance_service import guard_agent
 
     guard_agent(db, owner, workspace)

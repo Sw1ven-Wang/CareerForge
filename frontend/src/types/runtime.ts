@@ -1,0 +1,2 @@
+export type RuntimeCapabilities={status:string;ready:boolean;tools:Record<string,boolean>;allowed_commands:string[];limits:{timeout_seconds:number;memory_mb:number;max_files:number;max_bytes:number;execution_location:string};warning?:string}
+export function runtimeSummary(value:RuntimeCapabilities|null){return !value||value.status!=="ready"?"沙箱能力未知，请先启动或更新隔离服务。":`容器可用：${Object.entries(value.tools).filter(([,ok])=>ok).map(([name])=>name).join('、')}；无网络，最长 ${value.limits.timeout_seconds} 秒、${value.limits.memory_mb} MB。宿主机 SDK 不会自动共享。`}

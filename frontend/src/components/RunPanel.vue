@@ -12,6 +12,8 @@ let controller: AbortController | undefined
 const names: Record<string, string> = { queued: '排队中', running: '执行中', waiting_user: '待你确认', waiting_children:'等待子任务',
   succeeded: '已完成', partially_succeeded: '部分完成', failed: '失败', budget_stopped: '预算已用尽', cancelled: '已取消' }
 const eventNames: Record<string, string> = {
+  'coding.tool':'Pi 已完成受控工具操作',
+  'coding.reply_recovered':'已零调用恢复待审补丁，原始停止状态保留',
   'run.created': '任务已创建', 'run.started': '开始执行', 'stage.completed': '阶段结果已保存',
   'run.waiting_user': '等待你的决定', 'wait.requested': '已保存待确认问题',
   'run.resumed': '已接受决定，准备继续', 'run.recovering': '正在恢复执行',
@@ -21,6 +23,12 @@ const eventNames: Record<string, string> = {
   'run.finished': '本次运行已结束', 'run.cancelled': '运行已取消',
 }
 const failureNames: Record<string,string> = {
+  PI_CALL_LIMIT: 'Coding 调用预算已用尽，未自动追加调用',
+  PI_RUNTIME_UNAVAILABLE: 'Worker 未安装 Pi SDK，请重建 Worker',
+  PI_RUNTIME_ERROR: 'Pi SDK 运行失败，未自动重试',
+  PI_INTERRUPTED: '上次 Pi 会话被中断，已停止自动重试',
+  PI_REPLY_REQUIRED: 'Pi 未提交有效的最终建议',
+  PI_AGENT_FAILED: 'Pi 会话未完成，未发布补丁',
   invalid_structured_json: '模型返回内容不是有效 JSON，本轮已停止',
   INVALID_DELEGATION_RESULT: '委派报告结构或原文依据未通过校验',
   TASK_SCOPE_FORBIDDEN: '任务角色或资料范围超出授权',

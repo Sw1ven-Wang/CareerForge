@@ -223,7 +223,7 @@ class OpenAICompatibleProvider:
     def _build_request(self, request: ModelRequest) -> httpx.Request:
         body: dict[str, Any] = {
             "model": request.model,
-            "messages": [{"role": "user", "content": request.prompt}],
+            "messages": request.messages or [{"role": "user", "content": request.prompt}],
             (
                 "max_completion_tokens" if request.reasoning_effort else "max_tokens"
             ): request.max_output_tokens,

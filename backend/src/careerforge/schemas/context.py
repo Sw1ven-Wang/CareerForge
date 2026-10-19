@@ -23,6 +23,7 @@ class EvidencePointer(InputModel):
     evidence_id: str
     kind: Literal["tutor_turn", "attempt", "skill"]
     source_id: str
+    snapshot_id: UUID | None = None
     version: str
     content_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
     summary: str = Field(max_length=500)
@@ -37,6 +38,8 @@ class ContextTaskContract(InputModel):
     plan_id: UUID
     module_key: str
     module_hash: str
+    learning_intent: Json = Field(default_factory=dict)
+    reading_selection: Json = Field(default_factory=dict)
     scope: list[str]
     allowed_tools: list[str]
     help_mode: Literal["assistance_allowed"] = "assistance_allowed"

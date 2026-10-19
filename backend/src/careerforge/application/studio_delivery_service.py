@@ -69,6 +69,11 @@ def validate_snapshot(db: Session, owner: UUID, saved: Submission) -> None:
         or snapshot["source_hash"] != item["source_hash"]
     ):
         raise BusinessError(404, "PRACTICE_SOURCE_UNAVAILABLE", "提交依据不可用。")
+    if snapshot.get("report"):
+        if fingerprint({"files": snapshot["files"], "report": snapshot["report"]}) != snapshot.get(
+            "artifact_hash"
+        ):
+            raise BusinessError(409, "SUBMISSION_HASH_MISMATCH", "学习报告快照不一致。")
     if fingerprint(snapshot["files"]) != snapshot["files_hash"]:
         raise BusinessError(409, "SUBMISSION_HASH_MISMATCH", "代码快照完整性校验失败。")
     attachment = attachment_service.available(db, owner, UUID(snapshot["code_attachment_id"]))
@@ -81,6 +86,8 @@ def validate_snapshot(db: Session, owner: UUID, saved: Submission) -> None:
         or profile["source_hash"] != item["source_hash"]
     ):
         raise BusinessError(409, "ASSISTANCE_HASH_MISMATCH", "帮助条件快照校验失败。")
+    if bundle.get("report") != snapshot.get("report"):
+        raise BusinessError(409, "SUBMISSION_HASH_MISMATCH", "学习报告附件与快照不一致。")
     if bundle["files"] != snapshot["files"] or bundle["files_hash"] != snapshot["files_hash"]:
         raise BusinessError(409, "SUBMISSION_HASH_MISMATCH", "代码附件与快照不一致。")
 
@@ -88,7 +95,7 @@ def validate_snapshot(db: Session, owner: UUID, saved: Submission) -> None:
 def code_version(saved: Submission) -> str | None:
     snapshot = saved.payload.get("workspace_snapshot")
     return (
-        "workspace-sha256:" + snapshot["files_hash"]
+        "workspace-sha256:" + snapshot.get("artifact_hash", snapshot["files_hash"])
         if snapshot
         else saved.payload.get("code_commit")
     )
@@ -246,11 +253,24 @@ def submit(
     studio.revision(workspace, body.expected_revision)
     profile = assistance.snapshot(db, owner, workspace, body.model_dump(mode="json"))
     files = dict(workspace.payload["files"])
-    if not files:
-        raise BusinessError(422, "CODE_REQUIRED", "请先保存要提交的练习代码。")
-    studio.validate_files(files)
     objective_id = UUID(item["objective_version_id"])
     criteria = planning.criteria(db, owner, objective_id)
+    required = {kind for c in criteria for kind in c.payload["required_artifact_types"]}
+    if not files and "code_artifact" in required:
+        raise BusinessError(422, "CODE_REQUIRED", "此实现任务需要保存代码后提交。")
+    studio.validate_files(files)
+    report = None
+    if "learning_report" in required:
+        from careerforge.application.study_practice_service import spec_current
+
+        spec = spec_current(db, owner, item["exercise_spec_id"])
+        report = {
+            "kind": spec.payload["definition"]["profile"]["intent"],
+            "content": body.summary,
+            "references": spec.payload["references"],
+            "explanation_answers": [a.model_dump(mode="json") for a in body.explanation_answers],
+        }
+
     task = linked_task(db, owner, item)
     if task is None:
         project_id = workspace.payload.get("build_project_id")
@@ -292,7 +312,9 @@ def submit(
         "files_hash": files_hash,
         "files": files,
         "study_evidence": profile,
+        "report": report,
     }
+    artifact_hash = fingerprint({"files": files, "report": report}) if report else files_hash
     encoded = json.dumps(bundle, ensure_ascii=False, sort_keys=True).encode("utf-8")
     if len(encoded) > attachment_service.MAX_BYTES:
         raise BusinessError(
@@ -369,7 +391,7 @@ def submit(
             code_commit=None,
             environment={
                 "kind": "careerforge_ide_snapshot",
-                "code_version": "workspace-sha256:" + files_hash,
+                "code_version": "workspace-sha256:" + artifact_hash,
             },
             execution_records=[ExecutionRecord.model_validate(r) for r in records],
             explanation_answers=body.explanation_answers,
@@ -387,6 +409,7 @@ def submit(
         "code_attachment_id": code_attachment["attachment_id"],
         "commands": commands,
         "assistance_hash": fingerprint(profile) if profile else None,
+        "artifact_hash": artifact_hash,
     }
     saved.payload = {
         **saved.payload,
