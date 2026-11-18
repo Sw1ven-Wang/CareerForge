@@ -1,0 +1,136 @@
+{
+  "$defs": {
+    "ReviewedStructureSection": {
+      "additionalProperties": false,
+      "description": "Items are exact reviewed claims, not newly inferred module/edge objects.\n\nEach item's source/unit/claim/citation binding is validated by the service.\nThe compatibility name call_chain_edges does not imply typed graph edges.",
+      "properties": {
+        "dimension": {
+          "title": "Dimension",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "known",
+            "partial",
+            "unknown"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "representation": {
+          "const": "scope_bound_reviewed_claim_narratives",
+          "default": "scope_bound_reviewed_claim_narratives",
+          "title": "Representation",
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "scoped_assessments": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Scoped Assessments",
+          "type": "array"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "typed_edges_available": {
+          "const": false,
+          "default": false,
+          "title": "Typed Edges Available",
+          "type": "boolean"
+        },
+        "full_repository_coverage": {
+          "const": false,
+          "default": false,
+          "title": "Full Repository Coverage",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "dimension",
+        "status"
+      ],
+      "title": "ReviewedStructureSection",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "project_analysis_contract_version": {
+      "const": "reviewed-project-analysis-1.6.6",
+      "default": "reviewed-project-analysis-1.6.6",
+      "title": "Project Analysis Contract Version",
+      "type": "string"
+    },
+    "projection": {
+      "additionalProperties": true,
+      "title": "Projection",
+      "type": "object"
+    },
+    "repo_map": {
+      "additionalProperties": true,
+      "title": "Repo Map",
+      "type": "object"
+    },
+    "modules": {
+      "$ref": "#/$defs/ReviewedStructureSection"
+    },
+    "call_chain_edges": {
+      "$ref": "#/$defs/ReviewedStructureSection"
+    },
+    "exception_boundaries": {
+      "$ref": "#/$defs/ReviewedStructureSection"
+    },
+    "key_symbols": {
+      "additionalProperties": true,
+      "title": "Key Symbols",
+      "type": "object"
+    },
+    "knowledge_units": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Knowledge Units",
+      "type": "array"
+    },
+    "jd_mechanism_evidence_links": {
+      "additionalProperties": true,
+      "title": "Jd Mechanism Evidence Links",
+      "type": "object"
+    },
+    "open_questions": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Open Questions",
+      "type": "array"
+    }
+  },
+  "required": [
+    "projection",
+    "repo_map",
+    "modules",
+    "call_chain_edges",
+    "exception_boundaries",
+    "key_symbols",
+    "knowledge_units",
+    "jd_mechanism_evidence_links",
+    "open_questions"
+  ],
+  "title": "ProjectAnalysisProjection",
+  "type": "object"
+}

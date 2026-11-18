@@ -1,0 +1,91 @@
+{
+  "unit_version_id": "747b440b-c1a7-4719-afa8-e691a9aa1044",
+  "content_hash": "d3374007f6a4960c4a81fae4311d5c5f07be48f3560b12f04624fe2d563a9521",
+  "render_hash": "5d806e790de113ce698bacbfddb9711e7de351e75e1050a3c2988f0b33891df2",
+  "source_id": "4cdbb30a-1159-4322-8873-0e877e4b6dce",
+  "source_commit": "302a4d4caf7fa90d78efa4e9f0636a6d72d24ac8",
+  "source_scope_hash": "07b5f7f10b5d4005a5cc3eb544e02d4a678d15f9c7089c095b7ddcab01b0e311",
+  "claims": [
+    {
+      "claim_id": "c86d0933-8bc1-467b-a5f9-7a8c61e90fd2",
+      "kind": "source_fact",
+      "counterevidence_ids": []
+    },
+    {
+      "claim_id": "7b8785af-39d2-4b1b-ad05-f734b675e063",
+      "kind": "source_fact",
+      "counterevidence_ids": []
+    },
+    {
+      "claim_id": "defe49be-3e27-4d79-aeb6-2fe902025e54",
+      "kind": "documented_intent",
+      "counterevidence_ids": []
+    },
+    {
+      "claim_id": "4e56987c-aaac-4389-b7fe-75048d05ee2a",
+      "kind": "source_fact",
+      "counterevidence_ids": []
+    },
+    {
+      "claim_id": "b4007855-4dd3-4cfa-9483-1277f3503232",
+      "kind": "source_fact",
+      "counterevidence_ids": []
+    }
+  ],
+  "elements": [
+    {
+      "element_id": "85240a59-1d96-4d56-be20-09564b49bb8e",
+      "kind": "fact",
+      "fact_atom_id": "a4e26f2c-c9ed-4fd0-90a5-82c17c00e7b1",
+      "text": "state.py 的构造器分别保存 nodes、edges、branches、schemas、channels、managed 和 waiting_edges；未提供输入或输出 schema 时回退到 state_schema，并调用 _add_schema 注册三类 schema，其中输入、输出传入 allow_managed=False。",
+      "conditions": [
+        "只确认初始化及调用参数，未读取 _add_schema 内部实现。"
+      ],
+      "claim_id": "c86d0933-8bc1-467b-a5f9-7a8c61e90fd2"
+    },
+    {
+      "element_id": "ce9daee1-6d53-4ba9-a5ec-aa25098acddf",
+      "kind": "fact",
+      "fact_atom_id": "d3480ac8-b296-4026-ba8d-b13ea81808b0",
+      "text": "add_edge 对字符串起点拒绝 END、对终点拒绝 START，并将边加入 edges；列表起点路径逐项检查节点存在，允许终点为 END，否则检查终点存在，最后将起点转为 tuple 并存入 waiting_edges。",
+      "conditions": [
+        "这里描述构建阶段的数据记录和检查，不证明运行时等待机制。"
+      ],
+      "claim_id": "7b8785af-39d2-4b1b-ad05-f734b675e063"
+    },
+    {
+      "element_id": "aadddc9a-db57-4f84-af29-a750b4604906",
+      "kind": "fact",
+      "fact_atom_id": "8f1ce91e-a0a1-495f-8736-263ca411ace7",
+      "text": "add_edge 的函数文档说明：单起点完成后才执行终点，多起点则等待全部起点完成。这是接口的文档意图。",
+      "conditions": [
+        "未读取或运行实际调度实现，不能把此说明当作实测。"
+      ],
+      "claim_id": "defe49be-3e27-4d79-aeb6-2fe902025e54"
+    },
+    {
+      "element_id": "3ca30e7b-b781-491e-b2ab-6fc08a14cd6f",
+      "kind": "fact",
+      "fact_atom_id": "fa17b49b-f4dd-4d5d-86ae-7c590b41ca9a",
+      "text": "add_conditional_edges 将 path 转换为 Runnable，以 path.name 或 condition 命名，拒绝同一 source 下的同名分支；随后调用 BranchSpec.from_path(path, path_map, True)，保存分支，并在推断出 input_schema 时调用 _add_schema。",
+      "conditions": [
+        "转换器和 schema 注册函数的内部行为不在已读范围。"
+      ],
+      "claim_id": "4e56987c-aaac-4389-b7fe-75048d05ee2a"
+    },
+    {
+      "element_id": "a7816fb6-7876-498e-8db2-be7aeaefbd68",
+      "kind": "fact",
+      "fact_atom_id": "e5b7e58b-4f69-459e-93d1-85654ecae237",
+      "text": "编译片段创建 CompiledStateGraph(builder=self)，传入 channels、START 输入以及 checkpointer、store、cache 等配置；随后调用 attach_node 装配 START 和已登记节点，分别对 edges、waiting_edges 调用 attach_edge，对 branches 调用 attach_branch，最后返回 compiled.validate()。",
+      "conditions": [
+        "这些是静态可见调用；attach_*、validate、持久化和调度依赖的实现均未在本包读取，调用不等于已运行或验证通过。"
+      ],
+      "claim_id": "b4007855-4dd3-4cfa-9483-1277f3503232"
+    }
+  ],
+  "topic_link_ids": [
+    "256c8f8d-f4ac-43d2-ab51-e301133a4063"
+  ],
+  "facet_ids": []
+}

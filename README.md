@@ -1,167 +1,52 @@
-# CareerForge
+# CareerForge — 对话式项目学习助手
 
-**把职业需求映射到开源实现的个人 Agent 学习工作台。**
+当前版本：2026-11-18。输入项目地址和学习目标，由协调 Agent 组织源码分析、独立审核、知识发布和教学回答。点击回答中的引用，可在右侧查看固定提交的源码与行号。
 
-An evidence-based agent workbench for learning from real open-source code.
+## 本轮已验证
 
-你导入岗位或技术资料，Agent 提取技术需求，发现并审核开源项目，再根据你选择的学习目标制定模块化计划。在同一页面阅读参考代码、查看计划、提问，以及在自己的项目里审阅并应用代码修改。
+输入 `https://github.com/earendil-works/pi   我要学这个的架构`，真实模型验证完成项目导入、分析、独立审核、入库和架构概览讲解。最终 `task_satisfied=true`；6 个源码导航目标验证有效，页面引用点击实测通过。[验收摘要](docs/Pi原句闭环验收_20261118.md)。
 
-项目优先服务本机使用，提供浏览器界面与 Windows Tauri 桌面外壳。采用 Python 显式工作流，不依赖 LangGraph。
+修复包括单句架构问题的分面检索、原回答缺口传递、分析读取分页，以及架构快照漏采大型会话实现文件。入库与回答的完成状态分别核验，局部知识不会自动等同于完整回答。
 
-## 主流程
+## Windows 本地启动（Python 3.12）
 
-```mermaid
-flowchart LR
-    A[人工导入需求] --> B[Extract Agent<br/>技术与三级目标深度]
-    B --> C[Research Agent<br/>GitHub 候选发现]
-    C --> D[Review Agent<br/>固定版本源码审核]
-    D -->|强相关且满足条件| E[项目库与代码索引]
-    E --> F[用户选择学习意图]
-    F --> G[Plan Agent<br/>分级模块化计划]
-    G --> H[Tutor Agent<br/>检索、问答、图示与代码高亮]
-    H --> I[自己的 IDE<br/>审阅补丁与确认命令]
-    G --> J[冻结练习与多次尝试]
-    I --> K[提交代码、解释与运行记录]
-    J --> K
-    K --> L[逐项人工验收]
-    L --> M[已有计划新版本与条件化成果证据]
-```
-
-- **需求提取**：技术关键词、了解 / 熟悉 / 掌握、原文明确要求与模型推断分开记录。
-- **项目研究**：按技术需求搜索 GitHub，读取固定 commit 的代码；候选经过独立角色审核才进入学习项目库。审核支持有界符号调查、相关实现与测试补读，原文位置与解释的语义支持分开记录。
-- **学习规划**：支持学习项目构建、整个项目、技术设计、函数实现；计划包含最多三级模块、前置关系、步骤、成果和验收条件。
-- **交互导学**：Agent 使用只读代码工具自主检索，输出文字、结构化 SVG 图示和表格；引用连接真实文件和行区间。导师按四区装配上下文，在原预算内补读历史与练习观察、加载学习方法；清单、版本、哈希和计量可回溯。
-- **内置 IDE**：同页查看计划、参考代码与问答，可切换自己的项目，编辑文件、审阅并应用 Agent 补丁。Coding Agent 使用 Pi SDK 1.3.0，受控搜索/补读已选文件并提交建议；默认 1 次模型调用，可在界面显式选择 1–4 次。
-- **模块实践**：从叶模块冻结练习条件，建立独立的多次尝试；提交代码、运行记录、本人解释与迁移说明，逐项人工核对后更新已有计划版本。成果分别记录允许辅助条件、本人声明独立及迁移条件，不自动升级为能力掌握。
-- **受控执行**：命令逐条确认后在无网络 Docker 沙箱运行；桌面桥接不提供任意宿主 Shell。
-- **自主委派**：按问题选择只读角色、技术与固定源码范围；父模型分配预算，子任务交接原文证据，最终生成独立调查说明。总预算、取消传播和独立练习隔离由服务端控制。
-- **持久化运行**：保存阶段产物、事件、调用收据和预算；固定版本审核可分发最多两个子任务，预留并结算总额度，取消向下传播；不确定的模型请求不自动重复收费。
-
-新建方向默认按所选学习目标的代码位置覆盖规划，数量 5（可设 1–10）作为收集偏好；不足时需明确确认开始当前范围。可选择“必须达到指定数量”，历史方向也保留严格数量要求。数量达标仍不能替代目标覆盖；不无限搜索或调用模型。
-
-## 架构
-
-| 层 | 实现 |
-| --- | --- |
-| 界面 | Vue 3、TypeScript、Element Plus |
-| 桌面 | Tauri 2、Rust、Windows WebView2 |
-| API | FastAPI、Pydantic |
-| 数据 | PostgreSQL、SQLAlchemy、Alembic |
-| 后台运行 | Python 显式阶段函数、Celery、Redis、数据库 outbox 与租约 |
-| 模型 | 可配置的 OpenAI-compatible Chat Completions 接口、结构化输出与工具调用 |
-| 代码知识库 | 固定 commit 快照、Python AST、文本窗口、PostgreSQL 全文检索、符号 / 路径加权 |
-| Coding Agent | Pi Coding Agent SDK 1.3.0、Node.js 24，仅 Worker 加载；模型复用 Python 计量网关 |
-| 执行环境 | Docker 隔离沙箱 |
-
-Extract、Research、Review、Plan、Tutor 是同一后端内的角色，复用运行内核与模型适配器。IDE 编码助手使用独立 Pi SDK 会话生成待审阅修改；SDK 默认 shell/直接写文件工具、扩展发现、自动重试、压缩和缓存预热均关闭。真实密钥只在 Python 网关使用，每次调用先预留额度、再保存供应商收据；Node 进程接收合成认证标记，不继承密钥。Pi 控制器不等于命令沙箱，补丁仍需审阅，命令仍需逐条确认 RUN。当前未启用向量检索或模型重排序。
-
-Pi 会话只处理一次显式 Coding 请求；提交建议后结束，应用补丁或执行命令不会自动续费调用模型。默认发送至多 3 个已选文件，未选中的已有文件不能读取或修改。会话工具记录和原始模型结果保存在运行阶段产物中；取消、超限或不确定中断均停止，不自动重试。本机复杂环境复用仍待后续接入。
-
-## 快速开始
-
-需要 Git、Docker（Linux containers）、Python 3.12、uv，以及 Node.js / npm。Windows 建议使用 Docker Desktop。
+在仓库根目录的 PowerShell 中执行：
 
 ```powershell
-git clone https://github.com/Sw1ven-Wang/CareerForge.git
-cd CareerForge
-
-Copy-Item .env.example .env
-uv sync --project backend --python 3.12 --locked
-npm.cmd ci --prefix coding-agent --ignore-scripts --no-audit --no-fund
-npm.cmd ci --prefix frontend
-npm.cmd run build --prefix frontend
-
-# 先构建后端；本地静态资源网关与沙箱复用 API 镜像。
-docker compose --profile app build api worker dispatcher migrate
-docker compose -f compose.yaml -f compose.offline.yaml -f compose.ide.yaml --profile app build frontend
-docker compose -f compose.yaml -f compose.offline.yaml -f compose.ide.yaml --profile app up -d --no-build
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e '.[dev]'
+$env:CAREERFORGE_STATE_DIR = Join-Path $PWD 'private\local-runtime'
+.\.venv\Scripts\careerforge.exe init --development
 ```
 
-打开 **http://127.0.0.1:8080**，注册自己的本地账号。仓库不附带用户数据库、个人材料或预置业务账号。
-
-macOS / Linux 可将上述 PowerShell 的 `Copy-Item` 换成 `cp`，`npm.cmd` 换成 `npm`。桌面外壳目前按 Windows x64 构建，其他平台桌面支持尚未验证。
-
-### 配置真实 Agent
-
-编辑本地 `.env`：
-
-```dotenv
-OPENAI_BASE_URL=https://your-provider.example/v1
-OPENAI_API_KEY=your-local-api-key
-MODEL_NAME=your-provider-model-id
-CAREERFORGE_REAL_AGENT_ENABLED=true
-CAREERFORGE_MODEL_REASONING_EFFORT=low
-CAREERFORGE_STUDY_MAX_OUTPUT_TOKENS=8192
-```
-
-Base URL、模型 ID 与兼容能力由所用供应商决定。适配器使用 Chat Completions、`max_completion_tokens`、JSON Schema 和工具调用；请确认供应商支持这些参数。真实请求仅在用户启动操作后发生，并可能产生供应商费用。未配置模型时可以浏览页面、手动导入资料和编辑代码，Agent 功能不会自动切换为模拟结果。
-
-修改配置后重建运行容器以加载新环境：
+在当前终端配置自己的 `OPENAI_BASE_URL`、`OPENAI_API_KEY` 环境变量，然后启动：
 
 ```powershell
-docker compose -f compose.yaml -f compose.offline.yaml -f compose.ide.yaml --profile app up -d --force-recreate api worker
+.\run-web.ps1 Start -Model '你的模型名称'
+.\run-web.ps1 Status
+# 结束使用时：
+.\run-web.ps1 Stop
 ```
 
-`.env` 已被 Git 忽略。不要把密钥写入代码、截图、Issue 或公开运行日志。
+打开 <http://127.0.0.1:8001/#chat>，在对话框输入项目 URL 和学习目标。模型调用会消耗所配置服务的额度，源码与模型服务需网络可用。服务仅监听本机回环地址。
 
-### Windows 桌面版
+`init` 仅用于首次初始化，不覆盖已有账号。本仓库包含源码和文档，不包含开发者的密钥、会话、知识库数据库或模型调用日志。首次启动的知识库为空，需通过对话导入项目。已有数据库请沿用自己的运行目录并遵循迁移说明，不要用旧快照覆盖运行库。
 
-完成上述镜像和静态资源准备后，按 [桌面构建说明](desktop/README.md) 构建：
+## 目录
+
+- `src/careerforge/`：API、协调和教学工作流、检索、审核及知识发布。
+- `src/careerforge/web/`：本地对话页面及源码侧栏。
+- `tests/`：离线回归与合同测试。
+- `coding-agent/`：受控编码工作器。
+- `scripts/`、`alembic/`、`deploy/`：验证工具、数据库迁移及部署支持。
+- `docs/`：设计和历史文档，历史报告仅代表对应版本。
+
+## 验证范围
+
+本轮相关回归：分页/预算/构建 98 项、架构快照 3 项、项目对话 14 项、缺口与覆盖 33 项、新增缺口绑定 2 项通过。较宽的 bounded evidence 测试仍有一个旧主题元数据用例失败，未宣称全量测试或生产验收通过。Pi 验收为架构入门概览，不等于全仓实现穷尽或运行过 Pi 项目。
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File desktop/build.ps1
+.\.venv\Scripts\python.exe -m pytest tests/test_desk_projects.py tests/test_gap_research_context.py tests/test_tutor_question_coverage.py -q
 ```
 
-构建产物位于 `desktop/release/`，不纳入源码仓库。桌面版保留 Docker 后端，提供服务状态与双击启动；首次镜像仍需手动准备。选择本机项目目录后才授予该目录内的代码读写权限。
-
-## 页面入口
-
-| 路径 | 用途 |
-| --- | --- |
-| `/agent` | 需求提取、项目研究与审核、选择学习意图、生成计划 |
-| `/sources` | 人工导入岗位 / 技术正文与来源管理 |
-| `/knowledge` | 固定版本开源项目库与代码检索 |
-| `/studio` | 学习计划、参考代码、导师问答与自己的 IDE |
-| `/runs` | 后台任务、事件、用量与取消 |
-
-旧版分析、计划编辑、采集及验收接口保留兼容，位于次级入口。当前主流程不要求 Agent 自动采集岗位。
-
-## 当前状态与边界
-
-这是持续迭代的本机学习工具，尚未作为公网多用户服务加固或验证。
-
-需求调研链路的受限真实验证完成了需求提取、GitHub 调研和审核入库：3 份岗位正文、15 条有效技术需求、8 个候选、3 个入库项目；6 次模型调用均在 8192 输出 token 请求上限内。部分引用失败经本地修复、复用保存结果恢复，不能视为无人干预一次通过。详见 [验证记录](docs/progress/AGENT_STUDY_LIVE_20261017.md)。
-
-Pi 编码助手已用完全合成项目完成一次受限真实验证：4 次模型调用后，经本地确定性格式修复恢复待审补丁；用户批准应用补丁和执行唯一构建命令，无网络 Docker 沙箱退出 0，4 项契约通过，生成产物也已审阅并应用。原始运行保留 `budget_stopped` 和调用记录；此结果只证明该合成任务的闭环，不能代表任意真实项目都能自动构建。
-
-- 审核依据是有界静态代码调查；强相关不代表生产质量、安全性或运行效果通过验收。
-- 新模块已接入成果提交、人工验收及已有计划更新。阅读进度仍由用户自报，与验收证据分开；独立尝试暂停本账号导师与 IDE Agent，外部帮助依靠本人声明，同账号自验不代表第三方认证。
-- Tutor 展示事件进度，完整回答完成后呈现；目前不是逐 token 流式聊天。
-- IDE 支持受限编辑与补丁审阅，尚无完整 VS Code / LSP 功能；命令在沙箱执行。
-- 供应商曾报告超过请求上限的用量。客户端会记录并停止后续调用，不能保证供应商在所有请求中严格遵守 token 上限。
-- 首次启动不会自动下载他人的项目或执行仓库脚本。公开源码不包含开发机的数据库、资料快照与私有运行记录。
-
-## 目录与文档
-
-```text
-backend/      API、业务服务、工作流、模型适配、代码索引、迁移与测试
-coding-agent/ Pi SDK 控制器、锁定依赖与 Worker 镜像
-frontend/     工作台、计划、代码阅读与 IDE 界面
-desktop/      Tauri 外壳、服务管理与本机目录桥接
-docs/         架构、合同、运维与各阶段历史记录
-evals/        离线评测与结果
-scripts/      开发、演示、文档导出与运维工具
-```
-
-- [文档索引](docs/00_README.md)
-- [Agent 主流程设计](docs/decisions/0003-agent-study-pipeline.md) · [A 包覆盖与证据策略](docs/decisions/0004-coverage-and-evidence-levels.md)
-- [部署与备份恢复](docs/operations/deployment.md)
-- [运行恢复和取消](docs/operations/recovery.md)
-- [本机 IDE 的边界](desktop/README.md)
-- [贡献指南](CONTRIBUTING.md) · [安全说明](SECURITY.md)
-
-部分历史文档记录了当时的产品结构与开发机验证条件，请结合日期阅读；当前主流程以本 README、ADR 0003 及其修订 ADR 0004、[ADR 0005](docs/decisions/0005-bounded-code-investigation.md) 及 [ADR 0006](docs/decisions/0006-study-practice-evidence.md)、[ADR 0007](docs/decisions/0007-context-manifest-and-recall.md)、[ADR 0008](docs/decisions/0008-bounded-review-subtasks.md)、[ADR 0009](docs/decisions/0009-model-led-delegation.md) 为准。新增调查与成果链路的验证范围见 [B 包记录](docs/progress/REVIEW_B_20261017.md)、[C 包记录](docs/progress/REVIEW_C_20261017.md)、[D 包上下文记录](docs/progress/REVIEW_D_20261017.md)、[D 包子任务记录](docs/progress/REVIEW_D_SUBTASKS_20261017.md) 与 [自主委派记录](docs/progress/REVIEW_D_DELEGATION_20261017.md)。
-
-## 许可证
-
-CareerForge 原创代码与文档采用 [MIT License](LICENSE)。保留的第三方参考代码遵循其自身许可证，见 [NOTICE](NOTICE.md)。用户导入的项目、岗位资料与个人材料不因导入本工具而改变权利归属。
+其他模型、项目和网络条件下的结果需另行验证。许可证见 [LICENSE](LICENSE)。

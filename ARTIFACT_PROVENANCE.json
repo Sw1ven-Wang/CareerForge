@@ -1,0 +1,20 @@
+{
+  "version": "1.6.6",
+  "snapshot_date": "2026-11-18",
+  "status": "pi_architecture_prompt_verified",
+  "production_accepted": false,
+  "acceptance_report": "docs/Pi原句闭环验收_20261118.md",
+  "task_satisfied": true,
+  "full_test_suite_certified": false,
+  "historical_record": {
+    "candidate": "careerforge-candidate550-review-20261113",
+    "version": "1.6.6",
+    "status": "engineering_review_candidate",
+    "production_accepted": false,
+    "workflow_default": "legacy",
+    "real_model_quality": "NOT_RUN",
+    "review_report": "../ITERATION_REPORT.md",
+    "source_manifest": "MANIFEST.sha256",
+    "baseline_zip_sha256": "52def55490724f2f249930953b09c491e6684bb3178f4e8e39ff462bdace7e72"
+  }
+}

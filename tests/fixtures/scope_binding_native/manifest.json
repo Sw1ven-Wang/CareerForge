@@ -1,0 +1,75 @@
+{
+  "purpose": "Minimized exported application-contract regression fixtures; not original transport envelopes and not semantic Gold.",
+  "provenance": {
+    "experiment": "Isolated RC11 original JD-B / fixed LangGraph C04 experiment.",
+    "job_description_and_scenarios": "Synthetic test-package inputs, not an actual person or employer.",
+    "role_judgments": "Experimental model outputs; retained model_output values are unchanged and do not imply approval.",
+    "license_scope": "LICENSE.langgraph applies only to the quoted upstream LangGraph source. It does not describe all experimental material as public MIT source.",
+    "payload_hash_method": "SHA256 of canonical UTF-8 JSON, sorted keys, ensure_ascii=False, compact comma/colon separators.",
+    "wire_hash_limit": "The original full request hash is a reference label. A minimized export cannot recompute the omitted full wire envelope; paid replay is tested separately with synthetic application calls."
+  },
+  "files": {
+    "reviewer_response.json": {
+      "evidence_label": "langgraph-c04/reviewer-final/response",
+      "original_envelope_sha256": "01cc815f30e842237cfb81c33c64353bff167bc8bf2cd03260154f42bb6c982a",
+      "exported_sha256": "892a1305a416870af67f716be23371135e3d798cbc825ce5400cc06be0eed578",
+      "retained_original_fields": [
+        "/model_output"
+      ],
+      "retained_payload_sha256": "8603309020f5de9a1e53c2c553600463af3427142caa444a4b0b8055e0bd810b",
+      "retained_values_unchanged": true,
+      "removed_metadata": "Transport, orchestration, account/ACL dependencies and unrelated request context are omitted."
+    },
+    "coverage_response.json": {
+      "evidence_label": "langgraph-c04/coverage-final/response",
+      "original_envelope_sha256": "d8586684415f0baf608112d25c46c8c405f2dc64f690e5f90b2557a57b5ea1df",
+      "exported_sha256": "530d311a398882c5a1ae55d8623a0e894a99fd356b1d2f3ded380c8b5347dec7",
+      "retained_original_fields": [
+        "/model_output"
+      ],
+      "retained_payload_sha256": "fb1fdefc05a84a3725cde253c21c6abad7f8de9f85be1857e7119ca5b0b96421",
+      "retained_values_unchanged": true,
+      "removed_metadata": "Transport, orchestration, account/ACL dependencies and unrelated request context are omitted."
+    },
+    "reviewer_request.json": {
+      "evidence_label": "langgraph-c04/reviewer-final/request-contract",
+      "original_envelope_sha256": "4aaa68b92b016e3c41b72695c21eb9b52368378cf72adcdb9d3ca1f342aa1608",
+      "exported_sha256": "f97915ba8a2149c060a41e7f00dfa42dacc65cf9353e04095f250e27c8debcd7",
+      "retained_original_fields": [
+        "/project_request/schema",
+        "/project_request/messages/0/content"
+      ],
+      "retained_payload_sha256": "b5dd8b340987c4110199150698f9601ab7553fad3d875ee9f98b001ef87bb9ba",
+      "retained_values_unchanged": true,
+      "removed_metadata": "Transport, orchestration, account/ACL dependencies and unrelated request context are omitted."
+    },
+    "coverage_request.json": {
+      "evidence_label": "langgraph-c04/coverage-final/scope-binding",
+      "original_envelope_sha256": "92caf8b7cf43071c40ffbf238e2e116f3d493724b2055bbf1609fb51466111f7",
+      "exported_sha256": "97172af15a6bddd6d1520cfb077d344749052a3689c90399619c75721b35f58a",
+      "retained_original_fields": [
+        "/project_request/context/scope_binding"
+      ],
+      "retained_payload_sha256": "ea08cdae55618cb84c5fcfa37c5bdf92001b51d65fca7984e00016734b5b1676",
+      "retained_values_unchanged": true,
+      "removed_metadata": "Transport, orchestration, account/ACL dependencies and unrelated request context are omitted."
+    },
+    "scope_subject.json": {
+      "evidence_label": "langgraph-c04/validated-candidate-scope",
+      "original_artifact_sha256": "c3a2e9474bebe95a25da070506d227281fe6101c58ea2791810f101b0925751a",
+      "exported_sha256": "c3a2e9474bebe95a25da070506d227281fe6101c58ea2791810f101b0925751a",
+      "artifact_bytes_unchanged": true
+    },
+    "LICENSE.langgraph": {
+      "evidence_label": "langgraph-pinned-source/license",
+      "original_artifact_sha256": "d9bb52f2e3540d60ff50d8f0f5b6ba649b7fd346948c4c3d086c8afb120763c7",
+      "exported_sha256": "d9bb52f2e3540d60ff50d8f0f5b6ba649b7fd346948c4c3d086c8afb120763c7",
+      "artifact_bytes_unchanged": true
+    },
+    "README.md": {
+      "evidence_label": "export-provenance-and-license-note",
+      "exported_sha256": "103f59948e8e44146265e7a28e1e4619b68c0bd974b9c2514af847ff97739107",
+      "kind": "new_export_documentation"
+    }
+  }
+}

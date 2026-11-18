@@ -1,0 +1,493 @@
+{
+  "application_contract": {
+    "schema": {
+      "$defs": {
+        "ClaimReview": {
+          "additionalProperties": false,
+          "properties": {
+            "claim_id": {
+              "title": "Claim Id",
+              "type": "string"
+            },
+            "outcome": {
+              "enum": [
+                "supported_within_scope",
+                "partially_supported",
+                "contradicted",
+                "insufficient"
+              ],
+              "title": "Outcome",
+              "type": "string"
+            },
+            "independent_reads": {
+              "items": {
+                "$ref": "#/$defs/ReadReference"
+              },
+              "maxItems": 8,
+              "title": "Independent Reads",
+              "type": "array"
+            },
+            "counterevidence": {
+              "items": {
+                "$ref": "#/$defs/ReadReference"
+              },
+              "maxItems": 8,
+              "title": "Counterevidence",
+              "type": "array"
+            },
+            "boundary": {
+              "title": "Boundary",
+              "type": "string"
+            }
+          },
+          "required": [
+            "claim_id",
+            "outcome",
+            "independent_reads",
+            "counterevidence",
+            "boundary"
+          ],
+          "title": "ClaimReview",
+          "type": "object"
+        },
+        "ReadReference": {
+          "additionalProperties": false,
+          "properties": {
+            "read_id": {
+              "title": "Read Id",
+              "type": "string"
+            },
+            "quote": {
+              "maxLength": 2600,
+              "minLength": 4,
+              "title": "Quote",
+              "type": "string"
+            }
+          },
+          "required": [
+            "read_id",
+            "quote"
+          ],
+          "title": "ReadReference",
+          "type": "object"
+        },
+        "ResearchClaimAnchor": {
+          "additionalProperties": false,
+          "description": "A candidate-local reference, resolved to published claims by the server.",
+          "properties": {
+            "subject_key": {
+              "pattern": "^[a-zA-Z0-9_.-]{1,160}$",
+              "title": "Subject Key",
+              "type": "string"
+            },
+            "claim_keys": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 12,
+              "minItems": 1,
+              "title": "Claim Keys",
+              "type": "array"
+            }
+          },
+          "required": [
+            "subject_key",
+            "claim_keys"
+          ],
+          "title": "ResearchClaimAnchor",
+          "type": "object"
+        },
+        "ResearchCoverageDraft": {
+          "additionalProperties": false,
+          "properties": {
+            "contract_version": {
+              "const": "research-coverage-1.6.3",
+              "title": "Contract Version",
+              "type": "string"
+            },
+            "question": {
+              "$ref": "#/$defs/ResearchEvidenceAssessment"
+            },
+            "dimensions": {
+              "items": {
+                "$ref": "#/$defs/ResearchDimensionAssessment"
+              },
+              "maxItems": 7,
+              "title": "Dimensions",
+              "type": "array"
+            },
+            "requirements": {
+              "items": {
+                "$ref": "#/$defs/ResearchRequirementAssessment"
+              },
+              "maxItems": 30,
+              "title": "Requirements",
+              "type": "array"
+            },
+            "unresolved_questions": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 30,
+              "title": "Unresolved Questions",
+              "type": "array"
+            }
+          },
+          "required": [
+            "contract_version",
+            "question",
+            "dimensions",
+            "requirements",
+            "unresolved_questions"
+          ],
+          "title": "ResearchCoverageDraft",
+          "type": "object"
+        },
+        "ResearchDimensionAssessment": {
+          "additionalProperties": false,
+          "properties": {
+            "status": {
+              "enum": [
+                "known",
+                "partial",
+                "unknown",
+                "not_applicable",
+                "conflicting"
+              ],
+              "title": "Status",
+              "type": "string"
+            },
+            "explanation": {
+              "maxLength": 2000,
+              "minLength": 1,
+              "title": "Explanation",
+              "type": "string"
+            },
+            "anchors": {
+              "items": {
+                "$ref": "#/$defs/ResearchClaimAnchor"
+              },
+              "maxItems": 5,
+              "title": "Anchors",
+              "type": "array"
+            },
+            "unresolved_questions": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 10,
+              "title": "Unresolved Questions",
+              "type": "array"
+            },
+            "dimension": {
+              "enum": [
+                "purpose",
+                "project_structure",
+                "module_responsibilities",
+                "call_flow",
+                "implementation",
+                "boundaries",
+                "tradeoffs"
+              ],
+              "title": "Dimension",
+              "type": "string"
+            }
+          },
+          "required": [
+            "status",
+            "explanation",
+            "anchors",
+            "unresolved_questions",
+            "dimension"
+          ],
+          "title": "ResearchDimensionAssessment",
+          "type": "object"
+        },
+        "ResearchEvidenceAssessment": {
+          "additionalProperties": false,
+          "properties": {
+            "status": {
+              "enum": [
+                "known",
+                "partial",
+                "unknown",
+                "not_applicable",
+                "conflicting"
+              ],
+              "title": "Status",
+              "type": "string"
+            },
+            "explanation": {
+              "maxLength": 2000,
+              "minLength": 1,
+              "title": "Explanation",
+              "type": "string"
+            },
+            "anchors": {
+              "items": {
+                "$ref": "#/$defs/ResearchClaimAnchor"
+              },
+              "maxItems": 5,
+              "title": "Anchors",
+              "type": "array"
+            },
+            "unresolved_questions": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 10,
+              "title": "Unresolved Questions",
+              "type": "array"
+            }
+          },
+          "required": [
+            "status",
+            "explanation",
+            "anchors",
+            "unresolved_questions"
+          ],
+          "title": "ResearchEvidenceAssessment",
+          "type": "object"
+        },
+        "ResearchRequirementAssessment": {
+          "additionalProperties": false,
+          "properties": {
+            "status": {
+              "enum": [
+                "known",
+                "partial",
+                "unknown",
+                "not_applicable",
+                "conflicting"
+              ],
+              "title": "Status",
+              "type": "string"
+            },
+            "explanation": {
+              "maxLength": 2000,
+              "minLength": 1,
+              "title": "Explanation",
+              "type": "string"
+            },
+            "anchors": {
+              "items": {
+                "$ref": "#/$defs/ResearchClaimAnchor"
+              },
+              "maxItems": 5,
+              "title": "Anchors",
+              "type": "array"
+            },
+            "unresolved_questions": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 10,
+              "title": "Unresolved Questions",
+              "type": "array"
+            },
+            "requirement_id": {
+              "pattern": "^[a-z0-9_.-]{1,100}$",
+              "title": "Requirement Id",
+              "type": "string"
+            },
+            "demonstrated_depth": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "了解",
+                    "熟悉",
+                    "掌握"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Demonstrated Depth"
+            },
+            "dimensions": {
+              "items": {
+                "$ref": "#/$defs/ResearchDimensionAssessment"
+              },
+              "maxItems": 7,
+              "title": "Dimensions",
+              "type": "array"
+            }
+          },
+          "required": [
+            "status",
+            "explanation",
+            "anchors",
+            "unresolved_questions",
+            "requirement_id",
+            "demonstrated_depth",
+            "dimensions"
+          ],
+          "title": "ResearchRequirementAssessment",
+          "type": "object"
+        },
+        "ReviewIssueScope": {
+          "additionalProperties": false,
+          "properties": {
+            "issue_index": {
+              "maximum": 99,
+              "minimum": 0,
+              "title": "Issue Index",
+              "type": "integer"
+            },
+            "scope": {
+              "enum": [
+                "claim",
+                "topic_link",
+                "facet",
+                "title",
+                "unit"
+              ],
+              "title": "Scope",
+              "type": "string"
+            },
+            "target_ids": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 30,
+              "title": "Target Ids",
+              "type": "array"
+            }
+          },
+          "required": [
+            "issue_index",
+            "scope",
+            "target_ids"
+          ],
+          "title": "ReviewIssueScope",
+          "type": "object"
+        },
+        "StandaloneClaimReview": {
+          "additionalProperties": false,
+          "properties": {
+            "contract_version": {
+              "const": "claim-scoped-review-1.6.6",
+              "title": "Contract Version",
+              "type": "string"
+            },
+            "unit_version_id": {
+              "title": "Unit Version Id",
+              "type": "string"
+            },
+            "content_hash": {
+              "title": "Content Hash",
+              "type": "string"
+            },
+            "render_hash": {
+              "title": "Render Hash",
+              "type": "string"
+            },
+            "standalone_claim_ids": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 12,
+              "title": "Standalone Claim Ids",
+              "type": "array"
+            },
+            "issue_scopes": {
+              "items": {
+                "$ref": "#/$defs/ReviewIssueScope"
+              },
+              "maxItems": 100,
+              "title": "Issue Scopes",
+              "type": "array"
+            },
+            "global_blocking_issues": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 20,
+              "title": "Global Blocking Issues",
+              "type": "array"
+            }
+          },
+          "required": [
+            "contract_version",
+            "unit_version_id",
+            "content_hash",
+            "render_hash",
+            "standalone_claim_ids",
+            "issue_scopes",
+            "global_blocking_issues"
+          ],
+          "title": "StandaloneClaimReview",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "claim_decisions": {
+          "items": {
+            "$ref": "#/$defs/ClaimReview"
+          },
+          "title": "Claim Decisions",
+          "type": "array"
+        },
+        "accepted_topic_link_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Accepted Topic Link Ids",
+          "type": "array"
+        },
+        "accepted_facet_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Accepted Facet Ids",
+          "type": "array"
+        },
+        "blocking_issues": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Blocking Issues",
+          "type": "array"
+        },
+        "decision": {
+          "enum": [
+            "accept_scoped",
+            "needs_evidence",
+            "reject"
+          ],
+          "title": "Decision",
+          "type": "string"
+        },
+        "task_coverage": {
+          "$ref": "#/$defs/ResearchCoverageDraft"
+        },
+        "scope_review": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StandaloneClaimReview"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "claim_decisions",
+        "accepted_topic_link_ids",
+        "accepted_facet_ids",
+        "blocking_issues",
+        "decision",
+        "task_coverage",
+        "scope_review"
+      ],
+      "title": "ScopedResearchReviewOutput",
+      "type": "object"
+    },
+    "system_prompt": "你是独立知识审核 Agent，不是批准率优化器。\n你已先按待核验命题独立取证，现在才查看分析证据。逐 Claim 审核；接受必须引用 independent_bundle\n实际读到的原文，不可引用 Analysis 的 read_id 冒充独立阅读。检查条件、否定、适用范围、架构边、\nTopic关联及Facet值；源码中的测试不证明运行成功。存在未解决关键反证则不能接受。\n独立证据与分析证据不重叠不自动表示错误，也不自动表示支持。所有断言、关联和维度都必须有决议。\n输出严格 JSON，不发布，不修改原文。\n事实是否成立与原任务是否完成是两项独立判断。依据 research_task 和本次独立读取，\n对候选实际支持的问题、结构维度和 JD 要求填写 task_coverage；引用 coverage_anchors 提供的\nsubject_key/claim_keys，不能用文档入口、符号存在或分析者的自评证明完整实现。\n即使 accept_scoped，原任务仍可 partial 或 unknown。不适用只限本仓，不代表整个 JD 已满足。\n未核实的模块职责或调用关系不得作为结构结论。\n新增逐项范围合同：不降低真伪标准，不追求整单元批准率。scope_review 必须绑定 subject.scope_identity。\n仅把原文、全部必要条件、证据类型在独立原文中获证且无需其他被拒命题也成立的原断言列入\nstandalone_claim_ids。不能在 boundary 里补一个条件就当作原断言已有该条件；需改文的断言仍不通过。\n必须逐项查看 subject.standalone_publication_views 的实际单事实视图；“因此”“该行为”等措辞若依赖\n被移除的前提、指代、标题或其他断言，则该原断言不独立，不能保留，不能悄悄补写前提。\n为每条 blocking_issues 按原数组位置填写唯一 issue_scopes；全局或无法归属的问题使用 unit，\n不能为保留部分事实而把全局反证改称局部。global_blocking_issues 如实保留整体可信性问题。\n原断言有独立证据不等于相关 Topic/Facet 正确。系统部分发布会删除原标题、整体描述和全部 Topic/Facet，\n仅使用中性行政标题；不要因此放行依赖这些标签、整体适用描述或其他被拒命题才成立的事实。必要条件必须已在该原断言正文或 conditions 中保留。不得改写原候选。\n缺少独立原文如实 insufficient/partially_supported；不把分析读取冒充独立读取，不声称运行验证。\nnull scope_review 只保留原整单元严格路径，绝不授权部分发布。原任务充分性仍独立审核。\n\n原文引用合同：read_id 必须属于本次冻结已读包；quote 必须逐字符精确、连续，且在该 read_id\n原文中只出现一次（包括重叠匹配）。不要给位置/offset等额外字段，不要用分析者读取代替独立读取。\n同文出现多次时，自行依据已读上下文选择连续且唯一的完整摘录，不要仅猜测同名方法。\n本版本只可引用仅含 LF 或 CRLF 行分隔的读取；CR-only、Unicode 或其他行分隔暂不支持，失败关闭。\n"
+  },
+  "original_project_request_sha256": "3ced5a932b8447c48abd0ff54e09a32a3363562bc52a5867af29b4ec01d39040"
+}

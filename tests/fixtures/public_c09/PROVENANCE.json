@@ -1,0 +1,50 @@
+{
+  "description": "Minimal authorized public C09 setup fixtures copied byte-for-byte from the user-provided 2026-11-05 agent_input v1; no answers, Gold, holdout or external model responses added.",
+  "source_label": "CareerForge integration v1 agent_input",
+  "case_ids": [
+    "C09-A01",
+    "C09-A02",
+    "C09-A03",
+    "C09-A04",
+    "C09-A05",
+    "C09-A06",
+    "C09-A07",
+    "C09-A08"
+  ],
+  "files": {
+    "inputs/step09_exercise_evaluation.jsonl": {
+      "source_label": "agent_input/inputs/step09_exercise_evaluation.jsonl",
+      "sha256": "e51a3eadf1d35c50e865db698c998de47790f1d30e9b7b54c3df9bd8c5e9f689",
+      "bytes": 3239
+    },
+    "fixtures/exercises.json": {
+      "source_label": "agent_input/fixtures/exercises.json",
+      "sha256": "18465e5b8a4c2040247412f9cfa8e06a468e29746bdfb5f7d00ba16ce396eda6",
+      "bytes": 707
+    },
+    "fixtures/synthetic_lab/mini_cache.py": {
+      "source_label": "agent_input/fixtures/synthetic_lab/mini_cache.py",
+      "sha256": "825e064777262e547c16b08bc704559610fa0b0dbd90e46e908b81f4fcf63693",
+      "bytes": 607
+    },
+    "fixtures/synthetic_lab/mini_routes.py": {
+      "source_label": "agent_input/fixtures/synthetic_lab/mini_routes.py",
+      "sha256": "edd572cda0ecd7f4064b6ffba5e52e45acc215767e193c4c372dcfa29565b0c0",
+      "bytes": 208
+    }
+  },
+  "helper_derivation": {
+    "source_label": "public_exercise_adapter.py used for the public C09 setup-fidelity experiment",
+    "original_sha256": "30980b2e9c681acafd975c037201e94661b5121664f2da9d05b012c0b0905b0b",
+    "changes": [
+      "Use only packaged relative fixture paths and verify source hashes before loading.",
+      "Retain original mapping, plan projection and fidelity assertions.",
+      "Omit model completion, native response bridge and unused manifest helpers."
+    ]
+  },
+  "boundaries": [
+    "All original questions, submissions, help declarations and source bytes retained.",
+    "Synthetic source is read as text, never imported or executed by these tests.",
+    "No evaluation model call, grading answer oracle, native evidence or production acceptance."
+  ]
+}

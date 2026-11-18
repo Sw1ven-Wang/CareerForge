@@ -1,0 +1,864 @@
+[
+  {
+    "key": "agent.tool_calling",
+    "title": "工具调用",
+    "aliases": [
+      "tool calling",
+      "function calling",
+      "工具调用",
+      "函数调用",
+      "tool registry",
+      "注册",
+      "dispatch"
+    ],
+    "facets": {
+      "registration": {
+        "question": "工具注册入口",
+        "required": false,
+        "applicability": "always",
+        "value_type": "string"
+      },
+      "argument_validation": {
+        "question": "参数校验",
+        "required": false,
+        "applicability": "always",
+        "value_type": "string"
+      },
+      "dispatch": {
+        "question": "执行分发",
+        "required": false,
+        "applicability": "always",
+        "value_type": "string"
+      },
+      "result_feedback": {
+        "question": "结果反馈",
+        "required": false,
+        "applicability": "always",
+        "value_type": "string"
+      },
+      "failure_boundary": {
+        "question": "异常边界",
+        "required": false,
+        "applicability": "always",
+        "value_type": "string"
+      },
+      "execution_policy": {
+        "question": "执行策略",
+        "required": false,
+        "applicability": "always",
+        "value_type": "string"
+      }
+    }
+  },
+  {
+    "key": "framework.langgraph",
+    "title": "LangGraph 框架",
+    "aliases": [
+      "LangGraph"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "agent.conditional_routing",
+    "title": "条件路由",
+    "aliases": [
+      "条件路由",
+      "条件分支",
+      "conditional routing",
+      "conditional edges",
+      "add_conditional_edges"
+    ],
+    "facets": {
+      "branch_registration": {
+        "question": "条件分支在哪里注册",
+        "required": false,
+        "applicability": "always",
+        "value_type": "string"
+      },
+      "destination_mapping": {
+        "question": "如何将路由结果映射为目的节点",
+        "required": false,
+        "applicability": "always",
+        "value_type": "string"
+      },
+      "failure_boundary": {
+        "question": "哪些分支目的地会被拒绝",
+        "required": false,
+        "applicability": "always",
+        "value_type": "string"
+      }
+    }
+  },
+  {
+    "key": "agent.loop",
+    "title": "Agent 循环",
+    "aliases": [
+      "agent loop",
+      "智能体循环",
+      "执行循环"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "agent.memory",
+    "title": "Agent 记忆",
+    "aliases": [
+      "memory",
+      "记忆",
+      "长期记忆",
+      "记忆体系",
+      "短期记忆",
+      "Long-term Memory",
+      "语义记忆"
+    ],
+    "facets": {
+      "storage": {
+        "question": "存储位置",
+        "required": false,
+        "applicability": "always",
+        "value_type": "string"
+      },
+      "lifecycle": {
+        "question": "生命周期",
+        "required": false,
+        "applicability": "always",
+        "value_type": "string"
+      },
+      "retrieval": {
+        "question": "记忆检索",
+        "required": false,
+        "applicability": "always",
+        "value_type": "string"
+      },
+      "update": {
+        "question": "更新方式",
+        "required": false,
+        "applicability": "always",
+        "value_type": "string"
+      },
+      "privacy": {
+        "question": "隐私边界",
+        "required": false,
+        "applicability": "always",
+        "value_type": "string"
+      }
+    }
+  },
+  {
+    "key": "agent.context",
+    "title": "上下文工程",
+    "aliases": [
+      "context engineering",
+      "context",
+      "上下文"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "agent.planning",
+    "title": "规划",
+    "aliases": [
+      "planning",
+      "plan",
+      "任务规划"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "agent.multi",
+    "title": "多智能体",
+    "aliases": [
+      "multi-agent",
+      "multi agent",
+      "多智能体",
+      "委派",
+      "多 Agent",
+      "多Agent",
+      "多 Agent 协作",
+      "多 Agent 协同",
+      "多智能体协作"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "agent.reflection",
+    "title": "反思",
+    "aliases": [
+      "reflection",
+      "反思"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "agent.evaluation",
+    "title": "Agent 评测",
+    "aliases": [
+      "evaluation",
+      "gold",
+      "评测",
+      "基准",
+      "效果评估",
+      "功能评测",
+      "效果评估与管控体系"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "rag.retrieval",
+    "title": "检索增强生成",
+    "aliases": [
+      "RAG",
+      "retrieval",
+      "检索增强",
+      "检索"
+    ],
+    "facets": {
+      "source": {
+        "question": "资料来源",
+        "required": false,
+        "applicability": "always",
+        "value_type": "string"
+      },
+      "chunking": {
+        "question": "切分",
+        "required": false,
+        "applicability": "always",
+        "value_type": "string"
+      },
+      "recall": {
+        "question": "召回",
+        "required": false,
+        "applicability": "always",
+        "value_type": "string"
+      },
+      "ranking": {
+        "question": "排序",
+        "required": false,
+        "applicability": "always",
+        "value_type": "string"
+      },
+      "grounding": {
+        "question": "证据绑定",
+        "required": false,
+        "applicability": "always",
+        "value_type": "string"
+      }
+    }
+  },
+  {
+    "key": "rag.embedding",
+    "title": "嵌入模型",
+    "aliases": [
+      "embedding",
+      "向量",
+      "嵌入"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "rag.rerank",
+    "title": "重排序",
+    "aliases": [
+      "reranker",
+      "rerank",
+      "重排",
+      "结果重排",
+      "重排序"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "rag.hybrid",
+    "title": "混合检索",
+    "aliases": [
+      "hybrid search",
+      "hybrid retrieval",
+      "混合检索",
+      "RRF"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "storage.postgres",
+    "title": "PostgreSQL",
+    "aliases": [
+      "postgresql",
+      "postgres",
+      "PG数据库"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "storage.redis",
+    "title": "Redis",
+    "aliases": [
+      "redis",
+      "缓存",
+      "cache"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "runtime.async",
+    "title": "异步 I/O",
+    "aliases": [
+      "asyncio",
+      "异步",
+      "async",
+      "await"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "runtime.concurrent",
+    "title": "并发与并行",
+    "aliases": [
+      "concurrency",
+      "parallelism",
+      "并发",
+      "并行"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "runtime.queue",
+    "title": "任务队列",
+    "aliases": [
+      "celery",
+      "queue",
+      "任务队列"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "runtime.outbox",
+    "title": "事务 Outbox",
+    "aliases": [
+      "transactional outbox",
+      "outbox",
+      "消息一致性"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "runtime.idempotency",
+    "title": "幂等",
+    "aliases": [
+      "idempotency",
+      "幂等",
+      "重复请求"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "runtime.recovery",
+    "title": "任务恢复",
+    "aliases": [
+      "checkpoint",
+      "recovery",
+      "resume",
+      "状态恢复",
+      "恢复"
+    ],
+    "facets": {
+      "checkpoint": {
+        "question": "检查点",
+        "required": false,
+        "applicability": "always",
+        "value_type": "string"
+      },
+      "lease": {
+        "question": "租约",
+        "required": false,
+        "applicability": "always",
+        "value_type": "string"
+      },
+      "idempotency": {
+        "question": "幂等",
+        "required": false,
+        "applicability": "always",
+        "value_type": "string"
+      },
+      "uncertain_request": {
+        "question": "未知请求",
+        "required": false,
+        "applicability": "always",
+        "value_type": "string"
+      }
+    }
+  },
+  {
+    "key": "security.authorization",
+    "title": "授权与权限",
+    "aliases": [
+      "authorization",
+      "ACL",
+      "权限",
+      "授权"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "security.sandbox",
+    "title": "沙箱隔离",
+    "aliases": [
+      "sandbox",
+      "沙箱",
+      "隔离"
+    ],
+    "facets": {
+      "filesystem": {
+        "question": "文件系统",
+        "required": false,
+        "applicability": "always",
+        "value_type": "string"
+      },
+      "network": {
+        "question": "网络限制",
+        "required": false,
+        "applicability": "always",
+        "value_type": "string"
+      },
+      "resource": {
+        "question": "资源限制",
+        "required": false,
+        "applicability": "always",
+        "value_type": "string"
+      },
+      "approval": {
+        "question": "执行审批",
+        "required": false,
+        "applicability": "always",
+        "value_type": "string"
+      }
+    }
+  },
+  {
+    "key": "security.injection",
+    "title": "提示注入防护",
+    "aliases": [
+      "prompt injection",
+      "提示注入"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "code.ast",
+    "title": "源码结构索引",
+    "aliases": [
+      "AST",
+      "tree-sitter",
+      "语法树",
+      "符号"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "code.testing",
+    "title": "软件测试",
+    "aliases": [
+      "pytest",
+      "testing",
+      "测试",
+      "assert",
+      "回归测试",
+      "功能测试"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "code.python",
+    "title": "Python",
+    "aliases": [
+      "python",
+      "Python"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "code.typescript",
+    "title": "TypeScript",
+    "aliases": [
+      "typescript",
+      "TypeScript",
+      "TS"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "code.go",
+    "title": "Go",
+    "aliases": [
+      "golang",
+      "Go",
+      "Go语言"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "api.fastapi",
+    "title": "API 服务",
+    "aliases": [
+      "fastapi",
+      "http",
+      "api",
+      "接口"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "ops.observability",
+    "title": "可观测性",
+    "aliases": [
+      "observability",
+      "prometheus",
+      "otel",
+      "监控",
+      "可观测性",
+      "可观测性体系",
+      "线上监控"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "interface.cli",
+    "title": "命令行界面",
+    "aliases": [
+      "CLI",
+      "Agent CLI",
+      "CLI 工具开发",
+      "命令行工具",
+      "command-line interface"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "interface.mcp",
+    "title": "Model Context Protocol",
+    "aliases": [
+      "MCP",
+      "Model Context Protocol"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "interface.json_rpc",
+    "title": "JSON-RPC",
+    "aliases": [
+      "JSON-RPC"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "runtime.event_bus",
+    "title": "事件总线",
+    "aliases": [
+      "事件总线",
+      "event bus"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "runtime.session",
+    "title": "会话管理",
+    "aliases": [
+      "会话管理",
+      "session management"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "runtime.error_handling",
+    "title": "异常处理与传播",
+    "aliases": [
+      "异常处理",
+      "错误处理",
+      "异常传播",
+      "error handling"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "runtime.code_execution",
+    "title": "代码执行",
+    "aliases": [
+      "代码执行",
+      "code execution"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "agent.context_compaction",
+    "title": "上下文压缩",
+    "aliases": [
+      "上下文压缩",
+      "context compaction"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "agent.context_recovery",
+    "title": "可恢复上下文",
+    "aliases": [
+      "可恢复上下文管理",
+      "可恢复上下文",
+      "context recovery"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "agent.skill_extension",
+    "title": "技能扩展",
+    "aliases": [
+      "技能扩展",
+      "skill extension"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "agent.code_editing",
+    "title": "代码编辑",
+    "aliases": [
+      "代码编辑",
+      "code editing"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "security.tool_approval",
+    "title": "工具权限审批",
+    "aliases": [
+      "工具权限审批",
+      "tool approval"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "code.git_provenance",
+    "title": "固定版本源码溯源",
+    "aliases": [
+      "Git 固定版本定位源码",
+      "固定 Commit",
+      "fixed commit",
+      "源码溯源"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "ops.docker",
+    "title": "Docker",
+    "aliases": [
+      "Docker"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "storage.pgvector",
+    "title": "pgvector",
+    "aliases": [
+      "pgvector"
+    ],
+    "facets": {}
+  },
+  {
+    "key": "agent.architecture",
+    "title": "Agent 应用架构",
+    "aliases": [
+      "AI Agent 应用架构",
+      "Agent 应用架构",
+      "Agent架构",
+      "智能体架构"
+    ],
+    "facets": {},
+    "definition": "设计智能体应用的模块职责、接口和整体结构，不代表指定具体框架。"
+  },
+  {
+    "key": "agent.runtime",
+    "title": "Agent 运行时",
+    "aliases": [
+      "Agent 运行时",
+      "Agent运行时",
+      "智能体运行时"
+    ],
+    "facets": {},
+    "definition": "管理智能体任务运行、生命周期及执行环境；不等同于某一语言运行时。"
+  },
+  {
+    "key": "agent.orchestration",
+    "title": "任务与工作流编排",
+    "aliases": [
+      "任务编排",
+      "工作流编排",
+      "复杂工作流编排"
+    ],
+    "facets": {},
+    "definition": "组织任务依赖和执行顺序；不隐含某一个编排框架。"
+  },
+  {
+    "key": "agent.intent_recognition",
+    "title": "意图识别",
+    "aliases": [
+      "意图识别",
+      "intent recognition"
+    ],
+    "facets": {},
+    "definition": "识别用户输入意图及其任务入口，不等同于一般条件路由。"
+  },
+  {
+    "key": "security.agent_safety",
+    "title": "Agent 安全策略",
+    "aliases": [
+      "安全策略",
+      "Agent安全策略"
+    ],
+    "facets": {},
+    "definition": "设计智能体执行和工具使用的安全约束；不默认等于授权或沙箱。"
+  },
+  {
+    "key": "security.compliance",
+    "title": "安全合规",
+    "aliases": [
+      "安全合规",
+      "安全合规体系"
+    ],
+    "facets": {},
+    "definition": "工程系统的合规要求与控制，和具体权限实现分别记录。"
+  },
+  {
+    "key": "interface.tool_governance",
+    "title": "工具生态治理",
+    "aliases": [
+      "工具生态",
+      "工具治理",
+      "工具链治理"
+    ],
+    "facets": {},
+    "definition": "工具的可扩展接入与治理；MCP和Function Calling应独立记录。"
+  },
+  {
+    "key": "storage.vector_database",
+    "title": "向量数据库",
+    "aliases": [
+      "向量数据库",
+      "vector database"
+    ],
+    "facets": {},
+    "definition": "向量数据的存储与索引服务，不等于向量嵌入模型或特定产品。"
+  },
+  {
+    "key": "knowledge.graph",
+    "title": "知识图谱",
+    "aliases": [
+      "知识图谱",
+      "knowledge graph"
+    ],
+    "facets": {},
+    "definition": "以实体关系组织和利用知识；不隐含指定图数据库产品。"
+  },
+  {
+    "key": "rag.pipeline",
+    "title": "RAG 管道",
+    "aliases": [
+      "RAG 管道",
+      "RAG管道"
+    ],
+    "facets": {},
+    "definition": "组织检索增强生成的数据与执行管道，各处理阶段可分别验收。"
+  },
+  {
+    "key": "rag.chunking",
+    "title": "文本分块",
+    "aliases": [
+      "文本分块",
+      "text chunking"
+    ],
+    "facets": {},
+    "definition": "文本分割及边界策略，和嵌入、检索、重排分别记录。"
+  },
+  {
+    "key": "rag.semantic_search",
+    "title": "语义检索",
+    "aliases": [
+      "语义检索",
+      "semantic search"
+    ],
+    "facets": {},
+    "definition": "按语义相关性召回信息；不把数据库等同于嵌入或检索算法。"
+  },
+  {
+    "key": "agent.behavior_alignment",
+    "title": "行为对齐",
+    "aliases": [
+      "行为对齐",
+      "behavior alignment"
+    ],
+    "facets": {},
+    "definition": "智能体行为与目标、规则或偏好的对齐及其评估。"
+  },
+  {
+    "key": "agent.metrics",
+    "title": "Agent 工程指标",
+    "aliases": [
+      "任务完成率",
+      "错误恢复率",
+      "首响时延",
+      "Token 成本",
+      "Token成本",
+      "调用成功率"
+    ],
+    "facets": {},
+    "definition": "任务完成、恢复、时延、成本与调用成功等指标的采集评估；各指标须单独保留。"
+  },
+  {
+    "key": "ops.cicd",
+    "title": "CI/CD",
+    "aliases": [
+      "CI/CD",
+      "持续集成",
+      "持续交付"
+    ],
+    "facets": {},
+    "definition": "持续集成与交付的研发流程实践，不指定具体平台。"
+  },
+  {
+    "key": "ops.canary",
+    "title": "灰度发布",
+    "aliases": [
+      "灰度发布",
+      "canary release"
+    ],
+    "facets": {},
+    "definition": "分阶段发布与观测回退的工程实践。"
+  },
+  {
+    "key": "ops.harness",
+    "title": "Harness 工程",
+    "aliases": [
+      "Harness",
+      "Harness 工程实践",
+      "Harness engineering"
+    ],
+    "facets": {},
+    "definition": "为模型或智能体组织执行、工具、验证和评测的工程环境，不自动等同于测试框架。"
+  },
+  {
+    "key": "agent.infrastructure",
+    "title": "Agent 基础设施",
+    "aliases": [
+      "Agent 基础设施",
+      "Agent基础设施"
+    ],
+    "facets": {},
+    "definition": "支撑智能体研发和运行的基础设施建设，不隐含某个云产品。"
+  },
+  {
+    "key": "ops.development_process",
+    "title": "研发流程建设",
+    "aliases": [
+      "研发流程建设",
+      "研发流程"
+    ],
+    "facets": {},
+    "definition": "研发过程的工具和协作流程建设，具体CI/CD实践单独记录。"
+  }
+]

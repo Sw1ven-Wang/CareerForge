@@ -1,0 +1,260 @@
+{
+  "package_version": "1.6.2",
+  "delivery_kind": "mechanism_repair_with_separate_postblind_contract_patch",
+  "execution_scope": "dot_workspace_only",
+  "implementation_and_audit_configuration": "gpt-6-astra / max",
+  "independent_test_generation_and_scoring_configuration": "gpt-6.1-sol / high",
+  "independent_provider_identity_attestation": false,
+  "originals_preserved": true,
+  "final_engineering_validation": {
+    "recorded_utc": "2026-11-03T08:55:32.303414+00:00",
+    "version": "1.6.2",
+    "full_offline": {
+      "tests": 989,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 13,
+      "passed": 976,
+      "junit_seconds": 900.422,
+      "seconds": 900.49,
+      "collected": 1016,
+      "deselected": 27
+    },
+    "old_independent_engineering": {
+      "tests": 93,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 92,
+      "junit_seconds": 154.149,
+      "seconds": 154.15,
+      "xfail": 1
+    },
+    "new_independent_engineering": {
+      "tests": 287,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 287,
+      "junit_seconds": 37.501,
+      "seconds": 37.5
+    },
+    "independent_xfail_reason": "SyntheticFixtureModel always returns relevant=true and cannot measure actual semantic relevance; not counted as a pass.",
+    "first_attempt_retained": {
+      "tests": 989,
+      "failures": 1,
+      "errors": 0,
+      "skipped": 13,
+      "passed": 975,
+      "junit_seconds": 941.435,
+      "seconds": 941.45
+    },
+    "first_attempt_only_failure": "tests/test_api.py expected hardcoded1.6.1. Final-copy test now requires pyproject/package/OpenAPI versions to agree; runtime unchanged.",
+    "supplemental_real_runtime": {
+      "tests": 13,
+      "passed": 13,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "tree_sitter": 11,
+      "installed_pi_sdk_deterministic_model": 2,
+      "separate_denominator": true
+    },
+    "native_postblind_validation": {
+      "template_counts": {
+        "12903375e7dc923d1327e051074cf1c7c4402de8f7d260b1f81ccb0bc5894a58": 5,
+        "0da38a8e54885fd0f22c70ed211ed0e82c2a23339ae997fde3350be46e60db26": 7
+      },
+      "request_count": 12,
+      "response_count": 12,
+      "configured_max_output_tokens": [
+        {
+          "request_id": "6004_postblind_patch_P_exercise_only_learning_planner",
+          "role": "learning_planner",
+          "max_output_tokens": 8192
+        },
+        {
+          "request_id": "6003_postblind_patch_P_check_only_learning_planner",
+          "role": "learning_planner",
+          "max_output_tokens": 8192
+        },
+        {
+          "request_id": "6002_postblind_patch_P_read_only_learning_planner",
+          "role": "learning_planner",
+          "max_output_tokens": 8192
+        },
+        {
+          "request_id": "6005_postblind_patch_P_diagnostic_only_learning_planner",
+          "role": "learning_planner",
+          "max_output_tokens": 8192
+        },
+        {
+          "request_id": "6001_postblind_patch_P06_known_learning_planner",
+          "role": "learning_planner",
+          "max_output_tokens": 8192
+        },
+        {
+          "request_id": "6012_postblind_patch_R_missing_coordinator",
+          "role": "coordinator",
+          "max_output_tokens": 8192
+        },
+        {
+          "request_id": "6007_postblind_patch_R_explicit_coordinator",
+          "role": "coordinator",
+          "max_output_tokens": 8192
+        },
+        {
+          "request_id": "6006_postblind_patch_R08_known_coordinator",
+          "role": "coordinator",
+          "max_output_tokens": 8192
+        },
+        {
+          "request_id": "6008_postblind_patch_R_negation_coordinator",
+          "role": "coordinator",
+          "max_output_tokens": 8192
+        },
+        {
+          "request_id": "6009_postblind_patch_R_quote_coordinator",
+          "role": "coordinator",
+          "max_output_tokens": 8192
+        },
+        {
+          "request_id": "6011_postblind_patch_R_range_coordinator",
+          "role": "coordinator",
+          "max_output_tokens": 8192
+        },
+        {
+          "request_id": "6010_postblind_patch_R_multi_coordinator",
+          "role": "coordinator",
+          "max_output_tokens": 8192
+        }
+      ],
+      "scenario_skip_count": 0,
+      "completed_at": "2026-11-03T08:43:04.099129+00:00",
+      "scenario_count": 12,
+      "statuses": {
+        "succeeded": 12
+      },
+      "native_calls": 12,
+      "roles": {
+        "learning_planner": 5,
+        "coordinator": 7
+      },
+      "usage": "Native runtime exposes no actual tokens/provider cost; empty usage is not zero tokens/cost. No paid API invoked.",
+      "project_budget_total": 19,
+      "project_calls_consumed": 12,
+      "harness_retries": 0,
+      "limit": "Post-blind known-failure selected scenarios only; cloned legacy reviewed fixture setup; no real GitHub/HTTP provider/Docker/business-loop claim."
+    },
+    "postblind_independent_quality": {
+      "case_count": 12,
+      "all_cases_preserved": true,
+      "score_sum": 47,
+      "maximum_sum": 48,
+      "mean_0_to_4": 3.9166666666666665,
+      "fraction_of_maximum": 0.9791666666666666,
+      "score_distribution": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 1,
+        "4": 11
+      },
+      "minimum_met_count": 12,
+      "ideal_met_count": 11,
+      "partial_ideal_count": 1,
+      "native_run_succeeded_count": 12,
+      "raw_schema_error_count": 0,
+      "exact_learning_text_references_checked": 156,
+      "invalid_authorized_text_or_fact_or_topic_or_citation_membership_count": 0,
+      "critical_source_security_permission_failure_count": 0,
+      "noncritical_source_selection_metadata_inconsistency_count": 1,
+      "domain_means": {
+        "learning_plan": {
+          "n": 5,
+          "sum": 19,
+          "mean_0_to_4": 3.8
+        },
+        "intent_routing": {
+          "n": 7,
+          "sum": 28,
+          "mean_0_to_4": 4.0
+        }
+      }
+    },
+    "postblind_not_comparable_to_old_scores": true,
+    "original_fixed_quality": {
+      "A2_original_primary_n": 18,
+      "A2_mean": 2.5555555555555554,
+      "B161_n": 18,
+      "B161_mean": 3.611111111111111,
+      "A1_warm_diagnostic_mean": 2.7222222222222223,
+      "improved": 12,
+      "same": 5,
+      "regressed": 1,
+      "R08": "4 to2 retained",
+      "old_known_regression_n": 8,
+      "old_known_regression_mean": 3.25,
+      "P06_original_score": 0,
+      "original24_not_rerun_in_full": true
+    },
+    "evolution": {
+      "candidate_created": true,
+      "candidate_content_equals_baseline": true,
+      "rule_diagnostic_n": 4,
+      "before": 0.5,
+      "after": 0.5,
+      "authorized_full_coordinator_replay": false,
+      "decision": "inconclusive",
+      "promoted": false,
+      "C_run": false,
+      "improvement_claim": false
+    },
+    "model_call_denominators": {
+      "original_repair_phase_setup_A1_A2_B_known8": 164,
+      "patch12": 12,
+      "sum_project_gateway_responses_this_repair_phase": 176,
+      "old_original24_evaluation_not_in_this_sum": true,
+      "vendor_billing_calls_or_tokens": null,
+      "scoring_contexts_not_gateway_generation_calls": true
+    },
+    "source": {
+      "native_and_final_engineering_freeze_files": 159,
+      "native_to_final_diff": [
+        "tests/test_api.py"
+      ],
+      "runtime_and_data_files_byte_identical": 77,
+      "release_engineering_files_match_final_copy": 176,
+      "source_unchanged": true
+    },
+    "wheel": {
+      "recorded_utc": "2026-11-03T08:51:14.829179+00:00",
+      "wheel_name": "careerforge-1.6.2-py3-none-any.whl",
+      "wheel_sha256": "7a64e0c348c6e42a107d6354e40abc22c99e4ec97be64e907e12a9e8d5995a59",
+      "source_files": 77,
+      "wheel_payload_files": 77,
+      "mismatches": [],
+      "zip_crc_error": null,
+      "metadata_excluded_from_payload_compare": true,
+      "passed": true,
+      "reason_for_final_rebuild": "Release README now points to actual 1.6.2 validation rather than pending inherited report; no runtime change."
+    },
+    "business_end_to_end_closed": false,
+    "production_acceptance": false,
+    "environment_limits": [
+      "No current native PostgreSQL/Redis/Celery production validation",
+      "Docker restricted and not bypassed",
+      "No production HTTP provider transport or independently attested backend identity",
+      "No real learner outcome measurement",
+      "No complete original Vue/Tauri UI restoration",
+      "No complete statement coverage, load/failover or disaster-recovery test"
+    ],
+    "historical_evidence_gap": "Earlier1.6.1 optional-runtime final3 runner overwrote final2 raw pytest/JUnit paths; final2 aggregate/hash/dependency evidence remains. No reconstruction. New1.6.2 optional run used unique output paths."
+  },
+  "authoritative_validation": "validation/repair_1_6_2/VALIDATION_FACTS.json",
+  "business_closed_loop_verified": false,
+  "production_acceptance": "not_established",
+  "in_place_upgrade_of_original_application": false,
+  "publication_push_deploy": "not_performed",
+  "historical_evidence": "All validation directories except repair_1_6_2 retain their original version labels. Historical passing results are not current validation."
+}

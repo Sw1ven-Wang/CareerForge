@@ -1,0 +1,10 @@
+{
+  "artifact_kind": "source_and_verified_results",
+  "canonical_product_files_modified": false,
+  "databases_included": false,
+  "old_root_metadata_used_as_current": false,
+  "protected_manifest_sha256": "e13f90005a105297b098afafabda5d369fb5bd6feff6c20282ffa600eb29192e",
+  "source_freeze_sha256": "ef3c3bf55f24ddd041c2d198d319b3950ca909b69c5ee10f890d00796755bb64",
+  "version": "1.6.5",
+  "wheel_sha256": "6d21221c5c4baa7d2e74845e391d035664b2e1100c2c5b63df33f2e8a4fa13c9"
+}

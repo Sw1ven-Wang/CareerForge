@@ -1,0 +1,23 @@
+{
+  "created_utc": "2026-11-03T08:55:32.316080+00:00",
+  "version": "1.6.2",
+  "original_library_file_id": "libfile_976b188d6b748191a685fb5bbec55a6a",
+  "original_library_version": 2,
+  "source_artifact": "CareerForge_v1.6.0_完善与验证包.zip",
+  "source_sha256": "e4818e2b7a056647ff4f1eca657fb4b8a16675f014b5742c3557500fe3ff0c1c",
+  "originals_preserved": true,
+  "v161_working_snapshot_sha256": "e1aa1bcbcd1e87504f64d462a3480b7735bca2b46909dda04bedd4ad092a6adf",
+  "original_evidence_files_verified": 1106,
+  "original_baseline_zip_files_verified": 1076,
+  "frozen_v161_source_files_verified": 1098,
+  "frozen_v161_model_and_grade_files_verified": 967,
+  "frozen_v162_source_files_verified": 159,
+  "native_to_final_amendment": "tests/test_api.py only; runtime unchanged",
+  "release_engineering_payload_verified": 176,
+  "reporting_documents_created_after_test": true,
+  "wheel_payload_files": 77,
+  "wheel_sha256": "7a64e0c348c6e42a107d6354e40abc22c99e4ec97be64e907e12a9e8d5995a59",
+  "excluded": "runtime databases/credentials, virtual environments, node_modules, build products/caches, internal worker protocols; old wheels retained only under explicitly historical directories",
+  "manifest_is_signature": false,
+  "evidence_limits": "Earlier1.6.1 optional-runtime final3 runner overwrote final2 raw pytest/JUnit paths; final2 aggregate/hash/dependency evidence remains. No reconstruction. New1.6.2 optional run used unique output paths."
+}

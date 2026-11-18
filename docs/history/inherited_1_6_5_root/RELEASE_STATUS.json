@@ -1,0 +1,33 @@
+{
+  "archive_independent_audit": "Recorded separately for the completed archive; this source status does not assert the archive audit outcome.",
+  "artifact_kind": "source_and_verified_results",
+  "assembly_revision": 2,
+  "current_wheel_sha256": "6d21221c5c4baa7d2e74845e391d035664b2e1100c2c5b63df33f2e8a4fa13c9",
+  "database_files_in_this_package": 0,
+  "five_test_databases": "withheld pending exact privacy-safe derivation; originals remain sealed",
+  "full02": {
+    "deselected": 27,
+    "exit_code": 1,
+    "failed": 4,
+    "passed": 1628,
+    "selected": 1645,
+    "skipped": 13
+  },
+  "full_mypy": {
+    "errors": 6,
+    "files": 4,
+    "passed": false,
+    "same_environment_baseline_errors": true
+  },
+  "historical_validation_files_omitted": 1022,
+  "native165_fresh_work_requests": 3,
+  "production_accepted": false,
+  "protected_source_files": 216,
+  "protected_source_manifest_sha256": "e13f90005a105297b098afafabda5d369fb5bd6feff6c20282ffa600eb29192e",
+  "quote164_fresh_work_requests": 2,
+  "quote164_historical_fixtures": 2,
+  "ruff_src_tests": "passed",
+  "scope": "Complete buildable project source/config/tests/docs/migrations/deploy/coding-agent plus verified wheel and selected verified result evidence. Not a complete test-database backup.",
+  "source_freeze_sha256": "ef3c3bf55f24ddd041c2d198d319b3950ca909b69c5ee10f890d00796755bb64",
+  "version": "1.6.5"
+}

@@ -1,74 +1,89 @@
-name: careerforge
+name: careerforge-v15
+x-backend: &backend
+  image: ${CAREERFORGE_BACKEND_IMAGE:-careerforge-backend:local}
+  build: {context: ., dockerfile: deploy/Dockerfile, target: runtime}
+  env_file: [.env]
+  environment: &backend-env
+    CAREERFORGE_MODE: production
+    # Assemble the URL inside the trusted entrypoint; never interpolate a raw password into a URL.
+    CAREERFORGE_DATABASE_HOST: postgres
+    CAREERFORGE_DATABASE_NAME: careerforge_v15
+    CAREERFORGE_DATABASE_USER: careerforge
+    CAREERFORGE_DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    CAREERFORGE_REDIS_BROKER_URL: redis://broker:6379/0
+    CAREERFORGE_REDIS_CACHE_URL: redis://cache:6379/0
+    CAREERFORGE_STATE_DIR: /data
+  volumes: [clientstate:/data]
+  init: true
+  security_opt: [no-new-privileges:true]
+  cap_drop: [ALL]
+  read_only: true
+  tmpfs: ['/tmp:rw,size=64m,mode=1777']
+  depends_on: &infrastructure
+    postgres: {condition: service_healthy}
+    broker: {condition: service_healthy}
+    cache: {condition: service_healthy}
 services:
   postgres:
-    image: postgres:17-alpine
+    image: pgvector/pgvector:pg17
     environment:
+      POSTGRES_DB: careerforge_v15
       POSTGRES_USER: careerforge
-      POSTGRES_PASSWORD: careerforge_dev
-      POSTGRES_DB: careerforge_test
-    ports: ["127.0.0.1:55432:5432"]
-    volumes: ["pgdata:/var/lib/postgresql/data"]
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    ports: ['127.0.0.1:55432:5432']
+    volumes: [postgresdata:/var/lib/postgresql/data]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U careerforge -d careerforge_test"]
+      test: [CMD-SHELL, 'pg_isready -U careerforge -d careerforge_v15']
       interval: 3s
       timeout: 3s
-      retries: 20
-  redis:
+      retries: 30
+  broker:
     image: redis:7-alpine
-    ports: ["127.0.0.1:56379:6379"]
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 3s
-      timeout: 3s
-      retries: 20
+    command: [redis-server, --appendonly, 'yes', --maxmemory-policy, noeviction]
+    ports: ['127.0.0.1:56379:6379']
+    volumes: [brokerdata:/data]
+    healthcheck: {test: [CMD, redis-cli, ping], interval: 3s, timeout: 3s, retries: 30}
+  cache:
+    image: redis:7-alpine
+    command: [redis-server, --maxmemory, 256mb, --maxmemory-policy, allkeys-lru]
+    ports: ['127.0.0.1:56380:6379']
+    healthcheck: {test: [CMD, redis-cli, ping], interval: 3s, timeout: 3s, retries: 30}
   migrate:
-    build: ./backend
-    environment:
-      CAREERFORGE_DATABASE_URL: postgresql+psycopg://careerforge:careerforge_dev@postgres:5432/careerforge_test?connect_timeout=5
-    command: ["alembic", "-c", "alembic.ini", "upgrade", "head"]
+    <<: *backend
+    command: [alembic, upgrade, head]
+    restart: 'no'
+  initialize:
+    <<: *backend
+    command: [careerforge, init]
+    profiles: [setup]
     depends_on:
-      postgres: { condition: service_healthy }
-    profiles: ["app", "worker", "dispatcher"]
+      <<: *infrastructure
+      migrate: {condition: service_completed_successfully}
   api:
-    build: ./backend
-    env_file:
-      - path: .env
-        required: false
-    environment:
-      CAREERFORGE_DATABASE_URL: postgresql+psycopg://careerforge:careerforge_dev@postgres:5432/careerforge_test?connect_timeout=5
-      CAREERFORGE_ALLOWED_ORIGINS: '["http://127.0.0.1:8080"]'
+    <<: *backend
+    ports: ['127.0.0.1:8000:8000']
+    command: [careerforge, serve, --host, 0.0.0.0]
     depends_on:
-      migrate: { condition: service_completed_successfully }
-    profiles: ["app"]
+      <<: *infrastructure
+      migrate: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
   worker:
-    build:
-      context: .
-      dockerfile: coding-agent/Dockerfile
-    env_file:
-      - path: .env
-        required: false
-    environment:
-      CAREERFORGE_DATABASE_URL: postgresql+psycopg://careerforge:careerforge_dev@postgres:5432/careerforge_test?connect_timeout=5
-      CAREERFORGE_REDIS_URL: redis://redis:6379/0
-    command: ["celery", "-A", "careerforge.infrastructure.queue.celery_app:app", "worker", "-Q", "careerforge", "--loglevel=INFO", "--concurrency=2", "--uid=65534"]
+    <<: *backend
+    command: [celery, -A, 'careerforge.worker:celery_app', worker, -Q, careerforge, --concurrency=2, --loglevel=INFO]
     depends_on:
-      migrate: { condition: service_completed_successfully }
-      redis: { condition: service_healthy }
-    profiles: ["app", "worker"]
+      <<: *infrastructure
+      migrate: {condition: service_completed_successfully}
   dispatcher:
-    build: ./backend
-    environment:
-      CAREERFORGE_DATABASE_URL: postgresql+psycopg://careerforge:careerforge_dev@postgres:5432/careerforge_test?connect_timeout=5
-      CAREERFORGE_REDIS_URL: redis://redis:6379/0
-    command: ["python", "-m", "careerforge.infrastructure.queue.outbox_dispatcher"]
+    <<: *backend
+    command: [careerforge, dispatch]
     depends_on:
-      migrate: { condition: service_completed_successfully }
-      redis: { condition: service_healthy }
-    profiles: ["app", "dispatcher"]
-  frontend:
-    build: ./frontend
-    ports: ["127.0.0.1:8080:80"]
-    depends_on: [api]
-    profiles: ["app"]
+      <<: *infrastructure
+      migrate: {condition: service_completed_successfully}
 volumes:
-  pgdata:
+  postgresdata:
+  brokerdata:
+  clientstate:

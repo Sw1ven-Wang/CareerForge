@@ -1,0 +1,41 @@
+{
+  "target_version": "CareerForge_v1.5",
+  "package_version": "1.5.1",
+  "delivery_kind": "standalone_reliability_security_patch_and_test_package",
+  "execution_scope": "dot_workspace_only",
+  "engineering_model_configuration": "gpt-6-astra / max",
+  "in_place_upgrade_of_original_repository": false,
+  "original_database_migration_supported": false,
+  "offline_tests": {
+    "tests": 376,
+    "passed": 376,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "real_native_tests": {
+    "tests": 7,
+    "passed": 7,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "all_collected_tests_accounted_for": true,
+  "collected_tests": 383,
+  "statement_coverage_percent": 83.70165745856353,
+  "wheel_install_smoke": "passed_with_host_dependencies_in_isolated_install_directory",
+  "real_provider_calls": 0,
+  "native_infrastructure_integration": "passed_declared_pgvector_redis_celery_scope",
+  "docker": "blocked_daemon_and_rootless_prerequisites",
+  "docker_image_build": "not_run",
+  "docker_container_runtime": "not_run",
+  "ruff_lint": "passed",
+  "ruff_format": "passed",
+  "mypy": "passed_41_source_files_default_mode_no_incremental",
+  "specification_coverage": "partial_see_docs/KNOWN_GAPS.md",
+  "production_acceptance": "not_established",
+  "remote_ci": "not_triggered",
+  "publication_push_deploy": "not_performed",
+  "mypy_import_boundary": "single Celery import-untyped exemption; no global ignore_missing_imports",
+  "source_freeze_verified_files": 102
+}

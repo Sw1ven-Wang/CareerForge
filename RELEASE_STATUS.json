@@ -1,0 +1,55 @@
+{
+  "version": "1.6.6",
+  "snapshot_date": "2026-11-18",
+  "status": "pi_architecture_prompt_verified",
+  "production_accepted": false,
+  "acceptance_report": "docs/Pi原句闭环验收_20261118.md",
+  "task_satisfied": true,
+  "full_test_suite_certified": false,
+  "historical_record": {
+    "candidate": "careerforge-agent-input-loop-20261113",
+    "version": "1.6.6",
+    "status": "native_input_only_development_chain_settled",
+    "flow_id": "CF-D01",
+    "model": "gpt-6.1-terra",
+    "effort": "medium",
+    "pipeline_stages": 18,
+    "input_fingerprint": "15815e43e822e3711b3adf47f6378713ee13c3d8ef0e347275163459e742d992",
+    "tests_passed": 71,
+    "additional_unit_tests_passed": 15,
+    "production_accepted": false,
+    "workflow_default": "legacy",
+    "independent_gold": "NOT_RUN",
+    "native_audit": {
+      "status": "PASS_NATIVE_DEVELOPMENT_CHAIN",
+      "flow_id": "CF-D01",
+      "pipeline_stages": 18,
+      "bindings": 11,
+      "publications": 2,
+      "model_receipts": {
+        "completed": 61
+      },
+      "source_read_roles": {
+        "analysis": 15,
+        "reviewer": 12
+      },
+      "evaluation_id": "7762c57a-0e67-481e-867e-3db1409efafe",
+      "development_replay": {
+        "decision": "inconclusive",
+        "reason": "development_probe_is_not_independent_gold",
+        "baseline_score": 0.0,
+        "candidate_score": 0.0,
+        "improvement": 0.0,
+        "model_calls": 12,
+        "hard_gate_passed": false,
+        "safety_violations": 4,
+        "incomplete_execution": true
+      },
+      "independent_gold": "NOT_RUN",
+      "production_promotion": false,
+      "human_learning_effect": "NOT_EVALUATED",
+      "audit_model_calls": 0
+    },
+    "baseline_zip_sha256": "ef37cac5320563e4a8630e3dc8b11acf707527a1a70ca49aef4151907e000aa4"
+  }
+}

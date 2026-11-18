@@ -1,0 +1,248 @@
+{
+  "scope": "Minimal actual MIT-source native counterexample; no authentication, run, paid-receipt or permission data. Not native Tutor/learning output.",
+  "original_publication_hash": "bcf5a429f8f62c06c06d8428809167b71885d57530310841fb0a3edc9ceacea4",
+  "pack": {
+    "publication_id": "e3163b1e-cc49-482c-b4ef-0aadcc45187f",
+    "unit_version_id": "6fdd1a46-c508-44de-9b1d-44c997fd4862",
+    "unit_id": "f291ee86-3384-4b8e-bd43-b0f0dbc3192f",
+    "unit_type": "implementation",
+    "origin_kind": "repository",
+    "title": "托管文件检索工具配置",
+    "source_id": "53a87df0-b205-4eb7-9615-151faf13e4af",
+    "repository": "openai/openai-agents-python",
+    "commit": "814de8b1cfdaf6c70212dca9ca23563dd0b789ac",
+    "topic_links": [
+      {
+        "id": "92500880-e98e-4aa4-b0ba-a75d0187b3d6",
+        "topic_key": "agent.tool_calling",
+        "relation": "defines",
+        "topic_version": 1,
+        "topic_version_id": "acea94fe-4213-5926-9532-e28f1d5f6cb0"
+      },
+      {
+        "id": "0c113120-f22e-429f-a17c-985ba4bbd262",
+        "topic_key": "rag.retrieval",
+        "relation": "illustrates",
+        "topic_version": 1,
+        "topic_version_id": "00c2e6a8-67c0-5569-b938-b27b3380dcea"
+      }
+    ],
+    "facets": [
+      {
+        "id": "9ae6084c-989e-4c14-b0e4-ca5f92f6be3f",
+        "topic_key": "rag.retrieval",
+        "facet_key": "chunking",
+        "schema_version": 1,
+        "facet_schema_id": "0ca6ecf7-d55e-53c6-9b2c-da9761a643e7",
+        "unit": null,
+        "applicability_reason": "未读到数据切分。",
+        "value_status": "unknown",
+        "value": null,
+        "claim_ids": []
+      },
+      {
+        "id": "41879585-6f20-4a60-b15e-d43900824f87",
+        "topic_key": "rag.retrieval",
+        "facet_key": "grounding",
+        "schema_version": 1,
+        "facet_schema_id": "0ca6ecf7-d55e-53c6-9b2c-da9761a643e7",
+        "unit": null,
+        "applicability_reason": "include_search_results 字段不证明生成内容与证据绑定。",
+        "value_status": "unknown",
+        "value": null,
+        "claim_ids": [
+          "f5b56c59-f403-481c-9b2c-dcdb7128f31a"
+        ]
+      },
+      {
+        "id": "431c4c88-3c02-4c2d-9cc4-1d33ed3c94fe",
+        "topic_key": "rag.retrieval",
+        "facet_key": "ranking",
+        "schema_version": 1,
+        "facet_schema_id": "0ca6ecf7-d55e-53c6-9b2c-da9761a643e7",
+        "unit": null,
+        "applicability_reason": "ranking_options 字段不证明排序算法。",
+        "value_status": "unknown",
+        "value": null,
+        "claim_ids": [
+          "f5b56c59-f403-481c-9b2c-dcdb7128f31a"
+        ]
+      },
+      {
+        "id": "07509acc-fa6d-4c76-8967-fbd74eee7240",
+        "topic_key": "rag.retrieval",
+        "facet_key": "recall",
+        "schema_version": 1,
+        "facet_schema_id": "0ca6ecf7-d55e-53c6-9b2c-da9761a643e7",
+        "unit": null,
+        "applicability_reason": "只声明托管搜索用途，召回执行未知。",
+        "value_status": "unknown",
+        "value": null,
+        "claim_ids": [
+          "c336a1ce-770b-440e-bc2a-71fb3616537d"
+        ]
+      },
+      {
+        "id": "e5add0b0-fd0d-4a98-aa76-3da641b2d213",
+        "topic_key": "rag.retrieval",
+        "facet_key": "source",
+        "schema_version": 1,
+        "facet_schema_id": "0ca6ecf7-d55e-53c6-9b2c-da9761a643e7",
+        "unit": null,
+        "applicability_reason": "仅配置来源类型。",
+        "value_status": "known",
+        "value": "接口以 vector_store_ids 指定待搜索向量库；具体语料未知。",
+        "claim_ids": [
+          "c336a1ce-770b-440e-bc2a-71fb3616537d",
+          "f5b56c59-f403-481c-9b2c-dcdb7128f31a"
+        ]
+      }
+    ],
+    "facts": [
+      {
+        "fact_atom_id": "76e66b97-25bf-4f30-af27-7b637363fc64",
+        "claim_id": "c336a1ce-770b-440e-bc2a-71fb3616537d",
+        "text": "FileSearchTool 的说明将其定义为供 LLM 搜索向量库的托管工具，并写明当前用于 OpenAI 模型的 Responses API；这不是本地向量库或完整 RAG 流程实现的证据。",
+        "conditions": [
+          "仅据固定版本的已读源码片段；未作运行验证。"
+        ]
+      },
+      {
+        "fact_atom_id": "223d6cf8-9952-4bb6-a7a0-96bbf228d3dc",
+        "claim_id": "f5b56c59-f403-481c-9b2c-dcdb7128f31a",
+        "text": "该配置声明 vector_store_ids、max_num_results、include_search_results、ranking_options、filters，name 返回 file_search。注释将结果上限描述为 1 至 50，None 或零采用提供方默认；这里只看见字段与约定，没有检索执行、排序算法或范围校验实现。",
+        "conditions": [
+          "仅据固定版本的已读源码片段；未作运行验证。"
+        ]
+      }
+    ],
+    "citations": [
+      {
+        "citation_id": "2658cac4-ecfd-45f7-98b6-5519f3bf4675",
+        "source_id": "53a87df0-b205-4eb7-9615-151faf13e4af",
+        "repository": "openai/openai-agents-python",
+        "commit": "814de8b1cfdaf6c70212dca9ca23563dd0b789ac",
+        "path": "src/agents/tool.py",
+        "start_line": 814,
+        "end_line": 815,
+        "quote": "@dataclass\nclass FileSearchTool:",
+        "file_hash": "fdbc586a84448031f31ce55eafc501fb294c61051f4a60131d93f740734ab64d",
+        "quote_hash": "7aa2263eb3fa8b4c6020383be1edda79a43c06dbd3c555b0adb06cc898622ffc",
+        "read_id": "5aaa1583-5d4f-4995-a7f1-38db92932387"
+      },
+      {
+        "citation_id": "527bbd7e-e18e-4724-8993-9a660db5afb6",
+        "source_id": "53a87df0-b205-4eb7-9615-151faf13e4af",
+        "repository": "openai/openai-agents-python",
+        "commit": "814de8b1cfdaf6c70212dca9ca23563dd0b789ac",
+        "path": "src/agents/tool.py",
+        "start_line": 816,
+        "end_line": 821,
+        "quote": "    \"\"\"A hosted tool that lets the LLM search through a vector store. Currently only supported with\n    OpenAI models, using the Responses API.\n    \"\"\"\n\n    vector_store_ids: list[str]\n    \"\"\"The IDs of the vector stores to search.\"\"\"",
+        "file_hash": "fdbc586a84448031f31ce55eafc501fb294c61051f4a60131d93f740734ab64d",
+        "quote_hash": "09b4cc01520f149a51e79403fd22f118480ddd86ce9eb592b37575e6101392fd",
+        "read_id": "66941dd4-087d-4ef7-96d4-710ba2f5db5d"
+      },
+      {
+        "citation_id": "75b02684-128c-457a-8782-5cb741f215a0",
+        "source_id": "53a87df0-b205-4eb7-9615-151faf13e4af",
+        "repository": "openai/openai-agents-python",
+        "commit": "814de8b1cfdaf6c70212dca9ca23563dd0b789ac",
+        "path": "src/agents/tool.py",
+        "start_line": 820,
+        "end_line": 839,
+        "quote": "    vector_store_ids: list[str]\n    \"\"\"The IDs of the vector stores to search.\"\"\"\n\n    max_num_results: int | None = None\n    \"\"\"The maximum number of results to return, from 1 through 50. None or zero uses the\n    provider default.\n    \"\"\"\n\n    include_search_results: bool = False\n    \"\"\"Whether to include the search results in the output produced by the LLM.\"\"\"\n\n    ranking_options: RankingOptions | None = None\n    \"\"\"Ranking options for search.\"\"\"\n\n    filters: Filters | None = None\n    \"\"\"A filter to apply based on file attributes.\"\"\"\n\n    @property\n    def name(self):\n        return \"file_search\"",
+        "file_hash": "fdbc586a84448031f31ce55eafc501fb294c61051f4a60131d93f740734ab64d",
+        "quote_hash": "90e97f50aecdd809918b74629deeb992381524c76e89557eb4f7bcc7840bfcc5",
+        "read_id": "66941dd4-087d-4ef7-96d4-710ba2f5db5d"
+      }
+    ],
+    "limitations": [
+      "没有读到向量写入、嵌入、索引、召回、排序或检索结果注入生成的实现。",
+      "没有具体应用调用、数据集、部署或实践记录；未进行运行验证。"
+    ],
+    "runtime_observed": false,
+    "synthetic": false
+  },
+  "bindings": {
+    "76e66b97-25bf-4f30-af27-7b637363fc64": {
+      "support_refs": [
+        "2658cac4-ecfd-45f7-98b6-5519f3bf4675",
+        "527bbd7e-e18e-4724-8993-9a660db5afb6"
+      ],
+      "counterevidence_refs": []
+    },
+    "223d6cf8-9952-4bb6-a7a0-96bbf228d3dc": {
+      "support_refs": [
+        "75b02684-128c-457a-8782-5cb741f215a0"
+      ],
+      "counterevidence_refs": []
+    }
+  },
+  "citations": {
+    "2658cac4-ecfd-45f7-98b6-5519f3bf4675": {
+      "citation_id": "2658cac4-ecfd-45f7-98b6-5519f3bf4675",
+      "source_id": "53a87df0-b205-4eb7-9615-151faf13e4af",
+      "repository": "openai/openai-agents-python",
+      "commit": "814de8b1cfdaf6c70212dca9ca23563dd0b789ac",
+      "path": "src/agents/tool.py",
+      "start_line": 814,
+      "end_line": 815,
+      "quote": "@dataclass\nclass FileSearchTool:",
+      "file_hash": "fdbc586a84448031f31ce55eafc501fb294c61051f4a60131d93f740734ab64d",
+      "quote_hash": "7aa2263eb3fa8b4c6020383be1edda79a43c06dbd3c555b0adb06cc898622ffc",
+      "read_id": "5aaa1583-5d4f-4995-a7f1-38db92932387"
+    },
+    "527bbd7e-e18e-4724-8993-9a660db5afb6": {
+      "citation_id": "527bbd7e-e18e-4724-8993-9a660db5afb6",
+      "source_id": "53a87df0-b205-4eb7-9615-151faf13e4af",
+      "repository": "openai/openai-agents-python",
+      "commit": "814de8b1cfdaf6c70212dca9ca23563dd0b789ac",
+      "path": "src/agents/tool.py",
+      "start_line": 816,
+      "end_line": 821,
+      "quote": "    \"\"\"A hosted tool that lets the LLM search through a vector store. Currently only supported with\n    OpenAI models, using the Responses API.\n    \"\"\"\n\n    vector_store_ids: list[str]\n    \"\"\"The IDs of the vector stores to search.\"\"\"",
+      "file_hash": "fdbc586a84448031f31ce55eafc501fb294c61051f4a60131d93f740734ab64d",
+      "quote_hash": "09b4cc01520f149a51e79403fd22f118480ddd86ce9eb592b37575e6101392fd",
+      "read_id": "66941dd4-087d-4ef7-96d4-710ba2f5db5d"
+    },
+    "75b02684-128c-457a-8782-5cb741f215a0": {
+      "citation_id": "75b02684-128c-457a-8782-5cb741f215a0",
+      "source_id": "53a87df0-b205-4eb7-9615-151faf13e4af",
+      "repository": "openai/openai-agents-python",
+      "commit": "814de8b1cfdaf6c70212dca9ca23563dd0b789ac",
+      "path": "src/agents/tool.py",
+      "start_line": 820,
+      "end_line": 839,
+      "quote": "    vector_store_ids: list[str]\n    \"\"\"The IDs of the vector stores to search.\"\"\"\n\n    max_num_results: int | None = None\n    \"\"\"The maximum number of results to return, from 1 through 50. None or zero uses the\n    provider default.\n    \"\"\"\n\n    include_search_results: bool = False\n    \"\"\"Whether to include the search results in the output produced by the LLM.\"\"\"\n\n    ranking_options: RankingOptions | None = None\n    \"\"\"Ranking options for search.\"\"\"\n\n    filters: Filters | None = None\n    \"\"\"A filter to apply based on file attributes.\"\"\"\n\n    @property\n    def name(self):\n        return \"file_search\"",
+      "file_hash": "fdbc586a84448031f31ce55eafc501fb294c61051f4a60131d93f740734ab64d",
+      "quote_hash": "90e97f50aecdd809918b74629deeb992381524c76e89557eb4f7bcc7840bfcc5",
+      "read_id": "66941dd4-087d-4ef7-96d4-710ba2f5db5d"
+    }
+  },
+  "reviewer_standalone_claim_ids": [
+    "c336a1ce-770b-440e-bc2a-71fb3616537d"
+  ],
+  "coverage_elements": [
+    {
+      "element_id": "c5053e35-2a31-4366-99c2-84c19cf961ba",
+      "claim_id": "c336a1ce-770b-440e-bc2a-71fb3616537d",
+      "fact_atom_id": "76e66b97-25bf-4f30-af27-7b637363fc64",
+      "fact_bound": true,
+      "conditions_preserved": true,
+      "standalone": true,
+      "reason": "原文明确以 FileSearchTool 为主语，托管向量库搜索用途与 OpenAI 模型的 Responses API 适用范围均由所给独立源码引文支持。措辞为说明中的定义，未将文档意图升级为运行事实；原事实及其条件保留固定版本、已读片段、未运行验证及非完整 RAG 实现的边界。单事实发布视图本身保留这些内容，不依赖原标题、其他事实或 Topic/Facet。"
+    },
+    {
+      "element_id": "d51ea1d6-9e83-453e-b6ce-a2797ff8bccc",
+      "claim_id": "f5b56c59-f403-481c-9b2c-dcdb7128f31a",
+      "fact_atom_id": "223d6cf8-9952-4bb6-a7a0-96bbf228d3dc",
+      "fact_bound": true,
+      "conditions_preserved": true,
+      "standalone": false,
+      "reason": "在原完整单元中，“该配置”承接前述 FileSearchTool；所列字段、name 返回值及 1 至 50、None 或零的注释约定均与所给独立源码引文一致。原文只陈述声明及注释，并保留仅限已读片段、未运行验证的条件，没有升级为检索执行、排序或范围校验事实。然而该事实的单独发布视图没有 FileSearchTool 主语，“该配置”缺少独立指代，通用标题及限制说明不能补足。因此事实绑定和证据条件通过，但原事实不能独立成立；不借用另一单事实视图或 Reviewer 边界说明补写前提。"
+    }
+  ],
+  "original_reviewer_hash": "d2f684aa946c55f8515ebf86fd86b670031d26c39b2a6b4193c01206310d598a",
+  "original_coverage_hash": "f4c02450ba5bd37d68281fac2f090567eb93b7d0671da1c44c6d2d888dc71368"
+}

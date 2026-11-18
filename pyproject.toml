@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "careerforge"
+version = "1.6.6"
+description = "Evidence-grounded CLI learning with durable agent orchestration"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+  "fastapi>=0.115,<1", "uvicorn>=0.34,<1", "pydantic>=2.10,<3",
+  "sqlalchemy>=2.0,<3", "alembic>=1.14,<2", "httpx>=0.28,<1",
+  "typer>=0.15,<1", "rich>=13,<16", "argon2-cffi>=23,<26",
+  "prometheus-client>=0.21,<1", "opentelemetry-api>=1.30,<2",
+  "opentelemetry-sdk>=1.30,<2"
+]
+[project.optional-dependencies]
+workflows = ["langgraph==1.0.3", "langgraph-checkpoint-postgres==3.0.1", "psycopg[binary,pool]==3.3.8"]
+production = [
+  "psycopg[binary,pool]>=3.2,<4", "redis>=5,<7", "celery>=5.4,<6",
+  "pgvector>=0.3,<1", "tree-sitter>=0.25,<0.26",
+  "tree-sitter-javascript>=0.23,<0.26", "tree-sitter-typescript>=0.23,<0.24",
+  "tree-sitter-go>=0.23,<0.26", "opentelemetry-exporter-otlp-proto-http>=1.30,<2"
+]
+dev = ["pytest>=8,<10", "pytest-asyncio>=0.25,<2", "pytest-xdist==3.8.0", "ruff>=0.9,<1", "mypy>=1.14,<2", "jsonschema>=4,<5"]
+[project.scripts]
+careerforge = "careerforge.cli.main:app"
+[tool.setuptools.packages.find]
+where = ["src"]
+[tool.setuptools.package-data]
+careerforge = ["data/*.json", "web/*.html", "web/*.css", "web/*.js", "web/*.svg"]
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = ["production: requires real PostgreSQL/pgvector/Redis/Celery", "live: requires explicit live provider consent", "sandbox: requires Docker"]
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+# Byte-exact source-as-data fixtures are hash-checked and must not be reformatted.
+[tool.ruff.format]
+exclude = ["tests/fixtures/public_c09/fixtures/synthetic_lab/*.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+ignore = ["E501"]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Header", "fastapi.Query"]
+
+[tool.ruff.lint.per-file-ignores]
+# This source-checkout demo deliberately loads explicit fixture helpers after path setup.
+"scripts/demo_offline.py" = ["E402"]
+"scripts/run_agent_input_live.py" = ["E402"]
+"scripts/audit_agent_input_run.py" = ["E402"]
+"scripts/codex_subscription_bridge.py" = ["E402"]
+
+[tool.mypy]
+warn_unused_ignores = true

@@ -1,0 +1,472 @@
+{
+  "provenance": "Public native RC3 continuous-run inputs, 2026-11-05. Not Gold/holdout; no synthetic answer target is injected into product retrieval.",
+  "publications": [
+    {
+      "publication_id": "382897a6-5a30-4bc5-8076-9a1b86a9c349",
+      "unit_version_id": "b5eba239-da80-47e6-a8b5-4373af69bc0a",
+      "unit_id": "c88e7c65-bc16-4502-b570-301e841fcdbf",
+      "unit_type": "architecture",
+      "origin_kind": "repository",
+      "title": "模块分工与局部衔接",
+      "source_id": "61ff6cdd-3bc6-4180-9628-d78b1a5401ff",
+      "repository": "openai/openai-agents-python",
+      "commit": "814de8b1cfdaf6c70212dca9ca23563dd0b789ac",
+      "namespace_id": "820e68d2-4e1e-4055-945c-cea96cec1229",
+      "topic_links": [
+        {
+          "id": "000f67c5-f098-4ee5-907e-89102ecc585d",
+          "topic_key": "agent.tool_calling",
+          "relation": "implements",
+          "topic_version": 1,
+          "topic_version_id": "acea94fe-4213-5926-9532-e28f1d5f6cb0"
+        },
+        {
+          "id": "a7020654-9c92-433c-b4bf-2f8ca3847c13",
+          "topic_key": "agent.loop",
+          "relation": "implements",
+          "topic_version": 1,
+          "topic_version_id": "ca46ea48-e444-5aee-a7e6-4f527edc82db"
+        }
+      ],
+      "facets": [
+        {
+          "id": "f17ba2d3-fa1e-4f68-946f-4661edab2897",
+          "topic_key": "agent.tool_calling",
+          "facet_key": "registration",
+          "schema_version": 1,
+          "facet_schema_id": "fd15560f-6773-5ada-b2b0-14f03bda7642",
+          "unit": null,
+          "applicability_reason": "仅描述已读静态实现。",
+          "value_status": "known",
+          "value": "构造器装配函数回调，包装后绑定到 FunctionTool.on_invoke_tool。",
+          "claim_ids": [
+            "ddbe9ad6-3694-414a-bfae-1fb36eeb272d",
+            "a5614338-2c38-42c3-b078-1f303608ad93"
+          ]
+        }
+      ],
+      "facts": [
+        {
+          "fact_atom_id": "ce981eb7-7014-400f-8a89-676ff01fd6d1",
+          "claim_id": "ddbe9ad6-3694-414a-bfae-1fb36eeb272d",
+          "text": "tool.py 的装配路径在 func 可调用时进入 _create_function_tool，否则返回调用该构造器的 decorator；工具构造调用把 _on_invoke_tool_impl 作为 invoke_tool_impl 传给 _build_wrapped_function_tool。",
+          "conditions": []
+        },
+        {
+          "fact_atom_id": "e33279bc-80b5-48a8-bc2b-ff54d57201cb",
+          "claim_id": "a5614338-2c38-42c3-b078-1f303608ad93",
+          "text": "_build_wrapped_function_tool 调用 _with_context_function_tool_failure_error_handler 包装 invoke_tool_impl 与 on_handled_error，再把包装结果作为 FunctionTool 的 on_invoke_tool；sync_invoker 为真时设置同步工具标记。",
+          "conditions": []
+        },
+        {
+          "fact_atom_id": "9e430bd4-4521-475d-bca3-1d5b09f0cc52",
+          "claim_id": "326ddced-5960-459d-834c-3111b1e4d0c3",
+          "text": "run.py 的已读分支处理下一步：NextStepHandoff 更新 current_agent，在 run_state 存在时同步其代理，并替换输入；NextStepRunAgain 等待 save_turn_items_if_needed 后 continue。",
+          "conditions": [
+            "仅对应所引 next_step 分支；未读该结果的生成过程。"
+          ]
+        },
+        {
+          "fact_atom_id": "a99e01dc-52da-49b0-8881-6ae30a92c181",
+          "claim_id": "16cf3e80-1d1c-4ab8-a353-740ddf3aaa42",
+          "text": "run.py 在该 finally 块清空 turn_result.pre_step_items 与 new_step_items。",
+          "conditions": []
+        }
+      ],
+      "citations": [
+        {
+          "citation_id": "4705dd40-598e-42ed-a3ae-a8efb0d38050",
+          "source_id": "61ff6cdd-3bc6-4180-9628-d78b1a5401ff",
+          "repository": "openai/openai-agents-python",
+          "commit": "814de8b1cfdaf6c70212dca9ca23563dd0b789ac",
+          "path": "src/agents/tool.py",
+          "start_line": 2901,
+          "end_line": 2909,
+          "quote": "    # If func is actually a callable, we were used as @function_tool with no parentheses\n    if callable(func):\n        return _create_function_tool(func)\n\n    # Otherwise, we were used as @function_tool(...), so return a decorator\n    def decorator(real_func: ToolFunction[...]) -> FunctionTool:\n        return _create_function_tool(real_func)\n\n    return decorator\n",
+          "file_hash": "fdbc586a84448031f31ce55eafc501fb294c61051f4a60131d93f740734ab64d",
+          "quote_hash": "b7101e4a47233c2108bc9cb493f7169a5f83e93a9321c5feed9f0ebc3a44389c",
+          "read_id": "97601270-d1af-4dee-9eaf-a4cd5692bb42"
+        },
+        {
+          "citation_id": "436bf27c-326b-4c9f-bb76-db242c8e94ac",
+          "source_id": "61ff6cdd-3bc6-4180-9628-d78b1a5401ff",
+          "repository": "openai/openai-agents-python",
+          "commit": "814de8b1cfdaf6c70212dca9ca23563dd0b789ac",
+          "path": "src/agents/tool.py",
+          "start_line": 2873,
+          "end_line": 2877,
+          "quote": "        function_tool = _build_wrapped_function_tool(\n            name=schema.name,\n            description=schema.description or \"\",\n            params_json_schema=schema.params_json_schema,\n            invoke_tool_impl=_on_invoke_tool_impl,\n",
+          "file_hash": "fdbc586a84448031f31ce55eafc501fb294c61051f4a60131d93f740734ab64d",
+          "quote_hash": "124c0be49170d6bd958968e47e93ef024c38cf448904945ff3f6ffc340695440",
+          "read_id": "97601270-d1af-4dee-9eaf-a4cd5692bb42"
+        },
+        {
+          "citation_id": "7f60cfb1-cd66-4d9e-a218-6889bf133948",
+          "source_id": "61ff6cdd-3bc6-4180-9628-d78b1a5401ff",
+          "repository": "openai/openai-agents-python",
+          "commit": "814de8b1cfdaf6c70212dca9ca23563dd0b789ac",
+          "path": "src/agents/tool.py",
+          "start_line": 770,
+          "end_line": 782,
+          "quote": "    on_invoke_tool = _with_context_function_tool_failure_error_handler(\n        invoke_tool_impl,\n        on_handled_error,\n    )\n    if sync_invoker:\n        setattr(on_invoke_tool, _SYNC_FUNCTION_TOOL_MARKER, True)\n\n    return set_function_tool_failure_error_function(\n        FunctionTool(\n            name=name,\n            description=description,\n            params_json_schema=params_json_schema,\n            on_invoke_tool=on_invoke_tool,\n",
+          "file_hash": "fdbc586a84448031f31ce55eafc501fb294c61051f4a60131d93f740734ab64d",
+          "quote_hash": "d0c98735ee95ff55eedc45336629811085e4ec079e85eb802dcb0c529a892a1a",
+          "read_id": "8e02b4b6-b7ea-4144-a7e2-0b109aad65c4"
+        },
+        {
+          "citation_id": "548bab48-33fa-4f53-81ad-66d63718c67b",
+          "source_id": "61ff6cdd-3bc6-4180-9628-d78b1a5401ff",
+          "repository": "openai/openai-agents-python",
+          "commit": "814de8b1cfdaf6c70212dca9ca23563dd0b789ac",
+          "path": "src/agents/run.py",
+          "start_line": 2386,
+          "end_line": 2408,
+          "quote": "                        elif isinstance(turn_result.next_step, NextStepHandoff):\n                            current_agent = cast(Agent[TContext], turn_result.next_step.new_agent)\n                            if run_state is not None:\n                                run_state._current_agent = current_agent\n                            # Next agent starts with the nested/filtered input.\n                            # Assign without type annotation to avoid redefinition error\n                            starting_input = turn_result.original_input\n                            original_input = turn_result.original_input\n                            current_span.finish(reset_current=True)\n                            current_span = None\n                            should_run_agent_start_hooks = True\n                        elif isinstance(turn_result.next_step, NextStepRunAgain):\n                            await save_turn_items_if_needed(\n                                session=session,\n                                run_state=run_state,\n                                session_persistence_enabled=session_persistence_enabled,\n                                input_guardrail_results=input_guardrail_results,\n                                items=session_items_for_turn(turn_result),\n                                response_id=turn_result.model_response.response_id,\n                                store=store_setting,\n                                wrapper=context_wrapper,\n                            )\n                            continue\n",
+          "file_hash": "3cdd652446db22646f24dd8e283dc39d54724a7a76822856c17e39a8f549d997",
+          "quote_hash": "5a7ecb1f51ebb55d24dc88b771c8f4e1e43c1e4fe395b15b97ff545acda99b66",
+          "read_id": "60079ffa-6fc2-40bc-9e7b-dc9383ed9166"
+        },
+        {
+          "citation_id": "24481352-5db5-4900-8ec5-a1abf80c3a3d",
+          "source_id": "61ff6cdd-3bc6-4180-9628-d78b1a5401ff",
+          "repository": "openai/openai-agents-python",
+          "commit": "814de8b1cfdaf6c70212dca9ca23563dd0b789ac",
+          "path": "src/agents/run.py",
+          "start_line": 2413,
+          "end_line": 2419,
+          "quote": "                    finally:\n                        # execute_tools_and_side_effects returns a SingleStepResult that\n                        # stores direct references to the `pre_step_items` and `new_step_items`\n                        # lists it manages internally. Clear them here so the next turn does not\n                        # hold on to items from previous turns and to avoid leaking agent refs.\n                        turn_result.pre_step_items.clear()\n                        turn_result.new_step_items.clear()\n",
+          "file_hash": "3cdd652446db22646f24dd8e283dc39d54724a7a76822856c17e39a8f549d997",
+          "quote_hash": "7903c61321cb8fba6b7ba12cd8ddfb4952108dc61475b09b98aa2a9b81cc428c",
+          "read_id": "18747325-629c-4734-a45a-e3443ac2b3b3"
+        }
+      ],
+      "limitations": [
+        "run.py 到函数工具调度器的直接调用及结果项构造未读，不能把两个局部片段拼成已验证的端到端调用链。",
+        "_build_wrapped_function_tool 的 797–800 行未返回；错误包装器和 FunctionTool 类内部未读。"
+      ],
+      "runtime_observed": false,
+      "synthetic": false
+    },
+    {
+      "publication_id": "bda1ed07-d1b0-4e5b-ba53-f335633a4852",
+      "unit_version_id": "b537a0a0-c29f-4da9-b28f-7c636b7b8f6d",
+      "unit_id": "09ee659c-7009-42a5-9f0a-2ff2f60c383c",
+      "unit_type": "implementation",
+      "origin_kind": "repository",
+      "title": "参数准备与校验边界",
+      "source_id": "61ff6cdd-3bc6-4180-9628-d78b1a5401ff",
+      "repository": "openai/openai-agents-python",
+      "commit": "814de8b1cfdaf6c70212dca9ca23563dd0b789ac",
+      "namespace_id": "820e68d2-4e1e-4055-945c-cea96cec1229",
+      "topic_links": [
+        {
+          "id": "18a287a9-4a71-4e69-9796-f18a7c610429",
+          "topic_key": "agent.tool_calling",
+          "relation": "implements",
+          "topic_version": 1,
+          "topic_version_id": "acea94fe-4213-5926-9532-e28f1d5f6cb0"
+        },
+        {
+          "id": "b29a5d0c-726e-4fb2-82de-29fd8d7f8da9",
+          "topic_key": "code.python",
+          "relation": "illustrates",
+          "topic_version": 1,
+          "topic_version_id": "70390875-b77a-5b01-b210-a4a6db5b22b6"
+        }
+      ],
+      "facets": [
+        {
+          "id": "f3deb20f-36e0-48ce-9360-26d38eee9f82",
+          "topic_key": "agent.tool_calling",
+          "facet_key": "argument_validation",
+          "schema_version": 1,
+          "facet_schema_id": "fd15560f-6773-5ada-b2b0-14f03bda7642",
+          "unit": null,
+          "applicability_reason": "仅描述已读静态实现。",
+          "value_status": "known",
+          "value": "JSON 对象解析、参数模型构造、to_call_args 映射和预备参数身份检查。",
+          "claim_ids": [
+            "54e47897-ee4a-4eaa-9dbb-6ecf882178f7",
+            "e4e3e844-15b0-4fe1-8dd4-256c366b8ede",
+            "ce0a8b91-3486-46ed-97e1-8accf71418be"
+          ]
+        }
+      ],
+      "facts": [
+        {
+          "fact_atom_id": "5391c5da-45cf-4892-8b0b-86a707e16257",
+          "claim_id": "54e47897-ee4a-4eaa-9dbb-6ecf882178f7",
+          "text": "_parse_function_tool_json_input 对非空输入调用 json.loads，空字符串转为空字典；解码失败或结果不是字典时抛出 ModelBehaviorError。解码失败且 DONT_LOG_TOOL_DATA 为真时使用不含原始输入的基础消息，否则消息包含输入并链接原始异常。",
+          "conditions": []
+        },
+        {
+          "fact_atom_id": "e4be92ef-14e2-4f55-bbaf-1b6cae5d7baa",
+          "claim_id": "e4e3e844-15b0-4fe1-8dd4-256c366b8ede",
+          "text": "_prepare_arguments 先解析 JSON；inspect_approval 时深拷贝验证输入，随后构造 schema.params_pydantic_model，调用 schema.to_call_args，并保存 owner、原始参数串、args 和 kwargs。ValidationError 被转为 ModelBehaviorError，错误细节是否保留取决于 DONT_LOG_TOOL_DATA。",
+          "conditions": []
+        },
+        {
+          "fact_atom_id": "899ca4f7-92a6-479e-9170-178dc72d3afc",
+          "claim_id": "ce0a8b91-3486-46ed-97e1-8accf71418be",
+          "text": "调用回调取出并清空 ctx._function_tool_arguments；没有预备值时重新准备，有值但 owner 或原始参数串不匹配时抛 UserError；匹配后从 prepared 中取出 args 与 kwargs。",
+          "conditions": []
+        },
+        {
+          "fact_atom_id": "d217d2bb-e374-482e-bca4-5127a1c567e8",
+          "claim_id": "b536e043-d401-4ca9-9dc7-9cde626d42e9",
+          "text": "_prepare_for_approval 在 can_prepare_without_user_code 为假或检查抛出 Exception 时返回空 args/kwargs 的 PreparedFunctionArguments；否则调用 inspect_approval=True 的准备路径。该检查函数被绑定到回调的 __agents_prepare_arguments__ 属性。",
+          "conditions": []
+        }
+      ],
+      "citations": [
+        {
+          "citation_id": "6886cd7f-9777-4a78-9f01-50297b1a22be",
+          "source_id": "61ff6cdd-3bc6-4180-9628-d78b1a5401ff",
+          "repository": "openai/openai-agents-python",
+          "commit": "814de8b1cfdaf6c70212dca9ca23563dd0b789ac",
+          "path": "src/agents/tool.py",
+          "start_line": 1963,
+          "end_line": 1986,
+          "quote": "def _parse_function_tool_json_input(*, tool_name: str, input_json: str) -> dict[str, Any]:\n    \"\"\"Decode raw tool arguments with consistent diagnostics.\"\"\"\n    json_decode_error: Exception | None = None\n    try:\n        parsed = json.loads(input_json) if input_json else {}\n    except Exception as exc:\n        json_decode_error = exc\n\n    if json_decode_error is not None:\n        base_message = f\"Invalid JSON input for tool {tool_name}\"\n        if _debug.DONT_LOG_TOOL_DATA:\n            logger.debug(base_message)\n            # Raise outside the ``except`` block so the JSONDecodeError, which\n            # carries the raw payload in ``.doc``, is not attached as the\n            # ``__context__`` of the redacted ModelBehaviorError.\n            raise ModelBehaviorError(base_message)\n        detailed_message = f\"{base_message}: {input_json}\"\n        logger.debug(detailed_message)\n        raise ModelBehaviorError(detailed_message) from json_decode_error\n\n    if not isinstance(parsed, dict):\n        raise ModelBehaviorError(f\"Invalid JSON input for tool {tool_name}: expected a JSON object\")\n\n    return parsed\n",
+          "file_hash": "fdbc586a84448031f31ce55eafc501fb294c61051f4a60131d93f740734ab64d",
+          "quote_hash": "f0586da30ada96133bef06b89d7fe7908b551038e0e6d547b4a3cc514da89edd",
+          "read_id": "94518160-13c9-4dbc-8c16-5607c152e5e1"
+        },
+        {
+          "citation_id": "e788a060-3fd1-41c9-b0d1-0837c43697bb",
+          "source_id": "61ff6cdd-3bc6-4180-9628-d78b1a5401ff",
+          "repository": "openai/openai-agents-python",
+          "commit": "814de8b1cfdaf6c70212dca9ca23563dd0b789ac",
+          "path": "src/agents/tool.py",
+          "start_line": 2778,
+          "end_line": 2807,
+          "quote": "        def _prepare_arguments(\n            input: str, tool_name: str, *, inspect_approval: bool = False\n        ) -> PreparedFunctionArguments:\n            json_data = _parse_function_tool_json_input(tool_name=tool_name, input_json=input)\n            # Keep mutable policy input separate from prepared execution values.\n            validation_input = copy.deepcopy(json_data) if inspect_approval else json_data\n            base_message = f\"Invalid JSON input for tool {tool_name}\"\n            validation_failed = False\n            try:\n                parsed = (\n                    schema.params_pydantic_model(**validation_input)\n                    if validation_input\n                    else schema.params_pydantic_model()\n                )\n            except ValidationError as e:\n                if not _debug.DONT_LOG_TOOL_DATA:\n                    raise ModelBehaviorError(f\"{base_message}: {e}\") from e\n                validation_failed = True\n\n            if validation_failed:\n                raise ModelBehaviorError(base_message)\n\n            args, kwargs_dict = schema.to_call_args(parsed)\n            return PreparedFunctionArguments(\n                owner=_prepare_arguments,\n                arguments=input,\n                args=args,\n                kwargs=kwargs_dict,\n                unchanged=inspect_approval and arguments_unchanged(parsed, json_data),\n            )\n",
+          "file_hash": "fdbc586a84448031f31ce55eafc501fb294c61051f4a60131d93f740734ab64d",
+          "quote_hash": "8cd6d7786f557b7180fa0f727babaf94e32108e4bd07d933b561b1c36ca2d4ac",
+          "read_id": "c732eea3-194e-49ae-8ee1-a62dcd0de094"
+        },
+        {
+          "citation_id": "3acbd6ad-704d-404d-b4b7-d515b06b250d",
+          "source_id": "61ff6cdd-3bc6-4180-9628-d78b1a5401ff",
+          "repository": "openai/openai-agents-python",
+          "commit": "814de8b1cfdaf6c70212dca9ca23563dd0b789ac",
+          "path": "src/agents/tool.py",
+          "start_line": 2810,
+          "end_line": 2818,
+          "quote": "            tool_name = ctx.tool_name\n            prepared = ctx._function_tool_arguments\n            ctx._function_tool_arguments = None\n            if prepared is None:\n                prepared = _prepare_arguments(input, tool_name)\n            elif prepared.owner is not _prepare_arguments or prepared.arguments != input:\n                raise UserError(\"Prepared function arguments do not match this invocation.\")\n            _log_function_tool_invocation(tool_name=tool_name, input_json=input)\n            args, kwargs_dict = prepared.args, prepared.kwargs\n",
+          "file_hash": "fdbc586a84448031f31ce55eafc501fb294c61051f4a60131d93f740734ab64d",
+          "quote_hash": "f3a596945a7744f3d2625593f017045d4acde02285a08c34a88a9e0119666a91",
+          "read_id": "bb305382-999d-4acf-9d10-7dba2e614773"
+        },
+        {
+          "citation_id": "d95fe434-6026-49e2-a0bd-171a2dc7e383",
+          "source_id": "61ff6cdd-3bc6-4180-9628-d78b1a5401ff",
+          "repository": "openai/openai-agents-python",
+          "commit": "814de8b1cfdaf6c70212dca9ca23563dd0b789ac",
+          "path": "src/agents/tool.py",
+          "start_line": 2853,
+          "end_line": 2867,
+          "quote": "        def _prepare_for_approval(input: str, tool_name: str) -> PreparedFunctionArguments:\n            if not can_prepare_without_user_code(schema.params_pydantic_model):\n                return PreparedFunctionArguments(\n                    owner=_prepare_arguments, arguments=input, args=[], kwargs={}\n                )\n            try:\n                return _prepare_arguments(input, tool_name, inspect_approval=True)\n            except Exception:\n                # Failed inspection cannot authorize the invocation's error handler.\n                # Revalidate through the ordinary invocation path after approval.\n                return PreparedFunctionArguments(\n                    owner=_prepare_arguments, arguments=input, args=[], kwargs={}\n                )\n\n        cast(Any, _on_invoke_tool_impl).__agents_prepare_arguments__ = _prepare_for_approval\n",
+          "file_hash": "fdbc586a84448031f31ce55eafc501fb294c61051f4a60131d93f740734ab64d",
+          "quote_hash": "edd618101eb67136d631073df25107cade10ad883ba3fe6bf93c28d217c4e98e",
+          "read_id": "3f201e2b-93ca-46d0-8800-e9a1740c1c0f"
+        }
+      ],
+      "limitations": [
+        "Pydantic 模型生成、to_call_args 对具体参数种类的映射及 arguments_unchanged 内部规则未读。",
+        "审批空占位值如何被后续流程识别和重新验证未读；不能据此断言审批通过或绕过校验。"
+      ],
+      "runtime_observed": false,
+      "synthetic": false
+    },
+    {
+      "publication_id": "e32ea309-7f6b-47d2-97f2-e5ea753f6732",
+      "unit_version_id": "fa4b21e8-2779-446b-886b-e72cb52425e4",
+      "unit_id": "41a71d2f-f22c-41f8-ae7e-3789e8d3df0b",
+      "unit_type": "implementation",
+      "origin_kind": "repository",
+      "title": "执行分支与返回边界",
+      "source_id": "61ff6cdd-3bc6-4180-9628-d78b1a5401ff",
+      "repository": "openai/openai-agents-python",
+      "commit": "814de8b1cfdaf6c70212dca9ca23563dd0b789ac",
+      "namespace_id": "820e68d2-4e1e-4055-945c-cea96cec1229",
+      "topic_links": [
+        {
+          "id": "ade74725-0dad-4c33-8312-b356aba9affe",
+          "topic_key": "agent.tool_calling",
+          "relation": "implements",
+          "topic_version": 1,
+          "topic_version_id": "acea94fe-4213-5926-9532-e28f1d5f6cb0"
+        },
+        {
+          "id": "5fe86657-d090-4666-bfe1-beed56902001",
+          "topic_key": "runtime.async",
+          "relation": "integrates",
+          "topic_version": 1,
+          "topic_version_id": "fda63ec1-4173-581a-99ee-2d79b00dee6b"
+        },
+        {
+          "id": "396b7c0b-6026-4351-8e2c-a8b954ff13da",
+          "topic_key": "code.python",
+          "relation": "illustrates",
+          "topic_version": 1,
+          "topic_version_id": "70390875-b77a-5b01-b210-a4a6db5b22b6"
+        }
+      ],
+      "facets": [
+        {
+          "id": "532578c0-de67-4969-b59e-6a7ab62c2277",
+          "topic_key": "agent.tool_calling",
+          "facet_key": "dispatch",
+          "schema_version": 1,
+          "facet_schema_id": "fd15560f-6773-5ada-b2b0-14f03bda7642",
+          "unit": null,
+          "applicability_reason": "仅描述已读静态实现。",
+          "value_status": "known",
+          "value": "按同步标记选择直接 await 或 asyncio.to_thread，并条件传入上下文。",
+          "claim_ids": [
+            "c6cea45a-1b9c-4d79-98de-2c4ec536b31e"
+          ]
+        },
+        {
+          "id": "57b197b0-e11a-453a-b21f-7474071776f0",
+          "topic_key": "agent.tool_calling",
+          "facet_key": "failure_boundary",
+          "schema_version": 1,
+          "facet_schema_id": "fd15560f-6773-5ada-b2b0-14f03bda7642",
+          "unit": null,
+          "applicability_reason": "仅描述已读静态实现。",
+          "value_status": "known",
+          "value": "输出校验 UserError 清空局部结果后重抛；run.py 按错误脱敏状态选择处理分支。",
+          "claim_ids": [
+            "77d17122-417e-4017-a6c1-35a6d77cc9a5",
+            "e63ffafe-aadc-458a-b524-4a60c2cd6a6b"
+          ]
+        },
+        {
+          "id": "290171bf-8a21-419a-99b8-68e97a82e70a",
+          "topic_key": "agent.tool_calling",
+          "facet_key": "result_feedback",
+          "schema_version": 1,
+          "facet_schema_id": "fd15560f-6773-5ada-b2b0-14f03bda7642",
+          "unit": null,
+          "applicability_reason": "仅描述已读静态实现。",
+          "value_status": "known",
+          "value": "已知范围仅为回调：输出校验后的 result 被返回；返回模型的封装未读。",
+          "claim_ids": [
+            "77d17122-417e-4017-a6c1-35a6d77cc9a5"
+          ]
+        }
+      ],
+      "facts": [
+        {
+          "fact_atom_id": "1e4b3ead-38f7-4c3e-88d5-748830a3255b",
+          "claim_id": "c6cea45a-1b9c-4d79-98de-2c4ec536b31e",
+          "text": "is_sync_function_tool 为假时直接 await the_func；为真时 await asyncio.to_thread(the_func, ...)；两个分支均按 schema.takes_context 决定是否传入 ctx。",
+          "conditions": [
+            "同步分类标记的计算过程未读。"
+          ]
+        },
+        {
+          "fact_atom_id": "7bfc6ffd-a5e4-4785-bb78-77b313051486",
+          "claim_id": "77d17122-417e-4017-a6c1-35a6d77cc9a5",
+          "text": "函数结果传入 _validate_function_tool_output，使用其返回值作为 result；若该校验抛 UserError，先把局部 result 置为 None 再重抛。成功路径按 DONT_LOG_TOOL_DATA 选择完成日志或含结果日志，最后 return result。",
+          "conditions": [
+            "这只是回调本地返回，不是模型协议中的结果回传证据。"
+          ]
+        },
+        {
+          "fact_atom_id": "5c4aef96-bef5-4dfb-bc70-01083c9835cc",
+          "claim_id": "e63ffafe-aadc-458a-b524-4a60c2cd6a6b",
+          "text": "run.py 的已读 BaseException 处理先记录 run_exception；若 _is_error_data_redacted 为真则调用 _detach_data_redacted_error_traceback，否则调用 attach_generic_agent_error，并传入 trace_include_sensitive_data 设置。",
+          "conditions": []
+        }
+      ],
+      "citations": [
+        {
+          "citation_id": "0dac52db-5f7d-4d24-9b07-fde297e0ab4c",
+          "source_id": "61ff6cdd-3bc6-4180-9628-d78b1a5401ff",
+          "repository": "openai/openai-agents-python",
+          "commit": "814de8b1cfdaf6c70212dca9ca23563dd0b789ac",
+          "path": "src/agents/tool.py",
+          "start_line": 2823,
+          "end_line": 2832,
+          "quote": "            if not is_sync_function_tool:\n                if schema.takes_context:\n                    result = await the_func(ctx, *args, **kwargs_dict)\n                else:\n                    result = await the_func(*args, **kwargs_dict)\n            else:\n                if schema.takes_context:\n                    result = await asyncio.to_thread(the_func, ctx, *args, **kwargs_dict)\n                else:\n                    result = await asyncio.to_thread(the_func, *args, **kwargs_dict)\n",
+          "file_hash": "fdbc586a84448031f31ce55eafc501fb294c61051f4a60131d93f740734ab64d",
+          "quote_hash": "847011c268bdf8c8ddc40542656986dd0c0452927d83176b188afda6f9d0001f",
+          "read_id": "bb305382-999d-4acf-9d10-7dba2e614773"
+        },
+        {
+          "citation_id": "66aae539-d24f-46a2-9474-5d11380e6dc2",
+          "source_id": "61ff6cdd-3bc6-4180-9628-d78b1a5401ff",
+          "repository": "openai/openai-agents-python",
+          "commit": "814de8b1cfdaf6c70212dca9ca23563dd0b789ac",
+          "path": "src/agents/tool.py",
+          "start_line": 2834,
+          "end_line": 2851,
+          "quote": "            try:\n                result = _validate_function_tool_output(\n                    tool_name=tool_name,\n                    output=result,\n                    output_type_adapter=output_type_adapter,\n                )\n            except UserError:\n                # Output validation failed. Drop the payload-bearing local so a redacted error\n                # cannot leak the raw output through this frame's traceback locals.\n                result = None\n                raise\n\n            if _debug.DONT_LOG_TOOL_DATA:\n                logger.debug(\"Tool %s completed.\", tool_name)\n            else:\n                logger.debug(\"Tool %s returned %s\", tool_name, result)\n\n            return result\n",
+          "file_hash": "fdbc586a84448031f31ce55eafc501fb294c61051f4a60131d93f740734ab64d",
+          "quote_hash": "26c40e5f50dc56140e5c0a981c9040317f0ac4a42b09894df4328cd74d04f0a9",
+          "read_id": "bb305382-999d-4acf-9d10-7dba2e614773"
+        },
+        {
+          "citation_id": "c21cfb23-e571-4fe8-9942-3f5351e0208c",
+          "source_id": "61ff6cdd-3bc6-4180-9628-d78b1a5401ff",
+          "repository": "openai/openai-agents-python",
+          "commit": "814de8b1cfdaf6c70212dca9ca23563dd0b789ac",
+          "path": "src/agents/run.py",
+          "start_line": 2420,
+          "end_line": 2429,
+          "quote": "            except BaseException as exc:\n                run_exception = exc\n                if _is_error_data_redacted(exc):\n                    _detach_data_redacted_error_traceback(exc)\n                else:\n                    attach_generic_agent_error(\n                        current_span,\n                        exc,\n                        trace_include_sensitive_data=run_config.trace_include_sensitive_data,\n                    )\n",
+          "file_hash": "3cdd652446db22646f24dd8e283dc39d54724a7a76822856c17e39a8f549d997",
+          "quote_hash": "1ec83eda615cddd2396ff2dd2da449223e96c62bb3d173aedc7ee7b98db7edcb",
+          "read_id": "18747325-629c-4734-a45a-e3443ac2b3b3"
+        }
+      ],
+      "limitations": [
+        "输出校验器、异常包装器、超时和取消实现未读；不声称任意错误都会变成模型可见结果。",
+        "未读工具结果如何生成消息、关联调用标识或提交给下一轮模型。",
+        "无运行、测试、并发性能、线程取消或用户掌握程度的证据。"
+      ],
+      "runtime_observed": false,
+      "synthetic": false
+    }
+  ],
+  "questions": [
+    {
+      "question": "OpenAI Agents SDK 的函数工具异步调用具体如何执行？",
+      "aliases": [
+        "OpenAI Agents SDK 的函数工具异步调用具体如何执行？",
+        "异步 I/O",
+        "asyncio",
+        "异步",
+        "async",
+        "await"
+      ],
+      "topic_hints": [
+        "runtime.async"
+      ],
+      "selection_id": "98a00c3f-c2cd-4ec8-9ede-5fdab708a440"
+    },
+    {
+      "question": "如果工具是同步 Python 函数，这个实现会直接在事件循环线程执行吗？",
+      "aliases": [
+        "如果工具是同步 Python 函数，这个实现会直接在事件循环线程执行吗？",
+        "Python",
+        "python"
+      ],
+      "topic_hints": [
+        "code.python"
+      ],
+      "selection_id": "18639b92-e1a8-4f5d-b95f-5a4d7c81ae9f"
+    },
+    {
+      "question": "预先准备好的工具参数和这次输入不一致时，会怎么处理？",
+      "aliases": [
+        "预先准备好的工具参数和这次输入不一致时，会怎么处理？"
+      ],
+      "topic_hints": [],
+      "selection_id": "b3fb74ec-8873-4a47-924a-6132ce670322"
+    }
+  ]
+}

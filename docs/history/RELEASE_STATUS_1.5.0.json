@@ -1,0 +1,15 @@
+{
+  "target_version": "CareerForge_v1.5",
+  "package_version": "1.5.0",
+  "delivery_kind": "standalone_implementation_and_offline_test_package",
+  "in_place_upgrade_of_original_repository": false,
+  "original_database_migration_supported": false,
+  "offline_tests": {"passed": 83, "failed": 0, "errors": 0, "skipped": 0, "all_collected_tests_accounted_for": true},
+  "statement_coverage_percent": 78.43137254901961,
+  "wheel_install_smoke": "passed_with_preinstalled_host_dependencies",
+  "real_provider_calls": 0,
+  "production_external_integration": "not_validated",
+  "specification_coverage": "partial_see_docs/KNOWN_GAPS.md",
+  "whole_product_acceptance": "NOT_PASSED",
+  "truth_boundary": "Offline fixtures do not establish real model quality, production infrastructure behavior, or full specification completion."
+}

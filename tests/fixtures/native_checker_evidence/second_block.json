@@ -1,0 +1,195 @@
+{
+  "purpose": "Non-Gold second native pair. Raw citation and 12-space-dedented code display are distinct; original negative verdict unchanged.",
+  "provenance": {
+    "tutor_request": {
+      "relative_path": "learning_closure_trial/model_bridge/requests/1793972592062307811_NEW-SESSION-TUTOR-01_tutor_c5b8b9df.json",
+      "sha256": "6124e000c444bb791500c7270666f52576df3cac958d7edeb8bd7f8124d220a3"
+    },
+    "tutor_response": {
+      "relative_path": "learning_closure_trial/model_bridge/responses/1793972592062307811_NEW-SESSION-TUTOR-01_tutor_c5b8b9df.json",
+      "sha256": "d3d29b0903cffcd0c96b38e2c7c2abaf7eeac0b7ba818c01e018b6baed9cdc85"
+    },
+    "checker_request": {
+      "relative_path": "learning_closure_trial/model_bridge/requests/1793972689364277444_NEW-SESSION-TUTOR-01_answer_checker_5385fc74.json",
+      "sha256": "e86259206f5db48f6f2f46b6f4e6b9cf47ee0dd0394627afdeb0a12e01c79073"
+    },
+    "checker_response": {
+      "relative_path": "learning_closure_trial/model_bridge/responses/1793972689364277444_NEW-SESSION-TUTOR-01_answer_checker_5385fc74.json",
+      "sha256": "b5a9ab384578c6145c589c9114c95d313f6aa16619efb029d1a0db2a724ac387"
+    },
+    "runtime_snapshot": {
+      "relative_path": "learning_closure_trial/evidence/runtime_snapshot.json",
+      "sha256": "da44ad67a7e24c3a04b0ee9a262ce20fcaccee05cc786b328f64cf463f9acb7f"
+    }
+  },
+  "unit": {
+    "publication_id": "90a19cf3-6771-41be-9d57-590237dc96e4",
+    "unit_version_id": "e396d7e5-953b-43cc-9351-5b837d8afcab",
+    "unit_id": "ee08638b-fd49-4eb4-bc97-b687be97003c",
+    "unit_type": "architecture",
+    "origin_kind": "repository",
+    "title": "已独立核验的部分事实",
+    "source_id": "53a87df0-b205-4eb7-9615-151faf13e4af",
+    "repository": "openai/openai-agents-python",
+    "commit": "814de8b1cfdaf6c70212dca9ca23563dd0b789ac",
+    "namespace_id": "898c9927-49f1-4022-be55-280e18891ca9",
+    "topic_links": [],
+    "facets": [],
+    "facts": [
+      {
+        "fact_atom_id": "af7a66e0-5026-4fec-b546-af3a20f4f39d",
+        "claim_id": "9d1f70cd-e127-421d-8aed-a7ff7ce9bd5a",
+        "text": "_on_invoke_tool_impl 取出并清空上下文中的预备参数；没有预备参数时调用 _prepare_arguments，已有参数的 owner 或原始输入不匹配则抛 UserError。",
+        "conditions": [
+          "仅据固定版本的已读源码片段；未作运行验证。"
+        ],
+        "kind": "source_fact"
+      }
+    ],
+    "citations": [
+      {
+        "citation_id": "956e71fb-3ca4-49c3-90a6-aa31687474c1",
+        "source_id": "53a87df0-b205-4eb7-9615-151faf13e4af",
+        "repository": "openai/openai-agents-python",
+        "commit": "814de8b1cfdaf6c70212dca9ca23563dd0b789ac",
+        "path": "src/agents/tool.py",
+        "start_line": 2811,
+        "end_line": 2816,
+        "quote": "            prepared = ctx._function_tool_arguments\n            ctx._function_tool_arguments = None\n            if prepared is None:\n                prepared = _prepare_arguments(input, tool_name)\n            elif prepared.owner is not _prepare_arguments or prepared.arguments != input:\n                raise UserError(\"Prepared function arguments do not match this invocation.\")",
+        "file_hash": "fdbc586a84448031f31ce55eafc501fb294c61051f4a60131d93f740734ab64d",
+        "quote_hash": "38cf744a9e87a650c00df3e3d0528d829cee3028c3a49b8deadb336efde4a944",
+        "read_id": "b6080a98-7a44-4c4c-96de-c5bd6ed58590"
+      }
+    ],
+    "limitations": [
+      "仅限本固定来源提交与实际引用片段；没有执行验证。",
+      "仅保留原版本中独立核验的部分事实；原标题、主题、维度和整体描述未随子集发布，不代表原任务已完成。"
+    ],
+    "runtime_observed": false,
+    "synthetic": false,
+    "consumer_context": {
+      "contract": "reviewed-standalone-consumer-1.6.6-v1",
+      "publication_id": "90a19cf3-6771-41be-9d57-590237dc96e4",
+      "unit_version_id": "e396d7e5-953b-43cc-9351-5b837d8afcab",
+      "review_id": "06445cee-6480-4bc8-b15b-eb005c2b87ec",
+      "review_hash": "f0dc90a0fdba85021491818ffdd6fe172d269c0a3880b0a58c10dc94326754a8",
+      "policy": "only_positive_independent_standalone_facts",
+      "facts": {
+        "029e4eae-01ee-4339-97a8-51a8f3cdc94c": {
+          "claim_id": "9fa9492b-0d5e-4843-b0f0-3bd8b67cb289",
+          "standalone": true,
+          "reason": "independently_reviewed_standalone"
+        },
+        "af7a66e0-5026-4fec-b546-af3a20f4f39d": {
+          "claim_id": "9d1f70cd-e127-421d-8aed-a7ff7ce9bd5a",
+          "standalone": true,
+          "reason": "independently_reviewed_standalone"
+        },
+        "25516922-7495-4eb3-804b-4ccc5d6b91e3": {
+          "claim_id": "4f9c5b93-bd42-4350-9f81-9728f7b08629",
+          "standalone": true,
+          "reason": "independently_reviewed_standalone"
+        },
+        "a24b8d49-4507-4204-b390-2e828a5b1775": {
+          "claim_id": "256bdcb6-3cb2-43b1-a7d5-a67be1ddfc6f",
+          "standalone": true,
+          "reason": "independently_reviewed_standalone"
+        },
+        "dadfb8db-913f-4c63-b664-6669a8543e18": {
+          "claim_id": "87f0a393-b604-417c-8f30-af8d4729abf3",
+          "standalone": true,
+          "reason": "independently_reviewed_standalone"
+        }
+      }
+    },
+    "publication_scope": {
+      "contract_version": "claim-scoped-publication-1.6.6",
+      "status": "partial",
+      "derivation_hash": "f64085272878dce476f00575b4d3c2f4586518c48fec1086efdc8f97be8f978b",
+      "retained_claim_ids": [
+        "9fa9492b-0d5e-4843-b0f0-3bd8b67cb289",
+        "9d1f70cd-e127-421d-8aed-a7ff7ce9bd5a",
+        "4f9c5b93-bd42-4350-9f81-9728f7b08629",
+        "256bdcb6-3cb2-43b1-a7d5-a67be1ddfc6f",
+        "87f0a393-b604-417c-8f30-af8d4729abf3"
+      ],
+      "quarantined_claim_count": 4,
+      "whole_unit_complete": false,
+      "task_satisfied": false
+    }
+  },
+  "bindings": {
+    "af7a66e0-5026-4fec-b546-af3a20f4f39d": {
+      "support_refs": [
+        "956e71fb-3ca4-49c3-90a6-aa31687474c1"
+      ],
+      "counterevidence_refs": []
+    }
+  },
+  "session_scope": {
+    "plan_id": "084b9ff4-bd0a-4f48-a8e2-cd6ac70bca5b",
+    "version_id": "93ad9875-99b8-4a25-b053-ac4f7ceb9b68",
+    "module_id": "82a9c03e-0b13-4c51-8e5f-01148b7569aa",
+    "module_content_hash": "dd18aaf55ee4cf07cedfee126791a8e69eaa1b565b3b8463beecd6755319afce",
+    "publication_id": "90a19cf3-6771-41be-9d57-590237dc96e4",
+    "unit_version_id": "e396d7e5-953b-43cc-9351-5b837d8afcab",
+    "source_id": "53a87df0-b205-4eb7-9615-151faf13e4af",
+    "activity_kind": "reading",
+    "snapshot_hash": "e25b65da2053ed9018a9a88de995abf6846c3f722167f836eadd1d5316961e4c",
+    "focus_fact_ids": [
+      "af7a66e0-5026-4fec-b546-af3a20f4f39d"
+    ],
+    "selection_manifest_id": "783f0e40-c98e-4443-9285-9eb7374c10bd",
+    "scope": "current_block_fact_within_selected_module"
+  },
+  "legacy_checker_context": {
+    "question": "请按本次已采纳计划的当前阅读模块讲解已审核源码，保留事实条件与证据边界。",
+    "proposed_block": {
+      "kind": "repository_fact",
+      "text": "```python\nprepared = ctx._function_tool_arguments\nctx._function_tool_arguments = None\nif prepared is None:\n    prepared = _prepare_arguments(input, tool_name)\nelif prepared.owner is not _prepare_arguments or prepared.arguments != input:\n    raise UserError(\"Prepared function arguments do not match this invocation.\")\n```\n\n_on_invoke_tool_impl 取出并清空上下文中的预备参数；没有预备参数时调用 _prepare_arguments，已有参数的 owner 或原始输入不匹配则抛 UserError。\n\n来源：openai/openai-agents-python，提交 814de8b1cfdaf6c70212dca9ca23563dd0b789ac，src/agents/tool.py 第 2811–2816 行。\n仅据固定版本的已读源码片段；未作运行验证。",
+      "fact_atom_ids": [
+        "af7a66e0-5026-4fec-b546-af3a20f4f39d"
+      ],
+      "publication_ids": [
+        "90a19cf3-6771-41be-9d57-590237dc96e4"
+      ],
+      "conditions": [
+        "仅据固定版本的已读源码片段；未作运行验证。"
+      ],
+      "transformation": "paraphrase",
+      "style": "code_first"
+    },
+    "facts": [
+      {
+        "fact_atom_id": "af7a66e0-5026-4fec-b546-af3a20f4f39d",
+        "claim_id": "9d1f70cd-e127-421d-8aed-a7ff7ce9bd5a",
+        "text": "_on_invoke_tool_impl 取出并清空上下文中的预备参数；没有预备参数时调用 _prepare_arguments，已有参数的 owner 或原始输入不匹配则抛 UserError。",
+        "conditions": [
+          "仅据固定版本的已读源码片段；未作运行验证。"
+        ],
+        "kind": "source_fact"
+      }
+    ]
+  },
+  "original_checker_output": {
+    "text": "",
+    "structured": {
+      "supported": false,
+      "conditions_preserved": true,
+      "quantifiers_preserved": true,
+      "no_new_project_facts": false,
+      "reasons": [
+        "给定已审核事实直接说明 _on_invoke_tool_impl 的预备参数处理和校验分支，可以帮助回答讲解已审核源码的请求，因此 evidence_relevant 为 true。输入未提供已采纳计划和当前阅读模块，无法进一步核验模块对应关系。",
+        "草稿的自然语言解释与唯一事实一致，完整保留“仅据固定版本的已读源码片段；未作运行验证。”，也保留了没有预备参数时的分支、owner 或原始输入不匹配时的条件与“或”的关系，未增加全称或排他性断言。",
+        "唯一事实只给出行为描述，没有提供原始源码，不能据此核验草稿代码中的具体上下文字段名、调用实参、owner 的身份比较表达式以及 UserError 的完整消息。草稿将这些细节作为带来源定位的代码呈现，而非明确标注的示意实现。",
+        "唯一事实未包含仓库名、具体提交哈希、文件路径或行号；输入也未提供 publication_ids 所指向的内容。因此草稿所写的 openai/openai-agents-python、提交 814de8b1cfdaf6c70212dca9ca23563dd0b789ac、src/agents/tool.py 第 2811–2816 行无法独立核验。这不证明这些细节错误，但整个草稿并非完全由给定唯一事实支持，且引入了未获该事实支持的具体项目信息。"
+      ],
+      "evidence_relevant": true
+    },
+    "tool_calls": [],
+    "finish_reason": "stop",
+    "usage": {},
+    "synthetic": false,
+    "provider_response_id": null
+  }
+}

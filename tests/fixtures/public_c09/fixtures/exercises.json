@@ -1,0 +1,22 @@
+[
+  {
+    "exercise_id": "EX-CACHE",
+    "description": "根据合成 TTLCache 实现判断是否过期，并解释边界；源码来自本包 synthetic_lab，非真实 GitHub 仓库。",
+    "source_path": "fixtures/synthetic_lab/mini_cache.py",
+    "required_observables": [
+      "expiry_compare",
+      "return_on_expired",
+      "no_runtime_fabrication"
+    ]
+  },
+  {
+    "exercise_id": "EX-BRANCH",
+    "description": "阅读合成路由器，在非法目标处报告异常边界，完成一个小变体。",
+    "source_path": "fixtures/synthetic_lab/mini_routes.py",
+    "required_observables": [
+      "allowed_destination",
+      "invalid_destination",
+      "no_runtime_fabrication"
+    ]
+  }
+]

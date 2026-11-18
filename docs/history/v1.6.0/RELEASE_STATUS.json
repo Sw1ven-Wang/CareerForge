@@ -1,0 +1,82 @@
+{
+  "target_specification": "CareerForge_v1.5 (two attached documents, inherited v1.2.1 contracts)",
+  "package_version": "1.6.0",
+  "delivery_kind": "standalone_feature_completion_reliability_and_validation_package",
+  "execution_scope": "dot_workspace_only",
+  "engineering_model_configuration": "gpt-6-astra / max",
+  "in_place_upgrade_of_original_repository": false,
+  "original_database_full_migration_supported": false,
+  "owner_scoped_readonly_legacy_archive_bridge": "implemented_19_whitelisted_content_tables_no_authority_inheritance",
+  "offline_tests": {
+    "tests": 639,
+    "passed": 639,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "real_native_main": {
+    "tests": 23,
+    "passed": 23,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "real_native_retrieval": {
+    "tests": 3,
+    "passed": 3,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "real_native_governance": {
+    "tests": 1,
+    "passed": 1,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "collected_tests": 666,
+  "all_collected_tests_accounted_for": true,
+  "statement_coverage_percent": null,
+  "coverage_provenance": {
+    "scope": "complete release coverage not obtained; no percentage claimed",
+    "initial_coverage_attempt": "validation/v16/final timed out at 1200 seconds without complete JUnit/coverage",
+    "parallel_coverage_attempt": "validation/v16/attempt_parallel_coverage_sigsegv exit -11",
+    "serial_no_coverage_timed_dump_attempt": "validation/v16/attempt_serial_timer_sigsegv exit -11",
+    "controlled_case": "diagnostic_fault/case_comparison.json: timer 1s crashed once and passed once; timer 0 passed",
+    "independent_probe": "diagnostic_fault/independent_probe_report.md: 34 children, all 14 no-timer controls passed, 10 timer-associated SIGSEGV",
+    "validation_runner_remediation": "per-test asynchronous traceback timer explicit opt-in --traceback-after, default 0; hard process timeout and all tests remain",
+    "product_source_unchanged_during_diagnostics": true,
+    "interpreter_root_cause": "not established; no claim CPython itself was fixed"
+  },
+  "instrumented_attempt_warning": "independently reproduced with asynchronous traceback timer; timer now opt-in; exact interpreter fault not fixed or claimed",
+  "source_freeze": {
+    "status": "passed",
+    "file_count": 164,
+    "changed_files": [],
+    "verified_at": "2026-11-02T12:39:16.382613+00:00"
+  },
+  "validation_tool_delta": {
+    "path": "scripts/verify_production.py",
+    "old_hash": "cd1bad40a9bb5620d6ed8c6d7a341bc304dfaa05c45d548fccb01b711f88eff1",
+    "new_hash": "50811e84447b6fdde0aef2e717a5aa7c9231158f83487052c94df5084a80fe49",
+    "reason": "infra zero-source analysis probe must freeze explicit empty taxonomy; product code and all test files unchanged",
+    "affected_regressions": "post_probe_deployment.xml and final real Celery/Outbox verification"
+  },
+  "mypy": "Success: no issues found in 72 source files",
+  "mypy_import_boundary": "precise Celery import-untyped exemption; no global ignore_missing_imports",
+  "wheel_install_smoke": "passed",
+  "native_infrastructure_integration": "passed_infrastructure_only",
+  "real_provider_calls": 0,
+  "docker": "blocked_daemon_and_rootless_prerequisites",
+  "docker_image_build": "not_run",
+  "docker_container_runtime": "not_run",
+  "docker_isolation": "not_run",
+  "remote_ci": "not_triggered",
+  "publication_push_deploy": "not_performed",
+  "production_acceptance": "not_established",
+  "real_gold_or_learning_effectiveness": "not_established",
+  "specification_status": "implemented_bounded_features_with_explicit_remaining_differences_in_docs/KNOWN_GAPS.md",
+  "authoritative_validation": "validation/v16/final_verified/summary.json",
+  "historical_evidence": "validation/current is 1.5.1; validation/v16/final is initial v1.6 coverage attempt: timed out after an outdated assertion failure; not final release evidence"
+}

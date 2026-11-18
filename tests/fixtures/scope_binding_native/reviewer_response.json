@@ -1,0 +1,613 @@
+{
+  "model_output": {
+    "text": "",
+    "structured": {
+      "claim_decisions": [
+        {
+          "claim_id": "c86d0933-8bc1-467b-a5f9-7a8c61e90fd2",
+          "outcome": "supported_within_scope",
+          "independent_reads": [
+            {
+              "read_id": "81d8dc8e-a0b6-4230-bef5-a21176365d6c",
+              "quote": "    def __init__(\n        self,\n        state_schema: type[StateT],\n        context_schema: type[ContextT] | None = None,\n        *,\n        input_schema: type[InputT] | None = None,\n        output_schema: type[OutputT] | None = None,\n        **kwargs: Unpack[DeprecatedKwargs],\n    ) -> None:\n        if (config_schema := kwargs.get(\"config_schema\", MISSING)) is not MISSING:\n            warnings.warn(\n                \"`config_schema` is deprecated and will be removed. Please use `context_schema` instead.\",\n                category=LangGraphDeprecatedSinceV10,\n                stacklevel=2,\n            )\n            if context_schema is None:\n                context_schema = cast(type[ContextT], config_schema)\n\n        if (input_ := kwargs.get(\"input\", MISSING)) is not MISSING:\n            warnings.warn(\n                \"`input` is deprecated and will be removed. Please use `input_schema` instead.\",\n                category=LangGraphDeprecatedSinceV05,\n                stacklevel=2,\n            )\n            if input_schema is None:\n                input_schema = cast(type[InputT], input_)\n\n        if (output := kwargs.get(\"output\", MISSING)) is not MISSING:\n            warnings.warn(\n                \"`output` is deprecated and will be removed. Please use `output_schema` instead.\",\n                category=LangGraphDeprecatedSinceV05,\n                stacklevel=2,\n            )\n            if output_schema is None:\n                output_schema = cast(type[OutputT], output)\n\n        self.nodes = {}\n        self.edges = set()\n        self.branches = defaultdict(dict)\n        self.schemas = {}\n        self.channels = {}\n        self.managed = {}\n        self.compiled = False\n        self.waiting_edges = set()\n\n        self.state_schema = state_schema\n        self.input_schema = cast(type[InputT], input_schema or state_schema)\n        self.output_schema = cast(type[OutputT], output_schema or state_schema)\n        self.context_schema = context_schema\n\n        self._node_defaults: _NodeDefaults = _NodeDefaults()\n\n        self._add_schema(self.state_schema)\n        self._add_schema(self.input_schema, allow_managed=False)\n        self._add_schema(self.output_schema, allow_managed=False)\n"
+            }
+          ],
+          "counterevidence": [],
+          "boundary": "独立构造器原文支持所列容器初始化、schema 回退表达式和三次 _add_schema 调用及参数；原条件已将断言限制为初始化和调用，不证明注册函数的内部行为。单事实视图无需原标题或其他事实才能成立。"
+        },
+        {
+          "claim_id": "7b8785af-39d2-4b1b-ad05-f734b675e063",
+          "outcome": "supported_within_scope",
+          "independent_reads": [
+            {
+              "read_id": "15ecf89b-b469-424d-a259-fa1a9bad3ed5",
+              "quote": "        if isinstance(start_key, str):\n            if start_key == END:\n                raise ValueError(\"END cannot be a start node\")\n            if end_key == START:\n                raise ValueError(\"START cannot be an end node\")\n\n            # run this validation only for non-StateGraph graphs\n            if not hasattr(self, \"channels\") and start_key in set(\n                start for start, _ in self.edges\n            ):\n                raise ValueError(\n                    f\"Already found path for node '{start_key}'.\\n\"\n                    \"For multiple edges, use StateGraph with an Annotated state key.\"\n                )\n\n            self.edges.add((start_key, end_key))\n            return self\n\n        for start in start_key:\n            if start == END:\n                raise ValueError(\"END cannot be a start node\")\n            if start not in self.nodes:\n                raise ValueError(f\"Need to add_node `{start}` first\")\n        if end_key == START:\n            raise ValueError(\"START cannot be an end node\")\n        if end_key != END and end_key not in self.nodes:\n            raise ValueError(f\"Need to add_node `{end_key}` first\")\n\n        self.waiting_edges.add((tuple(start_key), end_key))\n        return self\n"
+            }
+          ],
+          "counterevidence": [],
+          "boundary": "独立 add_edge 方法体支持字符串与列表起点的分路检查、edges 与 waiting_edges 的记录方式。只接受原文所述构建阶段检查，不从 waiting_edges 名称推出等待调度已经实现或运行。单事实视图条件完整。"
+        },
+        {
+          "claim_id": "defe49be-3e27-4d79-aeb6-2fe902025e54",
+          "outcome": "supported_within_scope",
+          "independent_reads": [
+            {
+              "read_id": "15ecf89b-b469-424d-a259-fa1a9bad3ed5",
+              "quote": "    def add_edge(self, start_key: str | list[str], end_key: str) -> Self:\n        \"\"\"Add a directed edge from the start node (or list of start nodes) to the end node.\n\n        When a single start node is provided, the graph will wait for that node to complete\n        before executing the end node. When multiple start nodes are provided,\n        the graph will wait for ALL of the start nodes to complete before executing the end node.\n"
+            }
+          ],
+          "counterevidence": [],
+          "boundary": "引文是 add_edge 的函数文档，原断言明确属于 documented_intent，且保留未读取或运行调度实现的条件。独立视图没有把接口说明改作实测结论。"
+        },
+        {
+          "claim_id": "4e56987c-aaac-4389-b7fe-75048d05ee2a",
+          "outcome": "supported_within_scope",
+          "independent_reads": [
+            {
+              "read_id": "2ae04ff7-759b-4bb7-9ce7-732651c61a9f",
+              "quote": "        # find a name for the condition\n        path = coerce_to_runnable(path, name=None, trace=True)\n        name = path.name or \"condition\"\n        # validate the condition\n        if name in self.branches[source]:\n            raise ValueError(\n                f\"Branch with name `{path.name}` already exists for node `{source}`\"\n            )\n        # save it\n        self.branches[source][name] = BranchSpec.from_path(path, path_map, True)\n        if schema := self.branches[source][name].input_schema:\n            self._add_schema(schema)\n        return self\n"
+            },
+            {
+              "read_id": "90aeb3bc-fba6-47ff-8ffd-154c2e4595fa",
+              "quote": "        # infer input schema\n        input_schema = _get_branch_path_input_schema(path) if infer_schema else None\n        # create branch\n        return cls(path=path, ends=path_map_, input_schema=input_schema)\n"
+            }
+          ],
+          "counterevidence": [],
+          "boundary": "独立 add_conditional_edges 方法体和 BranchSpec.from_path 的推断调用支持分支命名、同一 source 下的重名拒绝、保存与条件性 schema 注册。仅核验这些静态调用，未核验转换器或注册器内部，也未推出运行路由行为。原单事实可独立成立。"
+        },
+        {
+          "claim_id": "b4007855-4dd3-4cfa-9483-1277f3503232",
+          "outcome": "supported_within_scope",
+          "independent_reads": [
+            {
+              "read_id": "9f23cab6-8b38-4d23-8110-0c5710a6c090",
+              "quote": "        compiled = CompiledStateGraph[StateT, ContextT, InputT, OutputT](\n            builder=self,\n            schema_to_mapper={},\n            context_schema=self.context_schema,\n            nodes={},\n            channels={\n                **self.channels,\n                **self.managed,\n                START: EphemeralValue(self.input_schema),\n            },\n            input_channels=START,\n            stream_mode=\"updates\",\n            output_channels=output_channels,\n            stream_channels=stream_channels,\n            checkpointer=checkpointer,\n            interrupt_before_nodes=interrupt_before,\n"
+            },
+            {
+              "read_id": "d5c316b9-7150-43a5-9957-9a332a169a20",
+              "quote": "            interrupt_after_nodes=interrupt_after,\n            auto_validate=False,\n            debug=debug,\n            store=store,\n            cache=cache,\n            node_error_handler_map=node_error_handler_map,\n            name=name or \"LangGraph\",\n            stream_transformers=transformers,\n        )\n        compiled._serde_allowlist = serde_allowlist\n\n        compiled.attach_node(START, None)\n        for key, node in self.nodes.items():\n            compiled.attach_node(key, node)\n\n        # Record output/state mappers for v2 stream coercion (pydantic/dataclass only)\n        compiled._output_mapper = _pick_mapper(\n            list(output_channels)\n            if isinstance(output_channels, list)\n            else [output_channels],\n            self.output_schema,\n        )\n        compiled._state_mapper = _pick_mapper(\n            list(stream_channels)\n            if isinstance(stream_channels, list)\n            else [stream_channels],\n            self.state_schema,\n        )\n\n        for start, end in self.edges:\n            compiled.attach_edge(start, end)\n\n        for starts, end in self.waiting_edges:\n            compiled.attach_edge(starts, end)\n\n        for start, branches in self.branches.items():\n            for name, branch in branches.items():\n                compiled.attach_branch(start, name, branch)\n\n        return compiled.validate()\n"
+            }
+          ],
+          "counterevidence": [],
+          "boundary": "两个连续独立读取页共同覆盖编译对象构造、配置传入及各 attach_* 调用和返回 validate()。原条件已排除调用成功、运行观察、持久化或调度实现的推断；单事实视图保留了这些必要条件。"
+        }
+      ],
+      "accepted_topic_link_ids": [
+        "256c8f8d-f4ac-43d2-ab51-e301133a4063"
+      ],
+      "accepted_facet_ids": [],
+      "blocking_issues": [
+        "整体 applicability 声称“_branch.py 提供分支规格及局部路由”。本次独立包仅读该文件 41–120 行的输入 schema 推断与 BranchSpec.from_path，没有路径执行或路由方法原文，因此分支规格获证而“局部路由”职责尚未获证，原整体描述不能按原样通过。此缺口不构成五条独立事实的反证，也不是来源完整性失效。"
+      ],
+      "decision": "needs_evidence",
+      "task_coverage": {
+        "contract_version": "research-coverage-1.6.3",
+        "question": {
+          "status": "partial",
+          "explanation": "五条原事实及其单事实视图均由独立原文支持；标题“状态图构建数据与编译装配”符合这些内容，code.python 的 illustrates 关联成立，无待审 Facet。但原整体适用描述中的 _branch.py 局部路由职责未独立核验，整单元仍需证据。原任务另按全部 20 项 JD 要求分别审核，只有局部状态图、分支登记和固定提交源码解释获证，不能宣称全部要求完成、个人掌握提升或运行验证。",
+          "anchors": [
+            {
+              "subject_key": "langgraph.stategraph.assembly",
+              "claim_keys": [
+                "builder_state",
+                "edge_storage",
+                "join_intent",
+                "branch_registration",
+                "compiled_attachment"
+              ]
+            }
+          ],
+          "unresolved_questions": [
+            "补足整体描述中的路由实现证据及下列未覆盖要求。"
+          ]
+        },
+        "dimensions": [
+          {
+            "status": "partial",
+            "explanation": "所核验内容说明状态图构建数据、边和分支登记及编译装配的局部用途；不能据此概括整个项目或 Agent 应用目的。",
+            "anchors": [
+              {
+                "subject_key": "langgraph.stategraph.assembly",
+                "claim_keys": [
+                  "builder_state",
+                  "edge_storage",
+                  "join_intent",
+                  "branch_registration",
+                  "compiled_attachment"
+                ]
+              }
+            ],
+            "unresolved_questions": [
+              "整个项目及其他模块的目的是什么？"
+            ],
+            "dimension": "purpose"
+          },
+          {
+            "status": "partial",
+            "explanation": "独立原文仅支持 state.py 的构建片段与 _branch.py 的 BranchSpec、输入 schema 推断片段。树和符号检索不等于阅读其余架构。",
+            "anchors": [
+              {
+                "subject_key": "langgraph.stategraph.assembly",
+                "claim_keys": [
+                  "builder_state",
+                  "branch_registration",
+                  "compiled_attachment"
+                ]
+              }
+            ],
+            "unresolved_questions": [
+              "其余项目目录、模块实现及依赖关系尚未核验。"
+            ],
+            "dimension": "project_structure"
+          },
+          {
+            "status": "partial",
+            "explanation": "state.py 保存构建数据并调用编译对象装配；_branch.py 已读部分生成分支规格、路径映射和推断输入 schema。未读实际路由方法，不能接受整体 applicability 中“局部路由”的职责结论。",
+            "anchors": [
+              {
+                "subject_key": "langgraph.stategraph.assembly",
+                "claim_keys": [
+                  "builder_state",
+                  "edge_storage",
+                  "branch_registration",
+                  "compiled_attachment"
+                ]
+              }
+            ],
+            "unresolved_questions": [
+              "需独立读取 _branch.py 路由方法才能确认整体描述中的局部路由职责。"
+            ],
+            "dimension": "module_responsibilities"
+          },
+          {
+            "status": "partial",
+            "explanation": "可见 _add_schema、BranchSpec.from_path、CompiledStateGraph 构造和 attach_*/validate 调用；只支持这些静态调用点，尚不能连成运行时节点执行或等待链。",
+            "anchors": [
+              {
+                "subject_key": "langgraph.stategraph.assembly",
+                "claim_keys": [
+                  "builder_state",
+                  "branch_registration",
+                  "compiled_attachment"
+                ]
+              }
+            ],
+            "unresolved_questions": [
+              "attach_*、validate、节点执行及调度的被调用实现是什么？"
+            ],
+            "dimension": "call_flow"
+          },
+          {
+            "status": "partial",
+            "explanation": "已核验容器初始化、边检查与存储、分支登记和编译装配的局部方法体；状态合并、节点注册、持久化与调度未核验。",
+            "anchors": [
+              {
+                "subject_key": "langgraph.stategraph.assembly",
+                "claim_keys": [
+                  "builder_state",
+                  "edge_storage",
+                  "branch_registration",
+                  "compiled_attachment"
+                ]
+              }
+            ],
+            "unresolved_questions": [
+              "其余状态图和执行机制实现仍需读取。"
+            ],
+            "dimension": "implementation"
+          },
+          {
+            "status": "partial",
+            "explanation": "原事实明确区分静态操作与接口文档意图，并限制在固定提交的已读片段。可核验部分非法端点与重名检查，不能外推整个系统的错误处理或并发边界。",
+            "anchors": [
+              {
+                "subject_key": "langgraph.stategraph.assembly",
+                "claim_keys": [
+                  "edge_storage",
+                  "join_intent",
+                  "branch_registration",
+                  "compiled_attachment"
+                ]
+              }
+            ],
+            "unresolved_questions": [
+              "运行时异常、循环终止、并发和持久化边界尚未知。"
+            ],
+            "dimension": "boundaries"
+          },
+          {
+            "status": "unknown",
+            "explanation": "这五条候选事实没有建立经独立证据支持的设计方案比较或项目级取舍。",
+            "anchors": [],
+            "unresolved_questions": [
+              "需要哪些备选方案、约束与实际代价证据才能解释设计取舍？"
+            ],
+            "dimension": "tradeoffs"
+          }
+        ],
+        "requirements": [
+          {
+            "status": "unknown",
+            "explanation": "未读 Agent 评测目的、指标或评测流程。此项与在线反馈、技能迭代为 OR 的介绍项，不能因本候选无覆盖而改作三个硬性要求。",
+            "anchors": [],
+            "unresolved_questions": [
+              "Agent 评测的目的与实现证据在哪里？"
+            ],
+            "requirement_id": "req-06da88b315ddade6e203db50",
+            "demonstrated_depth": null,
+            "dimensions": [
+              {
+                "status": "unknown",
+                "explanation": "本次独立原文没有 Agent 评测 的 purpose 证据，不能由图构建符号或未读文件推定。",
+                "anchors": [],
+                "unresolved_questions": [
+                  "Agent 评测的目的与实现证据在哪里？"
+                ],
+                "dimension": "purpose"
+              }
+            ]
+          },
+          {
+            "status": "unknown",
+            "explanation": "已读图构建片段没有 Celery 使用证据；配置或调用名称不能代替该服务的使用实现。此项仅为加分项，不是录用硬条件。",
+            "anchors": [],
+            "unresolved_questions": [
+              "是否有 Celery 的实际配置、调用或使用材料？"
+            ],
+            "requirement_id": "req-135bb7a5a7b73b1c233a583d",
+            "demonstrated_depth": null,
+            "dimensions": []
+          },
+          {
+            "status": "unknown",
+            "explanation": "未读 FastAPI 实现，也没有个人开发经历证据。该项与 Python 开发经验为 AND，不能由 Python 文件存在替代。",
+            "anchors": [],
+            "unresolved_questions": [
+              "FastAPI 项目实现及个人参与证据是什么？"
+            ],
+            "requirement_id": "req-227f82779f6dc37056f8e380",
+            "demonstrated_depth": null,
+            "dimensions": []
+          },
+          {
+            "status": "unknown",
+            "explanation": "这些事实可作为 Python 源码实例，故 code.python 的 illustrates 关联成立；但第三方仓库源码不能证明某人的 Python 开发经历，个人经验仍未知。",
+            "anchors": [],
+            "unresolved_questions": [
+              "有哪些可归属于该人的 Python 开发工作证据？"
+            ],
+            "requirement_id": "req-22e97db0a854bb7cd04e42eb",
+            "demonstrated_depth": null,
+            "dimensions": []
+          },
+          {
+            "status": "unknown",
+            "explanation": "已读片段没有 向量召回 的目的、实现或边界证据，无法支持“熟悉”。JD 要求代码检索与向量召回至少一种，不要求两种同时具备。",
+            "anchors": [],
+            "unresolved_questions": [
+              "向量召回 的实际实现与限制有哪些？"
+            ],
+            "requirement_id": "req-2bace63bfd357b278aa170ed",
+            "demonstrated_depth": null,
+            "dimensions": [
+              {
+                "status": "unknown",
+                "explanation": "本次独立原文没有 向量召回 的 purpose 证据，不能由图构建符号或未读文件推定。",
+                "anchors": [],
+                "unresolved_questions": [
+                  "向量召回 的实际实现与限制有哪些？"
+                ],
+                "dimension": "purpose"
+              },
+              {
+                "status": "unknown",
+                "explanation": "本次独立原文没有 向量召回 的 implementation 证据，不能由图构建符号或未读文件推定。",
+                "anchors": [],
+                "unresolved_questions": [
+                  "向量召回 的实际实现与限制有哪些？"
+                ],
+                "dimension": "implementation"
+              },
+              {
+                "status": "unknown",
+                "explanation": "本次独立原文没有 向量召回 的 boundaries 证据，不能由图构建符号或未读文件推定。",
+                "anchors": [],
+                "unresolved_questions": [
+                  "向量召回 的实际实现与限制有哪些？"
+                ],
+                "dimension": "boundaries"
+              }
+            ]
+          },
+          {
+            "status": "unknown",
+            "explanation": "图结构和条件分支登记不等于 Agent Loop。未读反复决策、工具执行、状态更新与终止的完整链，不能判定这一 AND 成员已覆盖。",
+            "anchors": [],
+            "unresolved_questions": [
+              "Agent Loop 的循环驱动、状态更新与终止路径在哪里？"
+            ],
+            "requirement_id": "req-2eb44b5ce22c08634426bee8",
+            "demonstrated_depth": null,
+            "dimensions": []
+          },
+          {
+            "status": "partial",
+            "explanation": "候选及独立原文可区分 add_edge 文档意图与方法体中的静态操作，并明确没有运行观察；未读 README，也没有实际运行材料，三类证据的具体对照尚不完整。",
+            "anchors": [
+              {
+                "subject_key": "langgraph.stategraph.assembly",
+                "claim_keys": [
+                  "edge_storage",
+                  "join_intent",
+                  "compiled_attachment"
+                ]
+              }
+            ],
+            "unresolved_questions": [
+              "README 的表述及对应运行观察是否与静态实现一致？"
+            ],
+            "requirement_id": "req-3d9f3d43d167a50a42be7086",
+            "demonstrated_depth": null,
+            "dimensions": []
+          },
+          {
+            "status": "unknown",
+            "explanation": "没有 代码索引工作经历 的个人参与证据，不能从第三方图构建代码推断。保留 JD 的优先或更好属性，不将其升级为硬性条件。",
+            "anchors": [],
+            "unresolved_questions": [
+              "可归属于该人的 代码索引工作经历 材料是什么？"
+            ],
+            "requirement_id": "req-4198975301324d9ef9b7c4d8",
+            "demonstrated_depth": null,
+            "dimensions": []
+          },
+          {
+            "status": "unknown",
+            "explanation": "没有 向量召回接触经历 的个人参与证据，不能从第三方图构建代码推断。保留 JD 的优先或更好属性，不将其升级为硬性条件。",
+            "anchors": [],
+            "unresolved_questions": [
+              "可归属于该人的 向量召回接触经历 材料是什么？"
+            ],
+            "requirement_id": "req-4fe19e948b2e83b93346901b",
+            "demonstrated_depth": null,
+            "dimensions": []
+          },
+          {
+            "status": "partial",
+            "explanation": "已核验图构建容器、边与分支登记及编译装配，可支持局部理解；未覆盖状态合并、实际节点执行和调度，不能把状态图、条件分支与 Agent Loop 的 AND 组整体判定完成。",
+            "anchors": [
+              {
+                "subject_key": "langgraph.stategraph.assembly",
+                "claim_keys": [
+                  "builder_state",
+                  "edge_storage",
+                  "join_intent",
+                  "branch_registration",
+                  "compiled_attachment"
+                ]
+              }
+            ],
+            "unresolved_questions": [
+              "状态合并、节点执行与调度机制尚待独立读取。"
+            ],
+            "requirement_id": "req-71c5f94fb4cb8f94156c512d",
+            "demonstrated_depth": null,
+            "dimensions": []
+          },
+          {
+            "status": "not_applicable",
+            "explanation": "本次固定仓库图构建片段审核不涉及基础模型训练，且 JD 明确“不需要”。这不是训练能力已掌握、仓库不存在训练代码或整个 JD 已满足的结论。",
+            "anchors": [],
+            "unresolved_questions": [],
+            "requirement_id": "req-7ccaf9ef4ffa274dd486b4cf",
+            "demonstrated_depth": null,
+            "dimensions": []
+          },
+          {
+            "status": "unknown",
+            "explanation": "已读片段没有 代码检索 的目的、实现或边界证据，无法支持“熟悉”。JD 要求代码检索与向量召回至少一种，不要求两种同时具备。",
+            "anchors": [],
+            "unresolved_questions": [
+              "代码检索 的实际实现与限制有哪些？"
+            ],
+            "requirement_id": "req-9e97be4c738c4d23bbefd409",
+            "demonstrated_depth": null,
+            "dimensions": [
+              {
+                "status": "unknown",
+                "explanation": "本次独立原文没有 代码检索 的 purpose 证据，不能由图构建符号或未读文件推定。",
+                "anchors": [],
+                "unresolved_questions": [
+                  "代码检索 的实际实现与限制有哪些？"
+                ],
+                "dimension": "purpose"
+              },
+              {
+                "status": "unknown",
+                "explanation": "本次独立原文没有 代码检索 的 implementation 证据，不能由图构建符号或未读文件推定。",
+                "anchors": [],
+                "unresolved_questions": [
+                  "代码检索 的实际实现与限制有哪些？"
+                ],
+                "dimension": "implementation"
+              },
+              {
+                "status": "unknown",
+                "explanation": "本次独立原文没有 代码检索 的 boundaries 证据，不能由图构建符号或未读文件推定。",
+                "anchors": [],
+                "unresolved_questions": [
+                  "代码检索 的实际实现与限制有哪些？"
+                ],
+                "dimension": "boundaries"
+              }
+            ]
+          },
+          {
+            "status": "unknown",
+            "explanation": "没有 检索系统工作经历 的个人参与证据，不能从第三方图构建代码推断。保留 JD 的优先或更好属性，不将其升级为硬性条件。",
+            "anchors": [],
+            "unresolved_questions": [
+              "可归属于该人的 检索系统工作经历 材料是什么？"
+            ],
+            "requirement_id": "req-a43ba9413a7a49cd426d96bd",
+            "demonstrated_depth": null,
+            "dimensions": []
+          },
+          {
+            "status": "unknown",
+            "explanation": "未读技能迭代的目的、版本演进或反馈闭环证据；一般图构建与编译行为不能替代此项。保留 JD 的 OR 介绍项含义。",
+            "anchors": [],
+            "unresolved_questions": [
+              "技能迭代的具体目的与流程证据在哪里？"
+            ],
+            "requirement_id": "req-ad90bd0ba336a18eebdcbf43",
+            "demonstrated_depth": null,
+            "dimensions": [
+              {
+                "status": "unknown",
+                "explanation": "本次独立原文没有 技能迭代 的 purpose 证据，不能由图构建符号或未读文件推定。",
+                "anchors": [],
+                "unresolved_questions": [
+                  "技能迭代的具体目的与流程证据在哪里？"
+                ],
+                "dimension": "purpose"
+              }
+            ]
+          },
+          {
+            "status": "unknown",
+            "explanation": "已读图构建片段没有 Redis 使用证据；配置或调用名称不能代替该服务的使用实现。此项仅为加分项，不是录用硬条件。",
+            "anchors": [],
+            "unresolved_questions": [
+              "是否有 Redis 的实际配置、调用或使用材料？"
+            ],
+            "requirement_id": "req-cf9e38c0a76f94e7eea7a909",
+            "demonstrated_depth": null,
+            "dimensions": []
+          },
+          {
+            "status": "unknown",
+            "explanation": "没有 代码检索接触经历 的个人参与证据，不能从第三方图构建代码推断。保留 JD 的优先或更好属性，不将其升级为硬性条件。",
+            "anchors": [],
+            "unresolved_questions": [
+              "可归属于该人的 代码检索接触经历 材料是什么？"
+            ],
+            "requirement_id": "req-e46490e2bd0b5f6f31beb56d",
+            "demonstrated_depth": null,
+            "dimensions": []
+          },
+          {
+            "status": "partial",
+            "explanation": "五条事实由固定提交的独立方法体或文档原文支持，可解释其局部实现；仍不覆盖整个项目，尤其缺少运行调度及其他 JD 技术要求的实现。",
+            "anchors": [
+              {
+                "subject_key": "langgraph.stategraph.assembly",
+                "claim_keys": [
+                  "builder_state",
+                  "edge_storage",
+                  "join_intent",
+                  "branch_registration",
+                  "compiled_attachment"
+                ]
+              }
+            ],
+            "unresolved_questions": [
+              "如何补足未读模块与其他技术要求的固定提交证据？"
+            ],
+            "requirement_id": "req-eb072be9048f661e7306c0e9",
+            "demonstrated_depth": null,
+            "dimensions": []
+          },
+          {
+            "status": "unknown",
+            "explanation": "已读图构建片段没有 Docker 使用证据；配置或调用名称不能代替该服务的使用实现。此项仅为加分项，不是录用硬条件。",
+            "anchors": [],
+            "unresolved_questions": [
+              "是否有 Docker 的实际配置、调用或使用材料？"
+            ],
+            "requirement_id": "req-ecc0596f8845f9f86a3e1002",
+            "demonstrated_depth": null,
+            "dimensions": []
+          },
+          {
+            "status": "unknown",
+            "explanation": "未读在线反馈的采集、存储或使用目的与实现；构造器配置与分支登记不能证明反馈机制。保留 JD 的 OR 介绍项含义。",
+            "anchors": [],
+            "unresolved_questions": [
+              "在线反馈的目的和实际数据流程是什么？"
+            ],
+            "requirement_id": "req-f0255dfdadb9bbbb642c06d2",
+            "demonstrated_depth": null,
+            "dimensions": [
+              {
+                "status": "unknown",
+                "explanation": "本次独立原文没有 在线反馈 的 purpose 证据，不能由图构建符号或未读文件推定。",
+                "anchors": [],
+                "unresolved_questions": [
+                  "在线反馈的目的和实际数据流程是什么？"
+                ],
+                "dimension": "purpose"
+              }
+            ]
+          },
+          {
+            "status": "partial",
+            "explanation": "已核验条件路径的登记、命名与重名检查、分支规格生成及 attach_branch 调用；未核验路径调用、结果路由和目的节点调度，不能视为完整实现已覆盖。",
+            "anchors": [
+              {
+                "subject_key": "langgraph.stategraph.assembly",
+                "claim_keys": [
+                  "branch_registration",
+                  "compiled_attachment"
+                ]
+              }
+            ],
+            "unresolved_questions": [
+              "分支路径何时调用、结果如何映射并驱动目标节点？"
+            ],
+            "requirement_id": "req-fbe9a46f3acb09ef38fae6af",
+            "demonstrated_depth": null,
+            "dimensions": []
+          }
+        ],
+        "unresolved_questions": [
+          "尚需独立读取 _branch.py 的路径执行与路由方法，以核验整体 applicability 的职责描述。",
+          "项目其余模块及其职责、节点注册、状态合并、attach_*、validate 和实际调度调用链未覆盖。",
+          "Agent Loop 的循环、工具执行与终止机制未核验；不能用条件分支登记代替。",
+          "README 与静态实现尚未对照，没有运行观察，不能宣称任何测试或调度已执行成功。",
+          "代码检索或向量召回至少一种的目的、实现与边界证据仍缺失。",
+          "Python、FastAPI 开发经验及检索或索引参与经历需要可归属于个人的材料。",
+          "Redis、Celery、Docker 的加分项使用证据，以及 Agent 评测、在线反馈或技能迭代的介绍项证据均未覆盖。"
+        ]
+      },
+      "scope_review": {
+        "contract_version": "claim-scoped-review-1.6.6",
+        "unit_version_id": "747b440b-c1a7-4719-afa8-e691a9aa1044",
+        "content_hash": "d3374007f6a4960c4a81fae4311d5c5f07be48f3560b12f04624fe2d563a9521",
+        "render_hash": "5d806e790de113ce698bacbfddb9711e7de351e75e1050a3c2988f0b33891df2",
+        "standalone_claim_ids": [
+          "c86d0933-8bc1-467b-a5f9-7a8c61e90fd2",
+          "7b8785af-39d2-4b1b-ad05-f734b675e063",
+          "defe49be-3e27-4d79-aeb6-2fe902025e54",
+          "4e56987c-aaac-4389-b7fe-75048d05ee2a",
+          "b4007855-4dd3-4cfa-9483-1277f3503232"
+        ],
+        "issue_scopes": [
+          {
+            "issue_index": 0,
+            "scope": "unit",
+            "target_ids": [
+              "747b440b-c1a7-4719-afa8-e691a9aa1044"
+            ]
+          }
+        ],
+        "global_blocking_issues": []
+      }
+    },
+    "tool_calls": [],
+    "finish_reason": "stop",
+    "usage": {},
+    "synthetic": false,
+    "provider_response_id": null
+  }
+}

@@ -1,11 +1,23 @@
-import json
+import sys
 from pathlib import Path
 
-from careerforge.api.app import app
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+import json
+import tempfile
+from pathlib import Path
 
-root = Path(__file__).resolve().parents[1]
-(root / "docs/api").mkdir(parents=True, exist_ok=True)
-(root / "docs/api/openapi.json").write_text(
-    json.dumps(app.openapi(), ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-)
-print("Exported docs/api/openapi.json")
+from careerforge.api import create_app
+from careerforge.application import Application
+from careerforge.config import Settings
+
+# Export schema without initializing production credentials, making requests or bootstrapping an account.
+with tempfile.TemporaryDirectory() as d:
+    service = Application(
+        Settings(mode="development", database_url="sqlite+pysqlite:///" + d + "/schema.db")
+    )
+    schema = create_app(service).openapi()
+    dest = Path("docs/openapi.json")
+    dest.parent.mkdir(exist_ok=True)
+    dest.write_text(json.dumps(schema, ensure_ascii=False, indent=2), encoding="utf-8")
+    service.db.engine.dispose()
+    print(dest)

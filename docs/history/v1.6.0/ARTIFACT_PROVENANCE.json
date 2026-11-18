@@ -1,0 +1,18 @@
+{
+  "created_at": "2026-11-02T12:40:08.431426+00:00",
+  "version": "1.6.0",
+  "source_artifact": "CareerForge_v1.5_实现与测试包.zip",
+  "source_sha256": "1f5d907cb86f3ab59ed4ec09cbef5c04027d5a6d20291d7dc140ae36d9503a97",
+  "checkpoint_v151_sha256": "f811fdc60fd8dab1ab410933612c770d34dd8fbc3afbc691c294cd3a3771c7c9",
+  "originals_and_checkpoint_preserved": true,
+  "engineering_model_configuration": "gpt-6-astra / max",
+  "execution_scope": "dot_workspace_only",
+  "excluded": "virtual environments, node_modules, caches/coverage databases, runtime databases/credentials, system tooling, old wheels",
+  "original_specification_sha256": {
+    "CareerForge_v1.5_技术实现方案.md": "e0f4434dae0664bdc9b0db94d0b0aed011cea69b6276f298a724d5f1381aa2b7",
+    "CareerForge_v1.5_业务架构总览.md": "1f67fc39151326e8e6403780248b5522eb17ebade763971cac1c1ff98c8836b8"
+  },
+  "wheel_matches_tested_source_and_data": true,
+  "frozen_source_file_count": 164,
+  "manifest_is_signature": false
+}

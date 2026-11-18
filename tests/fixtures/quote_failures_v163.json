@@ -1,0 +1,282 @@
+[
+  {
+    "key": "llama_index",
+    "repository_key": "run-llama/llama_index",
+    "commit": "444fdf0684707de62ebb447d658dba137dd9cb99",
+    "path": "llama-index-core/llama_index/core/query_engine/citation_query_engine.py",
+    "file_text": "from typing import Any, List, Optional, Sequence, Union\n\nfrom pydantic import AnyUrl\n\nfrom llama_index.core.base.base_query_engine import BaseQueryEngine\nfrom llama_index.core.base.base_retriever import BaseRetriever\nfrom llama_index.core.base.llms.types import (\n    AudioBlock,\n    ChatMessage,\n    ImageBlock,\n    TextBlock,\n    VideoBlock,\n)\nfrom llama_index.core.base.response.schema import RESPONSE_TYPE\nfrom llama_index.core.callbacks.base import CallbackManager\nfrom llama_index.core.callbacks.schema import CBEventType, EventPayload\nfrom llama_index.core.indices.base import BaseGPTIndex\nfrom llama_index.core.llms.llm import LLM\nfrom llama_index.core.node_parser import SentenceSplitter, TextSplitter\nfrom llama_index.core.postprocessor.types import BaseNodePostprocessor\nfrom llama_index.core.prompts import PromptTemplate, RichPromptTemplate\nfrom llama_index.core.prompts.base import BasePromptTemplate\nfrom llama_index.core.prompts.mixin import PromptMixinType\nfrom llama_index.core.response_synthesizers import (\n    BaseSynthesizer,\n    ResponseMode,\n    get_response_synthesizer,\n)\nfrom llama_index.core.schema import (\n    MediaResource,\n    MetadataMode,\n    Node,\n    NodeWithScore,\n    QueryBundle,\n    TextNode,\n)\nfrom llama_index.core.settings import Settings\n\nCITATION_QA_TEMPLATE = PromptTemplate(\n    \"Please provide an answer based solely on the provided sources. \"\n    \"When referencing information from a source, \"\n    \"cite the appropriate source(s) using their corresponding numbers. \"\n    \"Every answer should include at least one source citation. \"\n    \"Only cite a source when you are explicitly referencing it. \"\n    \"If none of the sources are helpful, you should indicate that. \"\n    \"For example:\\n\"\n    \"Source 1:\\n\"\n    \"The sky is red in the evening and blue in the morning.\\n\"\n    \"Source 2:\\n\"\n    \"Water is wet when the sky is red.\\n\"\n    \"Query: When is water wet?\\n\"\n    \"Answer: Water will be wet when the sky is red [2], \"\n    \"which occurs in the evening [1].\\n\"\n    \"Now it's your turn. Below are several numbered sources of information:\"\n    \"\\n------\\n\"\n    \"{context_str}\"\n    \"\\n------\\n\"\n    \"Query: {query_str}\\n\"\n    \"Answer: \"\n)\n\nCITATION_REFINE_TEMPLATE = PromptTemplate(\n    \"Please provide an answer based solely on the provided sources. \"\n    \"When referencing information from a source, \"\n    \"cite the appropriate source(s) using their corresponding numbers. \"\n    \"Every answer should include at least one source citation. \"\n    \"Only cite a source when you are explicitly referencing it. \"\n    \"If none of the sources are helpful, you should indicate that. \"\n    \"For example:\\n\"\n    \"Source 1:\\n\"\n    \"The sky is red in the evening and blue in the morning.\\n\"\n    \"Source 2:\\n\"\n    \"Water is wet when the sky is red.\\n\"\n    \"Query: When is water wet?\\n\"\n    \"Answer: Water will be wet when the sky is red [2], \"\n    \"which occurs in the evening [1].\\n\"\n    \"Now it's your turn. \"\n    \"We have provided an existing answer: {existing_answer}\"\n    \"Below are several numbered sources of information. \"\n    \"Use them to refine the existing answer. \"\n    \"If the provided sources are not helpful, you will repeat the existing answer.\"\n    \"\\nBegin refining!\"\n    \"\\n------\\n\"\n    \"{context_msg}\"\n    \"\\n------\\n\"\n    \"Query: {query_str}\\n\"\n    \"Answer: \"\n)\n\nCITATION_CHAT_CONTENT_QA_TEMPLATE = RichPromptTemplate(\"\"\"\n{% chat role=\"user\" %}\nPlease provide an answer based solely on the provided sources. When referencing information from a source, cite the appropriate source(s) using their corresponding numbers. Every answer should include at least one source citation. Only cite a source when you are explicitly referencing it. If none of the sources are helpful, you should indicate that. For example:\nSource 1:\nThe sky is red in the evening and blue in the morning.\nSource 2:\nWater is wet when the sky is red.\nQuery: When is water wet?\nAnswer: Water will be wet when the sky is red [2], which occurs in the evening [1].\nNow it's your turn. Below are several numbered sources of information:\n------\n{% for message in context_messages %}\n{% for block in message.blocks %}\n{% if block.block_type == 'text' %}\n{{ block.text }}\n{% elif block.block_type == 'image' %}\n{{ block.inline_url() | image }}\n{% elif block.block_type == 'audio' %}\n{{ block.inline_url() | audio }}\n{% elif block.block_type == 'video' %}\n{{ block.inline_url() | video }}\n{% endif %}\n\n{% endfor %}\n{% endfor %}\n------\nQuery: {{ query_str }}\nAnswer:\n{% endchat %}\n\"\"\")\n\nCITATION_CHAT_CONTENT_REFINE_TEMPLATE = RichPromptTemplate(\"\"\"\n{% chat role=\"user\" %}\nPlease provide an answer based solely on the provided sources. When referencing information from a source, cite the appropriate source(s) using their corresponding numbers. Every answer should include at least one source citation. Only cite a source when you are explicitly referencing it. If none of the sources are helpful, you should indicate that. For example:\nSource 1:\nThe sky is red in the evening and blue in the morning.\nSource 2:\nWater is wet when the sky is red.\nQuery: When is water wet?\nAnswer: Water will be wet when the sky is red [2], which occurs in the evening [1].\nNow it's your turn. We have provided an existing answer: {{ existing_answer }}\nBelow are several numbered sources of information. Use them to refine the existing answer. If the provided sources are not helpful, you will repeat the existing answer.\nBegin refining!\n------\n{% for message in context_messages %}\n{% for block in message.blocks %}\n{% if block.block_type == 'text' %}\n{{ block.text }}\n{% elif block.block_type == 'image' %}\n{{ block.inline_url() | image }}\n{% elif block.block_type == 'audio' %}\n{{ block.inline_url() | audio }}\n{% elif block.block_type == 'video' %}\n{{ block.inline_url() | video }}\n{% endif %}\n\n{% endfor %}\n{% endfor %}\n------\nQuery: {{ query_str }}\nAnswer:\n{% endchat %}\n\"\"\")\n\nDEFAULT_CITATION_CHUNK_SIZE = 512\nDEFAULT_CITATION_CHUNK_OVERLAP = 20\n\n\nclass CitationQueryEngine(BaseQueryEngine):\n    \"\"\"\n    Citation query engine.\n\n    Args:\n        retriever (BaseRetriever): A retriever object.\n        response_synthesizer (Optional[BaseSynthesizer]):\n            A BaseSynthesizer object.\n        citation_chunk_size (int):\n            Size of citation chunks, default=512. Useful for controlling\n            granularity of sources.\n        citation_chunk_overlap (int): Overlap of citation nodes, default=20.\n        text_splitter (Optional[TextSplitter]):\n            A text splitter for creating citation source nodes. Default is\n            a SentenceSplitter.\n        callback_manager (Optional[CallbackManager]): A callback manager.\n        metadata_mode (MetadataMode): A MetadataMode object that controls how\n            metadata is included in the citation prompt.\n\n    \"\"\"\n\n    def __init__(\n        self,\n        retriever: BaseRetriever,\n        llm: Optional[LLM] = None,\n        response_synthesizer: Optional[BaseSynthesizer] = None,\n        citation_chunk_size: int = DEFAULT_CITATION_CHUNK_SIZE,\n        citation_chunk_overlap: int = DEFAULT_CITATION_CHUNK_OVERLAP,\n        text_splitter: Optional[TextSplitter] = None,\n        node_postprocessors: Optional[List[BaseNodePostprocessor]] = None,\n        callback_manager: Optional[CallbackManager] = None,\n        metadata_mode: MetadataMode = MetadataMode.NONE,\n        multimodal: bool = False,\n    ) -> None:\n        self.text_splitter = text_splitter or SentenceSplitter(\n            chunk_size=citation_chunk_size, chunk_overlap=citation_chunk_overlap\n        )\n        self._citation_chunk_size = citation_chunk_size\n        self._citation_chunk_overlap = citation_chunk_overlap\n        self._multimodal = multimodal\n        self._retriever = retriever\n\n        callback_manager = callback_manager or Settings.callback_manager\n        llm = llm or Settings.llm\n\n        if response_synthesizer is None:\n            synthesizer_kwargs: dict = {\n                \"llm\": llm,\n                \"callback_manager\": callback_manager,\n                \"text_qa_template\": CITATION_QA_TEMPLATE,\n                \"refine_template\": CITATION_REFINE_TEMPLATE,\n                \"response_mode\": ResponseMode.COMPACT,\n                \"use_async\": False,\n                \"streaming\": False,\n            }\n            if multimodal:\n                synthesizer_kwargs[\"chat_content_qa_template\"] = (\n                    CITATION_CHAT_CONTENT_QA_TEMPLATE\n                )\n                synthesizer_kwargs[\"chat_content_refine_template\"] = (\n                    CITATION_CHAT_CONTENT_REFINE_TEMPLATE\n                )\n                synthesizer_kwargs[\"multimodal\"] = True\n            self._response_synthesizer = get_response_synthesizer(**synthesizer_kwargs)\n        else:\n            self._response_synthesizer = response_synthesizer\n\n        self._node_postprocessors = node_postprocessors or []\n        self._metadata_mode = metadata_mode\n\n        for node_postprocessor in self._node_postprocessors:\n            node_postprocessor.callback_manager = callback_manager\n\n        super().__init__(callback_manager=callback_manager)\n\n    @classmethod\n    def from_args(\n        cls,\n        index: BaseGPTIndex,\n        llm: Optional[LLM] = None,\n        response_synthesizer: Optional[BaseSynthesizer] = None,\n        citation_chunk_size: int = DEFAULT_CITATION_CHUNK_SIZE,\n        citation_chunk_overlap: int = DEFAULT_CITATION_CHUNK_OVERLAP,\n        text_splitter: Optional[TextSplitter] = None,\n        citation_qa_template: BasePromptTemplate = CITATION_QA_TEMPLATE,\n        citation_refine_template: BasePromptTemplate = CITATION_REFINE_TEMPLATE,\n        citation_chat_content_qa_template: BasePromptTemplate = CITATION_CHAT_CONTENT_QA_TEMPLATE,\n        citation_chat_content_refine_template: BasePromptTemplate = CITATION_CHAT_CONTENT_REFINE_TEMPLATE,\n        retriever: Optional[BaseRetriever] = None,\n        node_postprocessors: Optional[List[BaseNodePostprocessor]] = None,\n        # response synthesizer args\n        response_mode: ResponseMode = ResponseMode.COMPACT,\n        use_async: bool = False,\n        streaming: bool = False,\n        # class-specific args\n        metadata_mode: MetadataMode = MetadataMode.NONE,\n        multimodal: bool = False,\n        **kwargs: Any,\n    ) -> \"CitationQueryEngine\":\n        \"\"\"\n        Initialize a CitationQueryEngine object.\".\n\n        Args:\n            index: (BastGPTIndex): index to use for querying\n            llm: (Optional[LLM]): LLM object to use for response generation.\n            citation_chunk_size (int):\n                Size of citation chunks, default=512. Useful for controlling\n                granularity of sources.\n            citation_chunk_overlap (int): Overlap of citation nodes, default=20.\n            text_splitter (Optional[TextSplitter]):\n                A text splitter for creating citation source nodes. Default is\n                a SentenceSplitter.\n            citation_qa_template (BasePromptTemplate): Template for initial citation QA\n            citation_refine_template (BasePromptTemplate):\n                Template for citation refinement.\n            retriever (BaseRetriever): A retriever object.\n            node_postprocessors (Optional[List[BaseNodePostprocessor]]): A list of\n                node postprocessors.\n            verbose (bool): Whether to print out debug info.\n            response_mode (ResponseMode): A ResponseMode object.\n            use_async (bool): Whether to use async.\n            streaming (bool): Whether to use streaming.\n            optimizer (Optional[BaseTokenUsageOptimizer]): A BaseTokenUsageOptimizer\n                object.\n\n        \"\"\"\n        retriever = retriever or index.as_retriever(**kwargs)\n\n        if response_synthesizer is None:\n            synthesizer_kwargs: dict = {\n                \"llm\": llm,\n                \"text_qa_template\": citation_qa_template,\n                \"refine_template\": citation_refine_template,\n                \"response_mode\": response_mode,\n                \"use_async\": use_async,\n                \"streaming\": streaming,\n            }\n            if multimodal:\n                synthesizer_kwargs[\"chat_content_qa_template\"] = (\n                    citation_chat_content_qa_template\n                )\n                synthesizer_kwargs[\"chat_content_refine_template\"] = (\n                    citation_chat_content_refine_template\n                )\n                synthesizer_kwargs[\"multimodal\"] = True\n            response_synthesizer = get_response_synthesizer(**synthesizer_kwargs)\n\n        return cls(\n            retriever=retriever,\n            llm=llm,\n            response_synthesizer=response_synthesizer,\n            callback_manager=Settings.callback_manager,\n            citation_chunk_size=citation_chunk_size,\n            citation_chunk_overlap=citation_chunk_overlap,\n            text_splitter=text_splitter,\n            node_postprocessors=node_postprocessors,\n            metadata_mode=metadata_mode,\n            multimodal=multimodal,\n        )\n\n    def _get_prompt_modules(self) -> PromptMixinType:\n        \"\"\"Get prompt sub-modules.\"\"\"\n        return {\"response_synthesizer\": self._response_synthesizer}\n\n    def _create_citation_nodes(self, nodes: List[NodeWithScore]) -> List[NodeWithScore]:\n        \"\"\"Modify retrieved nodes to be granular sources.\"\"\"\n        if self._multimodal:\n            return self._create_multimodal_citation_nodes(nodes)\n\n        new_nodes: List[NodeWithScore] = []\n        for node in nodes:\n            text_chunks = self.text_splitter.split_text(\n                node.node.get_content(metadata_mode=self._metadata_mode)\n            )\n\n            # Each citation node holds a single chunk, so the source node's id and\n            # character offsets no longer describe it: copying the id would give\n            # every chunk of a source the same one, and the offsets would span the\n            # whole source. _create_multimodal_citation_nodes already omits both.\n            source_data = node.node.model_dump()\n            source_data.pop(\"id_\", None)\n            source_data[\"start_char_idx\"] = None\n            source_data[\"end_char_idx\"] = None\n\n            for text_chunk in text_chunks:\n                text = f\"Source {len(new_nodes) + 1}:\\n{text_chunk}\\n\"\n\n                new_node = NodeWithScore(\n                    node=TextNode.model_validate(source_data),\n                    score=node.score,\n                )\n                new_node.node.set_content(text)\n                new_nodes.append(new_node)\n        return new_nodes\n\n    @staticmethod\n    def _coerce_url(url: Union[AnyUrl, str, None]) -> Optional[AnyUrl]:\n        if url is None:\n            return None\n        if isinstance(url, AnyUrl):\n            return url\n        return AnyUrl(str(url))\n\n    def _create_multimodal_citation_nodes(\n        self, nodes: List[NodeWithScore]\n    ) -> List[NodeWithScore]:\n        \"\"\"Split multimodal retrieved nodes into per-source citation nodes.\"\"\"\n        new_nodes: List[NodeWithScore] = []\n        for node in nodes:\n            blocks = node.node.get_content_blocks(metadata_mode=self._metadata_mode)\n            chat_msg = ChatMessage(blocks=blocks)\n            split_msgs = chat_msg.split(\n                max_tokens=self._citation_chunk_size,\n                overlap=self._citation_chunk_overlap,\n            )\n\n            for split_msg in split_msgs:\n                source_label = f\"Source {len(new_nodes) + 1}:\"\n                new_node = Node.model_validate(\n                    {\n                        \"embedding\": node.node.embedding,\n                        \"metadata\": dict(node.node.metadata),\n                        \"excluded_embed_metadata_keys\": list(\n                            node.node.excluded_embed_metadata_keys\n                        ),\n                        \"excluded_llm_metadata_keys\": list(\n                            node.node.excluded_llm_metadata_keys\n                        ),\n                        \"relationships\": dict(node.node.relationships),\n                    }\n                )\n\n                text_parts: List[str] = [source_label]\n                for blk in split_msg.blocks:\n                    if isinstance(blk, TextBlock):\n                        text_parts.append(blk.text)\n                    elif isinstance(blk, ImageBlock):\n                        new_node.image_resource = MediaResource(\n                            data=blk.image if isinstance(blk.image, bytes) else None,\n                            url=self._coerce_url(blk.url),\n                            path=blk.path,\n                            mimetype=blk.image_mimetype,\n                        )\n                    elif isinstance(blk, AudioBlock):\n                        new_node.audio_resource = MediaResource(\n                            data=blk.audio if isinstance(blk.audio, bytes) else None,\n                            url=self._coerce_url(blk.url),\n                            path=blk.path,\n                            mimetype=blk.format,\n                        )\n                    elif isinstance(blk, VideoBlock):\n                        new_node.video_resource = MediaResource(\n                            data=blk.video if isinstance(blk.video, bytes) else None,\n                            url=self._coerce_url(blk.url),\n                            path=blk.path,\n                            mimetype=blk.video_mimetype,\n                        )\n\n                new_node.text_resource = MediaResource(\n                    text=\"\\n\".join(text_parts) + \"\\n\"\n                )\n                new_nodes.append(NodeWithScore(node=new_node, score=node.score))\n        return new_nodes\n\n    def retrieve(self, query_bundle: QueryBundle) -> List[NodeWithScore]:\n        nodes = self._retriever.retrieve(query_bundle)\n\n        for postprocessor in self._node_postprocessors:\n            nodes = postprocessor.postprocess_nodes(nodes, query_bundle=query_bundle)\n\n        return nodes\n\n    async def aretrieve(self, query_bundle: QueryBundle) -> List[NodeWithScore]:\n        nodes = await self._retriever.aretrieve(query_bundle)\n\n        for postprocessor in self._node_postprocessors:\n            nodes = await postprocessor.apostprocess_nodes(\n                nodes, query_bundle=query_bundle\n            )\n\n        return nodes\n\n    @property\n    def retriever(self) -> BaseRetriever:\n        \"\"\"Get the retriever object.\"\"\"\n        return self._retriever\n\n    def synthesize(\n        self,\n        query_bundle: QueryBundle,\n        nodes: List[NodeWithScore],\n        additional_source_nodes: Optional[Sequence[NodeWithScore]] = None,\n    ) -> RESPONSE_TYPE:\n        nodes = self._create_citation_nodes(nodes)\n        return self._response_synthesizer.synthesize(\n            query=query_bundle,\n            nodes=nodes,\n            additional_source_nodes=additional_source_nodes,\n        )\n\n    async def asynthesize(\n        self,\n        query_bundle: QueryBundle,\n        nodes: List[NodeWithScore],\n        additional_source_nodes: Optional[Sequence[NodeWithScore]] = None,\n    ) -> RESPONSE_TYPE:\n        nodes = self._create_citation_nodes(nodes)\n        return await self._response_synthesizer.asynthesize(\n            query=query_bundle,\n            nodes=nodes,\n            additional_source_nodes=additional_source_nodes,\n        )\n\n    def _query(self, query_bundle: QueryBundle) -> RESPONSE_TYPE:\n        \"\"\"Answer a query.\"\"\"\n        with self.callback_manager.event(\n            CBEventType.QUERY, payload={EventPayload.QUERY_STR: query_bundle.query_str}\n        ) as query_event:\n            with self.callback_manager.event(\n                CBEventType.RETRIEVE,\n                payload={EventPayload.QUERY_STR: query_bundle.query_str},\n            ) as retrieve_event:\n                nodes = self.retrieve(query_bundle)\n                nodes = self._create_citation_nodes(nodes)\n\n                retrieve_event.on_end(payload={EventPayload.NODES: nodes})\n\n            response = self._response_synthesizer.synthesize(\n                query=query_bundle,\n                nodes=nodes,\n            )\n\n            query_event.on_end(payload={EventPayload.RESPONSE: response})\n\n        return response\n\n    async def _aquery(self, query_bundle: QueryBundle) -> RESPONSE_TYPE:\n        \"\"\"Answer a query.\"\"\"\n        with self.callback_manager.event(\n            CBEventType.QUERY, payload={EventPayload.QUERY_STR: query_bundle.query_str}\n        ) as query_event:\n            with self.callback_manager.event(\n                CBEventType.RETRIEVE,\n                payload={EventPayload.QUERY_STR: query_bundle.query_str},\n            ) as retrieve_event:\n                nodes = await self.aretrieve(query_bundle)\n                nodes = self._create_citation_nodes(nodes)\n\n                retrieve_event.on_end(payload={EventPayload.NODES: nodes})\n\n            response = await self._response_synthesizer.asynthesize(\n                query=query_bundle,\n                nodes=nodes,\n            )\n\n            query_event.on_end(payload={EventPayload.RESPONSE: response})\n\n        return response\n",
+    "file_hash": "03f98a8b805f39431f7fdb034dbcd94eadb1f8f6a390482dc9aca8a45990b54d",
+    "read_start_line": 453,
+    "read_end_line": 515,
+    "read_hash": "24c916d0a3e4f1615e7cf403523158804faa7896deac0fea8f59daf780687ec8",
+    "quote": "            query=query_bundle,\n            nodes=nodes,\n            additional_source_nodes=additional_source_nodes,\n        )",
+    "candidate_locations": [
+      {
+        "ordinal": 1,
+        "offset_unit": "Unicode code point, zero-based, half-open range relative to this text",
+        "start_offset": 0,
+        "end_offset": 127,
+        "start_line": 453,
+        "end_line": 456,
+        "start_column": 1,
+        "end_column_exclusive": 10,
+        "quote_sha256": "dc2b70ea9e851fd797eda2a82f50bbf4395a6108e546f8b6f3931b282a438a87",
+        "enclosing_symbols": [
+          {
+            "name": "CitationQueryEngine",
+            "kind": "ClassDef",
+            "start_line": 158,
+            "end_line": 515,
+            "parser": "python-ast"
+          },
+          {
+            "name": "CitationQueryEngine.synthesize",
+            "kind": "FunctionDef",
+            "start_line": 445,
+            "end_line": 456,
+            "parser": "python-ast"
+          }
+        ],
+        "context_within_this_text_only": [
+          {
+            "line": 453,
+            "text": "            query=query_bundle,"
+          },
+          {
+            "line": 454,
+            "text": "            nodes=nodes,"
+          },
+          {
+            "line": 455,
+            "text": "            additional_source_nodes=additional_source_nodes,"
+          },
+          {
+            "line": 456,
+            "text": "        )"
+          },
+          {
+            "line": 457,
+            "text": ""
+          },
+          {
+            "line": 458,
+            "text": "    async def asynthesize("
+          },
+          {
+            "line": 459,
+            "text": "        self,"
+          }
+        ]
+      },
+      {
+        "ordinal": 2,
+        "offset_unit": "Unicode code point, zero-based, half-open range relative to this text",
+        "start_offset": 452,
+        "end_offset": 579,
+        "start_line": 466,
+        "end_line": 469,
+        "start_column": 1,
+        "end_column_exclusive": 10,
+        "quote_sha256": "dc2b70ea9e851fd797eda2a82f50bbf4395a6108e546f8b6f3931b282a438a87",
+        "enclosing_symbols": [
+          {
+            "name": "CitationQueryEngine",
+            "kind": "ClassDef",
+            "start_line": 158,
+            "end_line": 515,
+            "parser": "python-ast"
+          },
+          {
+            "name": "CitationQueryEngine.asynthesize",
+            "kind": "AsyncFunctionDef",
+            "start_line": 458,
+            "end_line": 469,
+            "parser": "python-ast"
+          }
+        ],
+        "context_within_this_text_only": [
+          {
+            "line": 463,
+            "text": "    ) -> RESPONSE_TYPE:"
+          },
+          {
+            "line": 464,
+            "text": "        nodes = self._create_citation_nodes(nodes)"
+          },
+          {
+            "line": 465,
+            "text": "        return await self._response_synthesizer.asynthesize("
+          },
+          {
+            "line": 466,
+            "text": "            query=query_bundle,"
+          },
+          {
+            "line": 467,
+            "text": "            nodes=nodes,"
+          },
+          {
+            "line": 468,
+            "text": "            additional_source_nodes=additional_source_nodes,"
+          },
+          {
+            "line": 469,
+            "text": "        )"
+          },
+          {
+            "line": 470,
+            "text": ""
+          },
+          {
+            "line": 471,
+            "text": "    def _query(self, query_bundle: QueryBundle) -> RESPONSE_TYPE:"
+          },
+          {
+            "line": 472,
+            "text": "        \"\"\"Answer a query.\"\"\""
+          }
+        ]
+      }
+    ],
+    "original_request_hash": "8896a39f9af07f7a0e2d65c2ea85351b0b927411c5465ec9aab6f98a740d3d2f",
+    "provenance": "Unmodified frozen source text and quote from real 1.6.3 failure. Tests use synthetic model outputs and fresh fixture-only databases; no upstream execution or live evaluation."
+  },
+  {
+    "key": "agents",
+    "repository_key": "openai/openai-agents-python",
+    "commit": "23e9996ac146109bdcd9b871e3564f70dc13aae1",
+    "path": "src/agents/memory/session.py",
+    "file_text": "from __future__ import annotations\n\nimport asyncio\nimport inspect\nfrom abc import ABC, abstractmethod\nfrom collections.abc import Awaitable, Callable\nfrom dataclasses import dataclass\nfrom typing import TYPE_CHECKING, Any, Literal, Protocol, TypeGuard, TypeVar, runtime_checkable\n\nfrom typing_extensions import TypedDict\n\nif TYPE_CHECKING:\n    from ..items import TResponseInputItem\n    from ..run_context import RunContextWrapper\n    from .session_settings import SessionSettings\n\n\n_T = TypeVar(\"_T\")\n\n\nasync def await_session_mutation(awaitable: Awaitable[_T]) -> _T:\n    \"\"\"Wait for a session mutation to settle before propagating caller cancellation.\n\n    Once this coroutine starts, cancellation of its caller does not cancel the\n    supplied awaitable. Repeated cancellation requests are deferred until the\n    operation finishes. Without caller cancellation, return the result or raise\n    the operation's exception. With caller cancellation, retrieve the operation's\n    outcome and raise the first caller cancellation instead, even if the operation\n    failed. The caller must not interpret that cancellation as a rolled-back write.\n\n    This helper does not provide a timeout, transaction, retry, or mutual exclusion.\n    A stuck operation can delay cancellation indefinitely; configure timeouts on\n    the underlying client. Independently cancelling the supplied operation can\n    still interrupt it. Cancellation before this coroutine starts is not covered.\n    \"\"\"\n    task = asyncio.ensure_future(awaitable)\n    cancellation: asyncio.CancelledError | None = None\n    while not task.done():\n        try:\n            await asyncio.wait({task})\n        except asyncio.CancelledError as exc:\n            if cancellation is None:\n                cancellation = exc\n\n    try:\n        result = task.result()\n    except BaseException:\n        if cancellation is not None:\n            raise cancellation from None\n        raise\n    if cancellation is not None:\n        raise cancellation from None\n    return result\n\n\n# Preserve internal imports while sharing one implementation with adapter authors.\n_await_mutation = await_session_mutation\n\n\n@dataclass(frozen=True)\nclass _CompactionSnapshot:\n    \"\"\"Bounded logical history with a backend-owned atomic suffix replacement.\"\"\"\n\n    items: list[TResponseInputItem]\n    complete: bool\n    replace_suffix: Callable[[int, list[TResponseInputItem]], Awaitable[bool]]\n\n\n@runtime_checkable\nclass Session(Protocol):\n    \"\"\"Protocol for session implementations.\n\n    Session stores conversation history for a specific session, allowing\n    agents to maintain context without requiring explicit manual memory management.\n    \"\"\"\n\n    session_id: str\n    session_settings: SessionSettings | None = None\n\n    async def get_items(self, limit: int | None = None) -> list[TResponseInputItem]:\n        \"\"\"Retrieve the conversation history for this session.\n\n        Args:\n            limit: Maximum number of items to retrieve. If None, retrieves all items.\n                   When specified, returns the latest N items in chronological order.\n\n        Returns:\n            List of input items representing the conversation history\n        \"\"\"\n        ...\n\n    async def add_items(self, items: list[TResponseInputItem]) -> None:\n        \"\"\"Add new items to the conversation history.\n\n        Args:\n            items: List of input items to add to the history\n        \"\"\"\n        ...\n\n    async def pop_item(self) -> TResponseInputItem | None:\n        \"\"\"Remove and return the most recent item from the session.\n\n        Returns:\n            The most recent item if it exists, None if the session is empty\n        \"\"\"\n        ...\n\n    async def clear_session(self) -> None:\n        \"\"\"Clear all items for this session.\"\"\"\n        ...\n\n\nclass SessionABC(ABC):\n    \"\"\"Abstract base class for session implementations.\n\n    Session stores conversation history for a specific session, allowing\n    agents to maintain context without requiring explicit manual memory management.\n\n    This ABC is intended for internal use and as a base class for concrete implementations.\n    Third-party libraries should implement the Session protocol instead.\n    \"\"\"\n\n    session_id: str\n    session_settings: SessionSettings | None = None\n\n    @abstractmethod\n    async def get_items(self, limit: int | None = None) -> list[TResponseInputItem]:\n        \"\"\"Retrieve the conversation history for this session.\n\n        Args:\n            limit: Maximum number of items to retrieve. If None, retrieves all items.\n                   When specified, returns the latest N items in chronological order.\n\n        Returns:\n            List of input items representing the conversation history\n        \"\"\"\n        ...\n\n    @abstractmethod\n    async def add_items(self, items: list[TResponseInputItem]) -> None:\n        \"\"\"Add new items to the conversation history.\n\n        Args:\n            items: List of input items to add to the history\n        \"\"\"\n        ...\n\n    @abstractmethod\n    async def pop_item(self) -> TResponseInputItem | None:\n        \"\"\"Remove and return the most recent item from the session.\n\n        Returns:\n            The most recent item if it exists, None if the session is empty\n        \"\"\"\n        ...\n\n    @abstractmethod\n    async def clear_session(self) -> None:\n        \"\"\"Clear all items for this session.\"\"\"\n        ...\n\n\nclass OpenAIResponsesCompactionArgs(TypedDict, total=False):\n    \"\"\"Arguments for the run_compaction method.\"\"\"\n\n    response_id: str\n    \"\"\"The ID of the last response to use for compaction.\"\"\"\n\n    compaction_mode: Literal[\"previous_response_id\", \"input\", \"auto\"]\n    \"\"\"How to provide history for compaction.\n\n    - \"auto\": Use input when the last response was not stored or no response ID is available.\n    - \"previous_response_id\": Use server-managed response history.\n    - \"input\": Send locally stored session items as input.\n    \"\"\"\n\n    store: bool\n    \"\"\"Whether the last model response was stored on the server.\n\n    When set to False, compaction should avoid \"previous_response_id\" unless explicitly requested.\n    \"\"\"\n\n    force: bool\n    \"\"\"Whether to force compaction even if the threshold is not met.\"\"\"\n\n\n@runtime_checkable\nclass OpenAIResponsesCompactionAwareSession(Session, Protocol):\n    \"\"\"Protocol for session implementations that support responses compaction.\"\"\"\n\n    async def run_compaction(self, args: OpenAIResponsesCompactionArgs | None = None) -> None:\n        \"\"\"Run the compaction process for the session.\"\"\"\n        ...\n\n\ndef is_openai_responses_compaction_aware_session(\n    session: Session | None,\n) -> TypeGuard[OpenAIResponsesCompactionAwareSession]:\n    \"\"\"Check if a session supports responses compaction.\"\"\"\n    if session is None:\n        return False\n    try:\n        run_compaction = getattr(session, \"run_compaction\", None)\n    except Exception:\n        return False\n    return callable(run_compaction)\n\n\ndef _session_method_accepts_wrapper(method: Any) -> bool:\n    \"\"\"Return whether a session method opts into receiving ``wrapper``.\n\n    The public ``Session`` protocol keeps its released signatures so existing structural\n    implementations remain type-compatible. Custom sessions can opt in by adding a ``wrapper``\n    parameter that can be passed by keyword.\n    \"\"\"\n    try:\n        parameters = inspect.signature(method).parameters.values()\n    except Exception:\n        return False\n\n    return any(\n        parameter.name == \"wrapper\"\n        and parameter.kind\n        in (inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.KEYWORD_ONLY)\n        for parameter in parameters\n    )\n\n\ndef _session_accepts_wrapper(session: Any) -> bool:\n    \"\"\"Return whether every history operation accepts ``wrapper``.\"\"\"\n    try:\n        methods = (\n            session.get_items,\n            session.add_items,\n            session.pop_item,\n            session.clear_session,\n        )\n    except Exception:\n        return False\n    return all(_session_method_accepts_wrapper(method) for method in methods)\n\n\ndef _get_session_wrapper(\n    session: Any,\n    wrapper: RunContextWrapper[Any] | None,\n) -> RunContextWrapper[Any] | None:\n    \"\"\"Return ``wrapper`` only for sessions with a complete context-aware contract.\"\"\"\n    if wrapper is None or not _session_accepts_wrapper(session):\n        return None\n    return wrapper\n\n\nasync def _call_session_method(\n    method: Any,\n    /,\n    *args: Any,\n    wrapper: RunContextWrapper[Any] | None = None,\n    **kwargs: Any,\n) -> Any:\n    \"\"\"Call a session method with its legacy shape unless it opts into ``wrapper``.\"\"\"\n    if wrapper is not None and _session_method_accepts_wrapper(method):\n        kwargs[\"wrapper\"] = wrapper\n    result = method(*args, **kwargs)\n    if inspect.isawaitable(result):\n        return await result\n    return result\n",
+    "file_hash": "18d9f222d5cb0ba70ae3af2e1d2f5ad7cd1336677cced9a4e5a23c2cac9caf7a",
+    "read_start_line": 71,
+    "read_end_line": 140,
+    "read_hash": "a7c326b51ed834f20dcd742165c28aabb68307ecccf076677b19b099061b26ec",
+    "quote": "    async def get_items(self, limit: int | None = None) -> list[TResponseInputItem]:\n        \"\"\"Retrieve the conversation history for this session.",
+    "candidate_locations": [
+      {
+        "ordinal": 1,
+        "offset_unit": "Unicode code point, zero-based, half-open range relative to this text",
+        "start_offset": 285,
+        "end_offset": 432,
+        "start_line": 80,
+        "end_line": 81,
+        "start_column": 1,
+        "end_column_exclusive": 63,
+        "quote_sha256": "bc0801882fd8b00f0b86046b7277423933983253e60714e4cc1c533726666620",
+        "enclosing_symbols": [
+          {
+            "name": "Session",
+            "kind": "ClassDef",
+            "start_line": 69,
+            "end_line": 110,
+            "parser": "python-ast"
+          },
+          {
+            "name": "Session.get_items",
+            "kind": "AsyncFunctionDef",
+            "start_line": 80,
+            "end_line": 90,
+            "parser": "python-ast"
+          }
+        ],
+        "context_within_this_text_only": [
+          {
+            "line": 77,
+            "text": "    session_id: str"
+          },
+          {
+            "line": 78,
+            "text": "    session_settings: SessionSettings | None = None"
+          },
+          {
+            "line": 79,
+            "text": ""
+          },
+          {
+            "line": 80,
+            "text": "    async def get_items(self, limit: int | None = None) -> list[TResponseInputItem]:"
+          },
+          {
+            "line": 81,
+            "text": "        \"\"\"Retrieve the conversation history for this session."
+          },
+          {
+            "line": 82,
+            "text": ""
+          },
+          {
+            "line": 83,
+            "text": "        Args:"
+          },
+          {
+            "line": 84,
+            "text": "            limit: Maximum number of items to retrieve. If None, retrieves all items."
+          }
+        ]
+      },
+      {
+        "ordinal": 2,
+        "offset_unit": "Unicode code point, zero-based, half-open range relative to this text",
+        "start_offset": 1816,
+        "end_offset": 1963,
+        "start_line": 127,
+        "end_line": 128,
+        "start_column": 1,
+        "end_column_exclusive": 63,
+        "quote_sha256": "bc0801882fd8b00f0b86046b7277423933983253e60714e4cc1c533726666620",
+        "enclosing_symbols": [
+          {
+            "name": "SessionABC",
+            "kind": "ClassDef",
+            "start_line": 113,
+            "end_line": 160,
+            "parser": "python-ast"
+          },
+          {
+            "name": "SessionABC.get_items",
+            "kind": "AsyncFunctionDef",
+            "start_line": 126,
+            "end_line": 137,
+            "parser": "python-ast"
+          }
+        ],
+        "context_within_this_text_only": [
+          {
+            "line": 124,
+            "text": "    session_settings: SessionSettings | None = None"
+          },
+          {
+            "line": 125,
+            "text": ""
+          },
+          {
+            "line": 126,
+            "text": "    @abstractmethod"
+          },
+          {
+            "line": 127,
+            "text": "    async def get_items(self, limit: int | None = None) -> list[TResponseInputItem]:"
+          },
+          {
+            "line": 128,
+            "text": "        \"\"\"Retrieve the conversation history for this session."
+          },
+          {
+            "line": 129,
+            "text": ""
+          },
+          {
+            "line": 130,
+            "text": "        Args:"
+          },
+          {
+            "line": 131,
+            "text": "            limit: Maximum number of items to retrieve. If None, retrieves all items."
+          }
+        ]
+      }
+    ],
+    "original_request_hash": "935f4ceddc99f45fef0ad7bec4b0cc82bc08599b2e9e610aefb0df18c50353cc",
+    "provenance": "Unmodified frozen source text and quote from real 1.6.3 failure. Tests use synthetic model outputs and fresh fixture-only databases; no upstream execution or live evaluation."
+  }
+]

@@ -1,0 +1,79 @@
+{
+  "model_output": {
+    "text": "五个原正文元素的事实绑定、原条件和独立成立检查均通过。原标题“状态图构建数据与编译装配”没有超出这些静态构建与装配事实。Reviewer 指出的原整体 applicability 中“局部路由”缺少独立证据的问题仍然成立，原整单元的 needs_evidence 结论不变；该问题已明确归属 unit，且不出现在任何单事实发布视图中，不扩展为这五条事实的全局阻断。本审计未新增源代码读取或运行观察。",
+    "structured": {
+      "all_facts_bound": true,
+      "conditions_preserved": true,
+      "uncovered_elements": [],
+      "unsupported_titles": [],
+      "rationale_codes": [
+        "EXACT_SCOPE_BINDING",
+        "ALL_RENDER_ELEMENTS_FACT_BOUND",
+        "ORIGINAL_CONDITIONS_PRESERVED",
+        "DOCUMENTED_INTENT_NOT_UPGRADED",
+        "FIVE_ORIGINAL_FACTS_STANDALONE",
+        "UNIT_APPLICABILITY_ROUTING_EVIDENCE_GAP_REMAINS"
+      ],
+      "scope_audit": {
+        "contract_version": "claim-scoped-review-1.6.6",
+        "unit_version_id": "747b440b-c1a7-4719-afa8-e691a9aa1044",
+        "content_hash": "d3374007f6a4960c4a81fae4311d5c5f07be48f3560b12f04624fe2d563a9521",
+        "render_hash": "5d806e790de113ce698bacbfddb9711e7de351e75e1050a3c2988f0b33891df2",
+        "reviewer_output_hash": "0afe9cf079bf8b2836b5e9b64fc33fc743e08a6490c09b1db07921abf99f73b8",
+        "elements": [
+          {
+            "element_id": "85240a59-1d96-4d56-be20-09564b49bb8e",
+            "claim_id": "c86d0933-8bc1-467b-a5f9-7a8c61e90fd2",
+            "fact_atom_id": "a4e26f2c-c9ed-4fd0-90a5-82c17c00e7b1",
+            "fact_bound": true,
+            "conditions_preserved": true,
+            "standalone": true,
+            "reason": "原 render_ast、scope_elements 与此事实的单独发布视图保留相同正文和条件。所附构造器引文及 Reviewer 独立读取 81d8dc8e-a0b6-4230-bef5-a21176365d6c 支持容器初始化、input_schema/output_schema 的回退表达式以及三次 _add_schema 调用和 allow_managed 参数。原条件已限定为初始化及调用参数，没有断言 _add_schema 内部实现或执行结果；无需其他事实、原标题或整体职责描述才能成立。"
+          },
+          {
+            "element_id": "ce9daee1-6d53-4ba9-a5ec-aa25098acddf",
+            "claim_id": "7b8785af-39d2-4b1b-ad05-f734b675e063",
+            "fact_atom_id": "d3480ac8-b296-4026-ba8d-b13ea81808b0",
+            "fact_bound": true,
+            "conditions_preserved": true,
+            "standalone": true,
+            "reason": "所附 add_edge 方法体及独立读取 15ecf89b-b469-424d-a259-fa1a9bad3ed5 支持字符串与列表起点的分路检查、edges.add 和 waiting_edges.add((tuple(start_key), end_key))。原事实描述的是列出的构建阶段行为，并未宣称穷尽所有检查；单独发布视图原样保留“不证明运行时等待机制”的条件，没有以容器名称推断调度效果。该命题不依赖其余事实的前提。"
+          },
+          {
+            "element_id": "aadddc9a-db57-4f84-af29-a750b4604906",
+            "claim_id": "defe49be-3e27-4d79-aeb6-2fe902025e54",
+            "fact_atom_id": "8f1ce91e-a0a1-495f-8736-263ca411ace7",
+            "fact_bound": true,
+            "conditions_preserved": true,
+            "standalone": true,
+            "reason": "绑定引文确为 add_edge 函数文档，独立读取 15ecf89b-b469-424d-a259-fa1a9bad3ed5 包含单起点完成和 ALL 多起点完成的文档描述。原正文明确标明“接口的文档意图”，单独发布视图保留 documented_intent 类型及未读、未运行实际调度实现的条件；量词“全部”与引文一致，没有升级为实现验证或运行观察，可单独成立。"
+          },
+          {
+            "element_id": "3ca30e7b-b781-491e-b2ab-6fc08a14cd6f",
+            "claim_id": "4e56987c-aaac-4389-b7fe-75048d05ee2a",
+            "fact_atom_id": "fa17b49b-f4dd-4d5d-86ae-7c590b41ca9a",
+            "fact_bound": true,
+            "conditions_preserved": true,
+            "standalone": true,
+            "reason": "所附 add_conditional_edges 引文与独立读取 2ae04ff7-759b-4bb7-9ce7-732651c61a9f 支持转换调用、path.name 或 condition 命名、同一 source 内重名拒绝、BranchSpec.from_path(path, path_map, True) 保存和有 input_schema 才调用 _add_schema。独立读取 90aeb3bc-fba6-47ff-8ffd-154c2e4595fa 也支持 schema 推断调用。单独发布视图原样保留不覆盖转换器及 schema 注册器内部的条件，没有引入运行路由结论，不依赖被删除的整体 applicability。"
+          },
+          {
+            "element_id": "a7816fb6-7876-498e-8db2-be7aeaefbd68",
+            "claim_id": "b4007855-4dd3-4cfa-9483-1277f3503232",
+            "fact_atom_id": "e5b7e58b-4f69-459e-93d1-85654ecae237",
+            "fact_bound": true,
+            "conditions_preserved": true,
+            "standalone": true,
+            "reason": "所附编译片段与独立读取 9f23cab6-8b38-4d23-8110-0c5710a6c090、d5c316b9-7150-43a5-9957-9a332a169a20 支持 CompiledStateGraph 的构造参数、START 和节点装配、两类边及分支装配、返回 compiled.validate()。原正文与单独发布视图均保留静态调用的性质，并明确排除 attach_*、validate、持久化和调度内部实现，以及已经运行或验证通过的推断。无需从其他命题借入限制即可独立成立。"
+          }
+        ],
+        "global_blocking_issues": []
+      }
+    },
+    "tool_calls": [],
+    "finish_reason": "stop",
+    "usage": {},
+    "synthetic": false,
+    "provider_response_id": null
+  }
+}
