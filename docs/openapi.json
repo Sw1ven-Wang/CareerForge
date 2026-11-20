@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "CareerForge",
+    "title": "DevTutor",
     "description": "CLI-first evidence-grounded learning; see validation report for verified scope.",
     "version": "1.6.6"
   },

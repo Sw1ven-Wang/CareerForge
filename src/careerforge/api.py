@@ -269,7 +269,7 @@ class RolloutBody(Contract):
 def create_app(service: Application | None = None) -> FastAPI:
     service = service or Application(Settings.from_env())
     app = FastAPI(
-        title="CareerForge",
+        title="DevTutor",
         version=__version__,
         description="CLI-first evidence-grounded learning; see validation report for verified scope.",
     )

@@ -28,7 +28,7 @@ from .integration_v166 import register_cli as register_integration_cli
 from .learning_ext import register_cli as register_learning_cli
 from .stream import ServerEvent, StreamProtocolError, parse_events
 
-app = typer.Typer(no_args_is_help=True, help="CareerForge 1.6 · 有源码证据的职业学习助手")
+app = typer.Typer(no_args_is_help=True, help="DevTutor 1.6 · 有源码证据的职业学习助手")
 improve = typer.Typer(help="候选、独立评测、发布和回滚")
 workspace = typer.Typer(help="服务端练习工作区与独立命令审批")
 app.add_typer(improve, name="improve")
