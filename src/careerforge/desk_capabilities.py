@@ -34,7 +34,10 @@ HELP_REPLY = (
 def intake_reply(text, status):
     """Match complete requests, never keywords embedded in a lesson or JD."""
     phrase = text.strip().rstrip("。！!？?")
-    if re.fullmatch(r"(?:请|帮我)?(?:把)?(?:这个|该)?项目(?:导入|入库)|(?:请|帮我)?(?:导入|入库)(?:这个|该)?项目", phrase):
+    if re.fullmatch(
+        r"(?:请|帮我)?(?:把)?(?:这个|该)?项目(?:导入|入库)|(?:请|帮我)?(?:导入|入库)(?:这个|该)?项目",
+        phrase,
+    ):
         if str(status.get("target") or "").startswith("https://github.com/"):
             return (
                 f"当前已指定项目：{status['target']}。无需重复提供地址。"
@@ -50,7 +53,9 @@ def intake_reply(text, status):
             "暂无法仅凭聊天中的本地路径读取你的项目。请提供可访问的 GitHub 仓库地址，"
             "我会帮你准备源码提取与知识审核；请不要发送密码或访问令牌。"
         )
-    if re.fullmatch(r"(?:请|帮我)(?:把这个项目)?(?:部署|上线|执行命令|修改代码|删除文件)[\s\S]*", phrase):
+    if re.fullmatch(
+        r"(?:请|帮我)(?:把这个项目)?(?:部署|上线|执行命令|修改代码|删除文件)[\s\S]*", phrase
+    ):
         return (
             "暂无法代你修改文件、执行命令或部署项目。请提供具体问题和相关代码，"
             "我会帮你解释实现、梳理排查步骤或学习方法。"

@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import os
 import re
-import selectors
 import shutil
 import subprocess
 import sys
@@ -30,23 +29,32 @@ def _run_bounded(command: list[str], *, timeout: float, limit: int) -> subproces
     try:
         if stdout is None or stderr is None:
             raise DomainError("SANDBOX_UNAVAILABLE", "执行器未建立受控输出管道。", 503)
-        with selectors.DefaultSelector() as selector:
-            selector.register(stdout, selectors.EVENT_READ, "stdout")
-            selector.register(stderr, selectors.EVENT_READ, "stderr")
-            while selector.get_map():
-                remaining = deadline - time.monotonic()
-                if remaining <= 0:
-                    raise subprocess.TimeoutExpired(command, timeout)
-                for key, _ in selector.select(min(remaining, 0.25)):
-                    chunk = os.read(key.fd, 65_536)
-                    if not chunk:
-                        selector.unregister(key.fileobj)
-                        continue
-                    stream = buffers[key.data]
-                    ceiling = limit if key.data == "stdout" else 64_000
-                    if len(stream) + len(chunk) > ceiling:
-                        raise DomainError("SANDBOX_OUTPUT", "执行回执或诊断输出超限。", 502)
-                    stream.extend(chunk)
+        # Python 3.12 supports nonblocking anonymous pipes on both Windows
+        # and POSIX. Windows select() only accepts sockets.
+        pipes = {"stdout": stdout.fileno(), "stderr": stderr.fileno()}
+        for fd in pipes.values():
+            os.set_blocking(fd, False)
+        while pipes:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise subprocess.TimeoutExpired(command, timeout)
+            made_progress = False
+            for name, fd in tuple(pipes.items()):
+                try:
+                    chunk = os.read(fd, 65_536)
+                except BlockingIOError:
+                    continue
+                made_progress = True
+                if not chunk:
+                    del pipes[name]
+                    continue
+                stream = buffers[name]
+                ceiling = limit if name == "stdout" else 64_000
+                if len(stream) + len(chunk) > ceiling:
+                    raise DomainError("SANDBOX_OUTPUT", "执行回执或诊断输出超限。", 502)
+                stream.extend(chunk)
+            if not made_progress:
+                time.sleep(min(remaining, 0.01))
         code = process.wait(timeout=max(0.01, deadline - time.monotonic()))
         return subprocess.CompletedProcess(
             command, code, bytes(buffers["stdout"]), bytes(buffers["stderr"])

@@ -47,6 +47,10 @@ class FixtureModel:
                 finish_reason="tool_calls",
                 usage={"prompt_tokens": 10, "completion_tokens": 5},
             )
+        if "numbered_reads" in c and "patches" in (request.get("schema") or {}).get(
+            "properties", {}
+        ):
+            return ModelOutput(synthetic=True, structured={"patches": []})
         if role == "analysis":
             reads = c["reading"]["reads"]
             r = next((r for r in reads if r["path"].endswith("tools.py")), reads[0])
@@ -144,7 +148,11 @@ class FixtureModel:
                     "global_blocking_issues": [],
                 }
             if "relation_audit" in (request.get("schema") or {}).get("properties", {}):
-                value["relation_audit"] = {"confirmed_local_issue_indices": [], "topic_links": [], "facets": []}
+                value["relation_audit"] = {
+                    "confirmed_local_issue_indices": [],
+                    "topic_links": [],
+                    "facets": [],
+                }
         elif role == "extract":
             value = {
                 "requirements": [

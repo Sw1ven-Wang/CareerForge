@@ -19,10 +19,7 @@ def test_migration_empty_roundtrip(tmp_path):
         inspect(engine).get_table_names()
     )
     with engine.connect() as db:
-        assert (
-            db.scalar(text("SELECT version_num FROM alembic_version"))
-            == SCHEMA_REVISION
-        )
+        assert db.scalar(text("SELECT version_num FROM alembic_version")) == SCHEMA_REVISION
     assert downgrade(url, "cf166_learning_graph").returncode == 0
     assert "workflow_practice_requests" not in inspect(engine).get_table_names()
     migrate(url, "head")

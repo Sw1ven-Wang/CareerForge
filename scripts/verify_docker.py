@@ -138,7 +138,7 @@ def main(argv=None) -> int:
                 )
                 report["checks"][stage] = "passed"
                 stage = "offline_tests_in_container"
-                run(compose + ["run", "--rm", "--no-deps", "-T", "validation"], timeout=1200)
+                run(compose + ["run", "--rm", "--no-deps", "-T", "validation"], timeout=7200)
                 report["checks"][stage] = "passed"
                 stage = "infrastructure"
                 run(

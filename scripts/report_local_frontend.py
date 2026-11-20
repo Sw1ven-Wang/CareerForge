@@ -31,19 +31,23 @@ with httpx.Client(
         conversation = client.get("/desk/conversations/" + job["conversation_id"])
         conversation.raise_for_status()
         turn = next(t for t in conversation.json()["turns"] if t["id"] == job["turn_id"])
-        blocks = [e["payload"]["content"] for e in turn["events"] if e["type"] == "answer.block.validated"]
+        blocks = [
+            e["payload"]["content"] for e in turn["events"] if e["type"] == "answer.block.validated"
+        ]
         assert data["status"] == "succeeded" and turn["status"] == "completed"
         assert job["funding_revoked"]
-        runs.append({
-            "run_id": job["run_id"],
-            "conversation_id": job["conversation_id"],
-            "turn_id": job["turn_id"],
-            "status": data["status"],
-            "calls": data["calls_consumed"],
-            "citation_count": sum(len(b.get("citations", [])) for b in blocks),
-            "partial_answer": any(b.get("kind") == "evidence_gap" for b in blocks),
-            "temporary_funding_revoked": job["funding_revoked"],
-        })
+        runs.append(
+            {
+                "run_id": job["run_id"],
+                "conversation_id": job["conversation_id"],
+                "turn_id": job["turn_id"],
+                "status": data["status"],
+                "calls": data["calls_consumed"],
+                "citation_count": sum(len(b.get("citations", [])) for b in blocks),
+                "partial_answer": any(b.get("kind") == "evidence_gap" for b in blocks),
+                "temporary_funding_revoked": job["funding_revoked"],
+            }
+        )
     assert len(overview["publications"]) == 14
 with (project / "evidence" / "session-final.sqlite").open("rb") as stream:
     original_hash = hashlib.file_digest(stream, "sha256").hexdigest()
@@ -79,13 +83,22 @@ report = {
         "Live answer completed with a disclosed evidence gap",
     ],
 }
-(output / "frontend-validation.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+(output / "frontend-validation.json").write_text(
+    json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
+)
 checkpoint_path = runtime / "frontend-checkpoint.json"
 checkpoint = json.loads(checkpoint_path.read_text(encoding="utf-8"))
 checkpoint.update(
-    status="completed", remaining=[], active_jobs=[], service_status="running",
+    status="completed",
+    remaining=[],
+    active_jobs=[],
+    service_status="running",
     evidence_report=str(output / "frontend-validation.json"),
     next_action="User can open http://127.0.0.1:8001; the test plan remains an unaccepted draft.",
 )
 checkpoint_path.write_text(json.dumps(checkpoint, ensure_ascii=False, indent=2), encoding="utf-8")
-print(json.dumps({"service": "running", "tests_passed": 18, "live_runs": runs, "snapshot_unchanged": True}))
+print(
+    json.dumps(
+        {"service": "running", "tests_passed": 18, "live_runs": runs, "snapshot_unchanged": True}
+    )
+)

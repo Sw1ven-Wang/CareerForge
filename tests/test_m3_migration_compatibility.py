@@ -49,7 +49,9 @@ def complete_state(app):
     result = {}
     for table in inspector.get_table_names():
         result[table] = {
-            "columns": [(c["name"], str(c["type"]), c["nullable"]) for c in inspector.get_columns(table)],
+            "columns": [
+                (c["name"], str(c["type"]), c["nullable"]) for c in inspector.get_columns(table)
+            ],
             "foreign_keys": sorted(inspector.get_foreign_keys(table), key=repr),
             "checks": sorted(inspector.get_check_constraints(table), key=repr),
             "uniques": sorted(inspector.get_unique_constraints(table), key=repr),
@@ -101,9 +103,15 @@ def assert_legacy_roundtrip(env):
     result = downgrade(app.settings.database_url, "cf166_graph")
     assert result.returncode == 0, result.stderr
     inspector = inspect(app.db.engine)
-    assert "origin_contract" not in {c["name"] for c in inspector.get_columns("career_goal_versions")}
-    assert "orchestration_engine" not in {c["name"] for c in inspector.get_columns("workflow_sessions")}
-    assert not next(c for c in inspector.get_columns("career_goal_versions") if c["name"] == "run_id")["nullable"]
+    assert "origin_contract" not in {
+        c["name"] for c in inspector.get_columns("career_goal_versions")
+    }
+    assert "orchestration_engine" not in {
+        c["name"] for c in inspector.get_columns("workflow_sessions")
+    }
+    assert not next(
+        c for c in inspector.get_columns("career_goal_versions") if c["name"] == "run_id"
+    )["nullable"]
     app.db.engine.dispose()
     migrate(app.settings.database_url, "head")
     assert schema_is_current(app.db.engine)
@@ -125,16 +133,27 @@ def assert_history_refusal(env, kind):
             # Structural partially admitted history: receipt/addendum authority
             # must not be discarded even if no command-goal row exists yet.
             receipt = ConversationActionReceipt(
-                conversation_id=cid, workflow_id=wid, idempotency_key=uuid4().hex,
-                request_hash="a" * 64, action_plan_hash="b" * 64, plan={}, result={},
+                conversation_id=cid,
+                workflow_id=wid,
+                idempotency_key=uuid4().hex,
+                request_hash="a" * 64,
+                action_plan_hash="b" * 64,
+                plan={},
+                result={},
             )
             db.add(receipt)
             db.flush()
-            db.add(GoalAddendum(
-                workflow_id=wid, author_id=env["actor"], source_goal_version_id=version,
-                command_receipt_id=receipt.id, command_action_index=0,
-                manifest_hash="c" * 64, manifest={"fixture": "interrupted admission"},
-            ))
+            db.add(
+                GoalAddendum(
+                    workflow_id=wid,
+                    author_id=env["actor"],
+                    source_goal_version_id=version,
+                    command_receipt_id=receipt.id,
+                    command_action_index=0,
+                    manifest_hash="c" * 64,
+                    manifest={"fixture": "interrupted admission"},
+                )
+            )
     before = complete_state(app)
     app.db.engine.dispose()
     result = downgrade(app.settings.database_url, "cf166_graph")

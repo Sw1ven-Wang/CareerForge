@@ -17,7 +17,8 @@ pytestmark = pytest.mark.production
 
 
 async def test_control_interrupt_survives_new_postgres_saver_then_resume_waits_for_approval(
-    env, checkpoint_postgres  # noqa: F811
+    env,
+    checkpoint_postgres,  # noqa: F811
 ):
     _, settings = checkpoint_postgres
     app = m3(env)

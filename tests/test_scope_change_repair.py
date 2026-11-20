@@ -92,10 +92,13 @@ async def test_unknown_explicit_scope_switch_cannot_widen_or_erase_focus(env):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("question,clarify", [
-    ("https://github.com/earendil-works/pi   我要学这个的架构", False),
-    ("https://github.com/earendil-works/pi 讲解另一个版本的架构", True),
-])
+@pytest.mark.parametrize(
+    "question,clarify",
+    [
+        ("https://github.com/earendil-works/pi   我要学这个的架构", False),
+        ("https://github.com/earendil-works/pi 讲解另一个版本的架构", True),
+    ],
+)
 async def test_repository_url_does_not_expand_selected_snapshot(env, question, clarify):
     app, actor = env["app"], env["actor"]
     first, _, _ = await publish_fixture(env, "first", "earendil-works/pi", "a" * 40)
@@ -103,6 +106,15 @@ async def test_repository_url_does_not_expand_selected_snapshot(env, question, c
     with app.db.transaction() as db:
         policies = ensure_policies(db, actor, env["ns"])
     from careerforge.services.learning_intent import SCOPED_QUESTION_ROUTING_CONTRACT
-    intent, decision = await app.coordinator.decide(actor, question, {"project_source_ids": [first]}, 1, policies, None, routing_contract_version=SCOPED_QUESTION_ROUTING_CONTRACT)
+
+    intent, decision = await app.coordinator.decide(
+        actor,
+        question,
+        {"project_source_ids": [first]},
+        1,
+        policies,
+        None,
+        routing_contract_version=SCOPED_QUESTION_ROUTING_CONTRACT,
+    )
     assert intent.project_source_ids == [first]
     assert (decision.action == "ask_clarification") == clarify

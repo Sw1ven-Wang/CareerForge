@@ -13,7 +13,9 @@ from careerforge.services.dependencies import invalidate
 from careerforge.services.investigation import Investigation
 
 
-def setup_reader(env, *, reads=3, tools=8, lines=150, completion=REVIEW_READ_COMPLETION, role="reviewer"):
+def setup_reader(
+    env, *, reads=3, tools=8, lines=150, completion=REVIEW_READ_COMPLETION, role="reviewer"
+):
     app, actor = env["app"], env["actor"]
     content = "".join(f"v{i} = {i}\n" for i in range(1, 301))
     source = app.sources.import_source(
@@ -40,7 +42,15 @@ def setup_reader(env, *, reads=3, tools=8, lines=150, completion=REVIEW_READ_COM
         "knowledge_review_contract_version": SCOPED_REVIEW_VERSION,
         "analysis_read_completion" if role == "analysis" else "review_read_completion": completion,
     }
-    run = app.runtime.create(actor, env["ns"], env["funding"], "analysis" if role == "analysis" else "review", manifest, 3, "scope-read")
+    run = app.runtime.create(
+        actor,
+        env["ns"],
+        env["funding"],
+        "analysis" if role == "analysis" else "review",
+        manifest,
+        3,
+        "scope-read",
+    )
     epoch = app.runtime.claim(run, "reader")
     inv = Investigation(
         app.sources,
@@ -78,8 +88,10 @@ def setup_reader(env, *, reads=3, tools=8, lines=150, completion=REVIEW_READ_COM
 @pytest.mark.parametrize("reads,expected_end", [(6, 300), (2, 140)])
 async def test_analysis_requested_range_pages_share_budget_and_replay(env, reads, expected_end):
     from careerforge.services.investigation import ANALYSIS_READ_COMPLETION
-    inv, source, content = setup_reader(env, reads=reads, tools=12, lines=300,
-        completion=ANALYSIS_READ_COMPLETION, role="analysis")
+
+    inv, source, content = setup_reader(
+        env, reads=reads, tools=12, lines=300, completion=ANALYSIS_READ_COMPLETION, role="analysis"
+    )
     bundle = await inv.run("v1", {})
     assert bundle["reads"][-1]["end_line"] == expected_end
     assert bundle["read_attempts"] <= reads
@@ -194,7 +206,10 @@ def test_forged_continuation_cannot_expand_original_request(env, mutation):
 @pytest.mark.asyncio
 async def test_v2_completes_long_requested_range_without_hidden_truncation(env):
     from careerforge.contracts_scoped_review_v166 import REVIEW_READ_COMPLETION_V2
-    inv, _, content = setup_reader(env, reads=24, tools=36, lines=300, completion=REVIEW_READ_COMPLETION_V2)
+
+    inv, _, content = setup_reader(
+        env, reads=24, tools=36, lines=300, completion=REVIEW_READ_COMPLETION_V2
+    )
     bundle = await inv.run("v1", {})
     assert bundle["reads"][-1]["end_line"] == 300
     assert bundle["read_completion"]["completed_pages"] > 2
@@ -206,12 +221,27 @@ async def test_v2_completes_long_requested_range_without_hidden_truncation(env):
 @pytest.mark.asyncio
 async def test_v2_cannot_claim_sufficiency_when_budget_leaves_unread_pages(env):
     from careerforge.contracts_scoped_review_v166 import REVIEW_READ_COMPLETION_V2
+
     inv, _, _ = setup_reader(env, reads=1, tools=8, lines=300, completion=REVIEW_READ_COMPLETION_V2)
+
     def response(request):
-        return ModelOutput(synthetic=True, tool_calls=[
-            ToolCall(id="read", name="read_span", arguments={"path":"source.py", "start_line":1,"end_line":300}),
-            ToolCall(id="finish", name="finish_investigation", arguments={"reason":"evidence_sufficient"})
-        ],finish_reason="tool_calls")
+        return ModelOutput(
+            synthetic=True,
+            tool_calls=[
+                ToolCall(
+                    id="read",
+                    name="read_span",
+                    arguments={"path": "source.py", "start_line": 1, "end_line": 300},
+                ),
+                ToolCall(
+                    id="finish",
+                    name="finish_investigation",
+                    arguments={"reason": "evidence_sufficient"},
+                ),
+            ],
+            finish_reason="tool_calls",
+        )
+
     env["model"].overrides["reviewer"] = response
     bundle = await inv.run("v1", {})
     assert bundle["stop_reason"] == "requested_evidence_incomplete"
@@ -223,9 +253,22 @@ async def test_v2_cannot_claim_sufficiency_when_budget_leaves_unread_pages(env):
 @pytest.mark.asyncio
 async def test_v2_finish_reports_explicit_candidate_file_not_read(env):
     from careerforge.contracts_scoped_review_v166 import REVIEW_READ_COMPLETION_V2
+
     inv, _, _ = setup_reader(env, reads=24, tools=36, completion=REVIEW_READ_COMPLETION_V2)
-    env["model"].overrides["reviewer"] = lambda request: ModelOutput(synthetic=True, tool_calls=[
-        ToolCall(id="finish",name="finish_investigation",arguments={"reason":"evidence_sufficient"})],finish_reason="tool_calls")
-    bundle = await inv.run("unrelated", {"review_subject":{"claims":[{"statement":"source.py implements this operation"}]}})
+    env["model"].overrides["reviewer"] = lambda request: ModelOutput(
+        synthetic=True,
+        tool_calls=[
+            ToolCall(
+                id="finish",
+                name="finish_investigation",
+                arguments={"reason": "evidence_sufficient"},
+            )
+        ],
+        finish_reason="tool_calls",
+    )
+    bundle = await inv.run(
+        "unrelated",
+        {"review_subject": {"claims": [{"statement": "source.py implements this operation"}]}},
+    )
     assert bundle["stop_reason"] == "requested_evidence_incomplete"
     assert bundle["unread_claim_paths"] == ["source.py"]

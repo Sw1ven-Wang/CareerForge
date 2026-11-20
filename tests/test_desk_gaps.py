@@ -158,23 +158,37 @@ async def test_desk_does_not_expand_scope_or_loop(env, fence):
 @pytest.mark.asyncio
 async def test_gap_reanswer_keeps_prior_and_new_same_source_evidence(env, monkeypatch):
     from careerforge.contracts import TurnInput
+
     source, prior, _ = await publish_fixture(env)
     source2, fresh, build_id = await publish_fixture(env, key="fresh-gap")
     assert source2 == source
     app = env["app"]
     captured = []
     retrieve = app.retrieval.retrieve
+
     async def observe(actor, spec, *args, **kwargs):
         captured.append(spec)
         return await retrieve(actor, spec, *args, **kwargs)
+
     monkeypatch.setattr(app.retrieval, "retrieve", observe)
     cid = app.conversations.create(env["actor"])
-    outcome = app.conversations.submit_gap_reanswer(env["actor"], cid,
-        TurnInput(question="Tool Calling 返回值示例", expected_revision=1,
-                  funding_id=env["funding"], idempotency_key="cumulative-gap"),
-        {"source_id": source, "publication_ids": [fresh],
-         "evidence_publication_ids": sorted({prior, fresh}),
-         "topic_keys": [], "build_run_id": build_id})
+    outcome = app.conversations.submit_gap_reanswer(
+        env["actor"],
+        cid,
+        TurnInput(
+            question="Tool Calling 返回值示例",
+            expected_revision=1,
+            funding_id=env["funding"],
+            idempotency_key="cumulative-gap",
+        ),
+        {
+            "source_id": source,
+            "publication_ids": [fresh],
+            "evidence_publication_ids": sorted({prior, fresh}),
+            "topic_keys": [],
+            "build_run_id": build_id,
+        },
+    )
     await app.execute(outcome["run_id"])
     assert captured[0].pinned_publication_ids == sorted({prior, fresh})
     assert captured[0].project_source_ids == [source]

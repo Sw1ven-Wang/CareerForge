@@ -1,4 +1,5 @@
 """Synthetic original-generation fences, not privacy/legal acceptance."""
+
 from copy import deepcopy
 
 import pytest
@@ -14,7 +15,9 @@ from careerforge.util import fingerprint
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("kind", ["candidate", "replay"])
-async def test_original_generation_changed_before_domain_commit_never_persists_effect(env, monkeypatch, kind):
+async def test_original_generation_changed_before_domain_commit_never_persists_effect(
+    env, monkeypatch, kind
+):
     app = env["app"]
     if kind == "candidate":
         conv, _, _, admission = await candidate_session(env)
@@ -40,10 +43,12 @@ async def test_original_generation_changed_before_domain_commit_never_persists_e
     assert len(env["model"].calls) == captured["calls"]
     assert app.runtime.stage(captured["run_id"], "result") is None
     with app.db.read() as db:
-        assert not db.scalar(select(Idempotency.id).where(
-            Idempotency.operation == "evolution.paid.effect.v1",
-            Idempotency.key == captured["run_id"],
-        ))
+        assert not db.scalar(
+            select(Idempotency.id).where(
+                Idempotency.operation == "evolution.paid.effect.v1",
+                Idempotency.key == captured["run_id"],
+            )
+        )
         run = db.get(AgentRun, captured["run_id"])
         assert run.calls_consumed == (1 if kind == "candidate" else 0)
         assert run.status == "failed"
@@ -77,7 +82,9 @@ async def test_generation_map_is_bound_to_original_admission_not_current_repair(
 
 
 @pytest.mark.asyncio
-async def test_pre_dispatch_owner_change_without_closure_hash_change_has_zero_egress(env, monkeypatch):
+async def test_pre_dispatch_owner_change_without_closure_hash_change_has_zero_egress(
+    env, monkeypatch
+):
     from careerforge.models import AccessGrant, ModelReceipt, Namespace
     from careerforge.services import evolution_privacy
     from careerforge.services.dependencies import check_closure
@@ -101,9 +108,13 @@ async def test_pre_dispatch_owner_change_without_closure_hash_change_has_zero_eg
             if observed["dependency_checks"] == 2:
                 # First check was the committed receipt reservation. This is
                 # the actual last authorization window before provider dispatch.
-                receipts = list(db.scalars(select(ModelReceipt).where(ModelReceipt.run_id == run.id)))
+                receipts = list(
+                    db.scalars(select(ModelReceipt).where(ModelReceipt.run_id == run.id))
+                )
                 assert len(receipts) == 1 and receipts[0].response is None
-                assert new_owner_id not in run.input_manifest["evolution_graph"]["privacy_generations"]
+                assert (
+                    new_owner_id not in run.input_manifest["evolution_graph"]["privacy_generations"]
+                )
                 before = check_closure(db, run.principal_id, dependencies).closure_hash
                 db.get(Namespace, run.namespace_id).owner_id = new_owner_id
                 db.flush()

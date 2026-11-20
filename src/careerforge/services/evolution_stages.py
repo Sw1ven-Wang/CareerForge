@@ -411,9 +411,7 @@ def reconcile_in(app, db, run, *, terminal=False):
             },
         )
         return result
-    manifest = db.scalar(
-        select(PolicyReplayManifest).where(PolicyReplayManifest.run_id == run.id)
-    )
+    manifest = db.scalar(select(PolicyReplayManifest).where(PolicyReplayManifest.run_id == run.id))
     evaluation = db.get(EvolutionEvaluation, result.get("evaluation_id"))
     if (
         not manifest
@@ -554,7 +552,8 @@ def historical_summary(app, actor, run_id):
         )
         if (
             not request
-            or request.principal_id != actor or request.namespace_id != run.namespace_id
+            or request.principal_id != actor
+            or request.namespace_id != run.namespace_id
             or not link
             or link.workflow_id != request.workflow_id
             or request.admission_manifest_hash != run.input_hash
@@ -579,21 +578,38 @@ def historical_summary(app, actor, run_id):
         ):
             fail()
         result = effect["result"]
-        allowed = ({"candidate_id", "candidate_hash", "base_policy_id", "base_hash", "published"}
-                   if run.workflow == "evolution" else
-                   {"evaluation_id", "candidate_id", "candidate_hash", "base_hash", "trace_hash", "published"})
-        if not isinstance(result, dict) or set(result) != allowed or result.get("published") is not False:
+        allowed = (
+            {"candidate_id", "candidate_hash", "base_policy_id", "base_hash", "published"}
+            if run.workflow == "evolution"
+            else {
+                "evaluation_id",
+                "candidate_id",
+                "candidate_hash",
+                "base_hash",
+                "trace_hash",
+                "published",
+            }
+        )
+        if (
+            not isinstance(result, dict)
+            or set(result) != allowed
+            or result.get("published") is not False
+        ):
             fail("历史效果仅允许精确的无正文引用合同。")
         if run.workflow == "evolution":
             from ..models import PolicyVersion
+
             candidate = db.get(EvolutionCandidate, result.get("candidate_id"))
             base = db.get(PolicyVersion, result.get("base_policy_id"))
             if (
                 not candidate
                 or candidate.content_hash != result.get("candidate_hash")
                 or candidate.namespace_id != run.namespace_id
-                or not base or candidate.base_policy_id != base.id or base.content_hash != result["base_hash"]
-                or base.namespace_id != run.namespace_id or base.target != candidate.target
+                or not base
+                or candidate.base_policy_id != base.id
+                or base.content_hash != result["base_hash"]
+                or base.namespace_id != run.namespace_id
+                or base.target != candidate.target
             ):
                 fail()
         else:
@@ -607,7 +623,8 @@ def historical_summary(app, actor, run_id):
                 or evaluation.candidate_id != result["candidate_id"]
                 or not manifest
                 or manifest.evaluation_id != evaluation.id
-                or manifest.candidate_id != result["candidate_id"] or manifest.dataset_id != evaluation.dataset_id
+                or manifest.candidate_id != result["candidate_id"]
+                or manifest.dataset_id != evaluation.dataset_id
                 or manifest.frozen_hash != run.input_hash
                 or manifest.trace_hash != result.get("trace_hash")
                 or evaluation.candidate_hash != result.get("candidate_hash")

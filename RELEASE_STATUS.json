@@ -1,10 +1,6 @@
 {
   "version": "1.6.6",
-  "snapshot_date": "2026-11-18",
-  "status": "pi_architecture_prompt_verified",
   "production_accepted": false,
-  "acceptance_report": "docs/Pi原句闭环验收_20261118.md",
-  "task_satisfied": true,
   "full_test_suite_certified": false,
   "historical_record": {
     "candidate": "careerforge-agent-input-loop-20261113",
@@ -51,5 +47,35 @@
       "audit_model_calls": 0
     },
     "baseline_zip_sha256": "ef37cac5320563e4a8630e3dc8b11acf707527a1a70ca49aef4151907e000aa4"
-  }
+  },
+  "prior_acceptance": {
+    "snapshot_date": "2026-11-18",
+    "status": "pi_architecture_prompt_verified",
+    "acceptance_report": "docs/Pi原句闭环验收_20261118.md",
+    "task_satisfied": true
+  },
+  "snapshot_date": "2026-11-20",
+  "status": "local_workflow_verified",
+  "acceptance_report": "docs/本地流程验收_20261120.md",
+  "local_acceptance": {
+    "model": "gpt-6.1-terra",
+    "provider": "WorkflowTerra",
+    "model_calls": 30,
+    "completed_requests": 15,
+    "modules_completed": 2,
+    "assessments_with_feedback": 2,
+    "verified_citations": 4,
+    "tutor_coverage": [
+      "partial",
+      "partial",
+      "complete"
+    ],
+    "independent_gold_used": false
+  },
+  "offline_tests": {
+    "passed": 4008,
+    "failed": 1,
+    "skipped": 2
+  },
+  "research_replay_rerun_passed": 8
 }

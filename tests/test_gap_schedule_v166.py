@@ -384,16 +384,39 @@ def test_auto_reanswer_rejects_cross_repository_before_budget(env):
 
 def test_gap_review_retry_is_explicit_bounded_and_replayable(env):
     from careerforge.services.gap_scheduling import _validated_contract
+
     gap, _, source = gap_fixture(env)
     app, actor = env["app"], env["actor"]
-    result = app.lifecycle.schedule_gap(actor, gap, env["funding"], 28, "retry-gap", source_id=source,
-        max_units_per_project=1, duration_minutes=90, planning_call_seconds=120, auto_evidence_retry=True)
+    result = app.lifecycle.schedule_gap(
+        actor,
+        gap,
+        env["funding"],
+        28,
+        "retry-gap",
+        source_id=source,
+        max_units_per_project=1,
+        duration_minutes=90,
+        planning_call_seconds=120,
+        auto_evidence_retry=True,
+    )
     with app.db.read() as db:
         run = db.get(AgentRun, result["run_id"])
-        contract = _validated_contract(app.lifecycle, db, actor, db.get(KnowledgeGap,gap), run)
+        contract = _validated_contract(app.lifecycle, db, actor, db.get(KnowledgeGap, gap), run)
         assert contract["review_retry_contract"] == "gap-bounded-review-retry-v1"
         assert run.input_manifest["execution_plan"]["evidence_retry_call_reserve"] > 0
         assert run.input_manifest["targeted_review_contract"]
-    assert app.lifecycle.schedule_gap(actor, gap, env["funding"], 28, "retry-gap", source_id=source,
-        max_units_per_project=1, duration_minutes=90, planning_call_seconds=120, auto_evidence_retry=True)["run_id"] == result["run_id"]
-
+    assert (
+        app.lifecycle.schedule_gap(
+            actor,
+            gap,
+            env["funding"],
+            28,
+            "retry-gap",
+            source_id=source,
+            max_units_per_project=1,
+            duration_minutes=90,
+            planning_call_seconds=120,
+            auto_evidence_retry=True,
+        )["run_id"]
+        == result["run_id"]
+    )

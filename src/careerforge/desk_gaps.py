@@ -53,8 +53,14 @@ async def supplement_desk_question(service, job, persist=lambda: None):
         existing_build = db.get(AgentRun, gap.build_run_id) if gap.build_run_id else None
         supplement_cap = existing_build.call_cap if existing_build else min(34, available - 24)
         if supplement_cap < 15:
-            job["gap_supplement"] = {"status": "blocked", "reason": "insufficient_retry_budget", "gap_id": gap_id}
-            job["reply"] = "当前模型额度不足以完成独立补证和复答；已保留已审核内容及缺口，尚未启动新的补证。"
+            job["gap_supplement"] = {
+                "status": "blocked",
+                "reason": "insufficient_retry_budget",
+                "gap_id": gap_id,
+            }
+            job["reply"] = (
+                "当前模型额度不足以完成独立补证和复答；已保留已审核内容及缺口，尚未启动新的补证。"
+            )
             return
     job["status"] = "running"
     job["gap_supplement"] = {"gap_id": gap_id, "status": "extracting", **scope}
@@ -123,7 +129,8 @@ async def supplement_desk_question(service, job, persist=lambda: None):
                 "本次实际读取："
                 + ("、".join(sorted({r.path for r in reads})) or "尚未成功读取源码")
                 + "。"
-                "原因：" + ", ".join(reconciled.get("reason_codes", []))
+                "原因："
+                + ", ".join(reconciled.get("reason_codes", []))
                 + "。已保留已审核内容和未覆盖范围；本轮受限补证已结束，无需重复提供同一仓库。后续应依据具体审核缺口继续调查，只有需要其他版本或当前快照之外的来源时才需要补充来源。"
             )
     except DomainError as exc:

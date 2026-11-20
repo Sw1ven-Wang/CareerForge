@@ -56,12 +56,20 @@ def test_review_identity_schema_pins_hashes_without_overriding_verdict():
     fields = schema["$defs"]["BoundStandaloneClaimReview"]["properties"]
     for key, value in identity.items():
         assert fields[key]["enum"] == [value]
-    assert schema["properties"]["decision"] == BoundScopedReviewOutput.model_json_schema()["properties"]["decision"]
-    assert "enum" not in BoundScopedReviewOutput.model_json_schema()["$defs"]["BoundStandaloneClaimReview"]["properties"]["render_hash"]
+    assert (
+        schema["properties"]["decision"]
+        == BoundScopedReviewOutput.model_json_schema()["properties"]["decision"]
+    )
+    assert (
+        "enum"
+        not in BoundScopedReviewOutput.model_json_schema()["$defs"]["BoundStandaloneClaimReview"][
+            "properties"
+        ]["render_hash"]
+    )
 
 
 def native(name):
-    return json.loads((NATIVE / name).read_text())
+    return json.loads((NATIVE / name).read_text(encoding="utf-8"))
 
 
 def expanded(subject):
@@ -275,7 +283,7 @@ def test_export_minimizes_metadata_and_preserves_application_values():
     )
     for path in NATIVE.iterdir():
         if path.is_file():
-            text = path.read_text()
+            text = path.read_text(encoding="utf-8")
             assert "/root/" not in text and "/workspace/" not in text
             assert "native_agent_id" not in text and "access_dependencies" not in text
     assert "synthetic" in manifest["provenance"]["job_description_and_scenarios"].lower()
@@ -361,9 +369,13 @@ async def test_new_contract_rejects_before_coverage_and_preserves_receipt(
     )
     from careerforge.services.scope_binding import reviewer_identity_schema
 
-    assert call["schema"] == strict_schema(reviewer_identity_schema(
-        BoundScopedResearchReviewOutput, call["context"]["subject"]
-    ))
+    assert call["schema"] == strict_schema(
+        reviewer_identity_schema(
+            BoundScopedResearchReviewOutput,
+            call["context"]["subject"],
+            call["context"]["independent_bundle"]["reads"],
+        )
+    )
     assert SCOPE_BINDING_INSTRUCTIONS in call["messages"][0]["content"]
     with app.db.read() as db:
         root = db.get(AgentRun, run_id)

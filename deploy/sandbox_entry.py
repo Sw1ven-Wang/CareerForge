@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import os
-import resource
 import signal
 import subprocess
 import tempfile
@@ -114,6 +113,8 @@ def collect_files(root: Path) -> dict[str, str]:
 
 
 def drop_privileges() -> None:
+    import resource
+
     resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
     os.setgroups([])
     os.setgid(65534)

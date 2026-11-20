@@ -6,8 +6,8 @@ from pydantic import Field
 
 from .contracts import Contract
 from .contracts_conversation_actions_v1 import (
+    ActionPlanBase,
     ClarifyAction,
-    ConversationActionPlan,
     ImportJDAction,
     ScopedAction,
     SwitchAction,
@@ -49,9 +49,8 @@ class ActionStepV2(Contract):
     depends_on: list[str] = Field(default_factory=list, max_length=3)
 
 
-class ConversationActionPlanV2(ConversationActionPlan):
+class ConversationActionPlanV2(ActionPlanBase[ActionStepV2]):
     contract_version: Literal["conversation-action-plan-v2"] = "conversation-action-plan-v2"
-    actions: list[ActionStepV2] = Field(min_length=1, max_length=4)
 
 
 class GoalAmendmentInput(WorkflowControl):

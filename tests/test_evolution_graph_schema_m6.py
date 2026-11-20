@@ -19,9 +19,12 @@ def test_m6_empty_schema_roundtrip_and_actual_constraints(tmp_path):
     assert "workflow_evolution_requests" not in inspect(engine).get_table_names()
     migrate(url, "head")
     inspector = inspect(engine)
-    assert {"ck_evolution_request_kind", "ck_evolution_request_authority", "ck_evolution_request_sequence", "ck_evolution_request_status"} <= {
-        c["name"] for c in inspector.get_check_constraints("workflow_evolution_requests")
-    }
+    assert {
+        "ck_evolution_request_kind",
+        "ck_evolution_request_authority",
+        "ck_evolution_request_sequence",
+        "ck_evolution_request_status",
+    } <= {c["name"] for c in inspector.get_check_constraints("workflow_evolution_requests")}
     assert len(inspector.get_foreign_keys("workflow_evolution_requests")) == 9
     result = downgrade(url, "cf166_practice_graph")
     assert result.returncode == 0, result.stderr

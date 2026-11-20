@@ -41,11 +41,13 @@ def reviewer_identity_schema(output_type, subject, independent_reads=None):
         "topic_link": [row["id"] for row in subject.get("topic_links", [])],
         "facet": [row["id"] for row in subject.get("facets", [])],
     }
+
     def constrain_array(field, values):
         if values:
             field["items"]["enum"] = values
         else:
             field["maxItems"] = 0
+
     for field, kind in (("accepted_topic_link_ids", "topic_link"), ("accepted_facet_ids", "facet")):
         constrain_array(schema["properties"][field], allowed[kind])
     for name, definition in list(schema.get("$defs", {}).items()):
@@ -69,14 +71,27 @@ def reviewer_identity_schema(output_type, subject, independent_reads=None):
     identity = subject.get("scope_identity", {})
     for definition in schema.get("$defs", {}).values():
         properties = definition.get("properties", {})
-        if {"unit_version_id", "content_hash", "render_hash", "standalone_claim_ids"} <= properties.keys():
+        if {
+            "unit_version_id",
+            "content_hash",
+            "render_hash",
+            "standalone_claim_ids",
+        } <= properties.keys():
             for key in ("unit_version_id", "content_hash", "render_hash"):
                 if key in identity:
                     properties[key]["enum"] = [identity[key]]
     return schema
 
 
-def coverage_identity_schema(output_type, subject, reviewer_hash, review=None, independent_reads=None, *, bounded_global_scope=False):
+def coverage_identity_schema(
+    output_type,
+    subject,
+    reviewer_hash,
+    review=None,
+    independent_reads=None,
+    *,
+    bounded_global_scope=False,
+):
     """Bind copied identities to the candidate without prescribing audit verdicts."""
     schema = output_type.model_json_schema()
     identity = {**subject["scope_identity"], "reviewer_output_hash": reviewer_hash}
@@ -94,27 +109,42 @@ def coverage_identity_schema(output_type, subject, reviewer_hash, review=None, i
     audit["elements"]["minItems"] = len(variants)
     audit["elements"]["maxItems"] = len(variants)
     if review is not None and "RelationAudit" in schema["$defs"]:
-        blocked = {target for issue in (review.scope_review.issue_scopes if review.scope_review else [])
-                   if issue.scope in {"topic_link", "facet"} for target in issue.target_ids}
+        blocked = {
+            target
+            for issue in (review.scope_review.issue_scopes if review.scope_review else [])
+            if issue.scope in {"topic_link", "facet"}
+            for target in issue.target_ids
+        }
         fields = schema["$defs"]["RelationAudit"]["properties"]
-        indices = [issue.issue_index for issue in (review.scope_review.issue_scopes if review.scope_review else [])
-                   if issue.scope in {"topic_link", "facet"}]
+        indices = [
+            issue.issue_index
+            for issue in (review.scope_review.issue_scopes if review.scope_review else [])
+            if issue.scope in {"topic_link", "facet"}
+        ]
         if indices:
             fields["confirmed_local_issue_indices"]["items"]["enum"] = indices
         else:
             fields["confirmed_local_issue_indices"]["maxItems"] = 0
-        for field, accepted in (("topic_links", review.accepted_topic_link_ids), ("facets", review.accepted_facet_ids)):
+        for field, accepted in (
+            ("topic_links", review.accepted_topic_link_ids),
+            ("facets", review.accepted_facet_ids),
+        ):
             eligible = sorted(set(accepted) - blocked)
             if not eligible:
                 fields[field]["maxItems"] = 0
             else:
                 item = deepcopy(schema["$defs"]["AnnotationApproval"])
                 item["properties"]["annotation_id"]["enum"] = eligible
-                item["properties"]["claim_ids"]["items"]["enum"] = [c.claim_id for c in review.claim_decisions if c.independent_reads]
-                item["properties"]["independent_read_ids"]["items"]["enum"] = [r["read_id"] for r in (independent_reads or [])]
+                item["properties"]["claim_ids"]["items"]["enum"] = [
+                    c.claim_id for c in review.claim_decisions if c.independent_reads
+                ]
+                item["properties"]["independent_read_ids"]["items"]["enum"] = [
+                    r["read_id"] for r in (independent_reads or [])
+                ]
                 fields[field]["items"] = item
     if bounded_global_scope and review is not None:
         from .coverage_issues import declared_global_issues
+
         base_audit = schema["$defs"]["StandaloneCoverageAudit"]
         local = deepcopy(base_audit)
         known = declared_global_issues(review)

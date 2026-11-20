@@ -106,7 +106,11 @@ async def test_project_question_builds_reviews_and_answers_in_same_conversation(
         for field, value in {
             "mechanism_edges": [],
             "evidence_read_requests": [],
-            "relation_audit": {"confirmed_local_issue_indices": [], "topic_links": [], "facets": []},
+            "relation_audit": {
+                "confirmed_local_issue_indices": [],
+                "topic_links": [],
+                "facets": [],
+            },
         }.items():
             if field in fields:
                 structured[field] = value
@@ -125,10 +129,14 @@ async def test_project_question_builds_reviews_and_answers_in_same_conversation(
         job, detail = await send(client, URL + " 学这个的架构")
         assert seen == [URL]
         from careerforge.models import AgentRun
+
         with env["app"].db.read() as db:
             root = db.get(AgentRun, detail["actions"][-1]["project_question"]["build_run_id"])
             assert root.input_manifest["auto_evidence_retry"] is True
-            assert root.input_manifest["repository_retry_contract"] == "single-repository-fixed-snapshot-retry-v1"
+            assert (
+                root.input_manifest["repository_retry_contract"]
+                == "single-repository-fixed-snapshot-retry-v1"
+            )
         assert detail["flow"]["status"]["target"] == URL
         assert detail["flow"]["status"]["publication_count"] > 0
         action = detail["actions"][-1]

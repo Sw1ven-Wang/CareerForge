@@ -54,13 +54,13 @@ def test_control_commands_forward_exact_user_contract(tmp_path, command, route):
 
 
 def test_privacy_export_is_private_and_never_overwrites(tmp_path):
-    body = {"rows": [{"private": "body"}]}
+    body = {"rows": [{"private": "private-export-content-sentinel"}]}
     app, calls, shown, _ = configured(body)
     output = tmp_path / "private.json"
     runner = CliRunner()
     assert runner.invoke(app, ["privacy", "export", str(output)]).exit_code == 0
     assert json.loads(output.read_text()) == body and output.stat().st_mode & 0o777 == 0o600
-    assert "body" not in json.dumps(shown)
+    assert body["rows"][0]["private"] not in json.dumps(shown)
     assert runner.invoke(app, ["privacy", "export", str(output)]).exit_code != 0
     assert json.loads(output.read_text()) == body
 

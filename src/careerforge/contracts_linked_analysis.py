@@ -1,6 +1,6 @@
 """Unpublished architecture/Python analysis pairs for explicit user confirmation."""
 
-from typing import Literal
+from typing import Generic, Literal, TypeVar
 
 from pydantic import Field, model_validator
 
@@ -14,8 +14,11 @@ class DraftKnowledgePair(Contract):
     relation: Literal["implementation_example_for"] = "implementation_example_for"
 
 
-class LinkedAnalysisOutput(AnalysisOutput):
-    pairs: list[DraftKnowledgePair] = Field(min_length=1, max_length=3)
+Pair = TypeVar("Pair", bound=DraftKnowledgePair)
+
+
+class PairedAnalysisBase(AnalysisOutput, Generic[Pair]):
+    pairs: list[Pair] = Field(min_length=1, max_length=3)
 
     @model_validator(mode="after")
     def validate_pairs(self):
@@ -49,12 +52,16 @@ class LinkedAnalysisOutput(AnalysisOutput):
         return self
 
 
+class LinkedAnalysisOutput(PairedAnalysisBase[DraftKnowledgePair]):
+    pass
+
+
 class PythonKnowledgePair(DraftKnowledgePair):
     implementation_subject_key: str
     implementation_language: Literal["python"]
 
 
-class FullyPairedAnalysisOutput(LinkedAnalysisOutput):
+class FullyPairedAnalysisOutput(PairedAnalysisBase[PythonKnowledgePair]):
     """An explicitly requested Python preview cannot silently omit its implementation."""
 
     units: list[UnitDraft] = Field(min_length=2, max_length=4)

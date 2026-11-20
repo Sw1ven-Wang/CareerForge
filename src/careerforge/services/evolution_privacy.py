@@ -3,6 +3,7 @@
 Only trusted frozen object references are roots. No prompt/body scanning, current
 value backfill, legacy enrollment, or permission caching is permitted here.
 """
+
 from __future__ import annotations
 
 from sqlalchemy import select
@@ -27,13 +28,15 @@ def dependency_owners_in(db, actor, roots):
     if not roots:
         return set()
     closure = _reachable(roots, blocking_only=True)
-    return set(db.scalars(
-        select(Namespace.owner_id)
-        .join(ObjectRow, ObjectRow.namespace_id == Namespace.id)
-        .join(closure, ObjectRow.id == closure.c.node_id)
-        .where(Namespace.kind != "shared_public")
-        .distinct()
-    ))
+    return set(
+        db.scalars(
+            select(Namespace.owner_id)
+            .join(ObjectRow, ObjectRow.namespace_id == Namespace.id)
+            .join(closure, ObjectRow.id == closure.c.node_id)
+            .where(Namespace.kind != "shared_public")
+            .distinct()
+        )
+    )
 
 
 def _base_owners(db, actor, namespace_id):
@@ -62,9 +65,13 @@ def freeze_generations_in(app, db, actor, namespace_id, manifest):
                 include(KnowledgeService.pack_dependencies(pack))
             # These are frozen, server-validated catalog/focus references, not
             # inferred IDs from questions, output prose, or evaluation labels.
-            include([entry["source_id"] for entry in case.get("typed_snapshot", {}).get("catalog", [])])
+            include(
+                [entry["source_id"] for entry in case.get("typed_snapshot", {}).get("catalog", [])]
+            )
             include(case.get("focus", {}).get("project_source_ids", []))
-            keys = set(case.get("topic_keys", [])) | set(case.get("focus", {}).get("topic_keys", []))
+            keys = set(case.get("topic_keys", [])) | set(
+                case.get("focus", {}).get("topic_keys", [])
+            )
             if manifest["target"] == "routing_policy":
                 keys.update(resolve_topics(app.db, case["question"], actor=actor))
             for key in sorted(keys):
@@ -82,8 +89,10 @@ def validate_manifest_generations_in(db, actor, namespace_id, manifest, *, depen
     if (
         not isinstance(generations, dict)
         or not generations
-        or any(not isinstance(owner, str) or not owner or type(value) is not int or value < 0
-               for owner, value in generations.items())
+        or any(
+            not isinstance(owner, str) or not owner or type(value) is not int or value < 0
+            for owner, value in generations.items()
+        )
         or not _base_owners(db, actor, namespace_id) <= set(generations)
     ):
         _fail()

@@ -107,7 +107,10 @@ def test_preview_quote_correction_has_its_own_bounded_contract():
 def test_explicit_python_pair_schema_cannot_return_architecture_only():
     from careerforge.contracts_linked_analysis import FullyPairedAnalysisOutput
 
-    assert FullyPairedAnalysisOutput.model_validate(payload()).pairs[0].implementation_language == "python"
+    assert (
+        FullyPairedAnalysisOutput.model_validate(payload()).pairs[0].implementation_language
+        == "python"
+    )
     value = payload()
     value["units"] = value["units"][:1]
     value["pairs"][0].update(implementation_subject_key=None, implementation_language=None)

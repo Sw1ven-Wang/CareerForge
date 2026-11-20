@@ -30,7 +30,10 @@ def scoped_review_enabled(manifest: dict[str, Any]) -> bool:
     completion = manifest.get("review_read_completion")
     if marker is None and completion is None:
         return False
-    if marker != SCOPED_REVIEW_VERSION or completion not in (REVIEW_READ_COMPLETION, REVIEW_READ_COMPLETION_V2):
+    if marker != SCOPED_REVIEW_VERSION or completion not in (
+        REVIEW_READ_COMPLETION,
+        REVIEW_READ_COMPLETION_V2,
+    ):
         raise DomainError("SCOPED_REVIEW_CONTRACT", "未知或不完整的逐项审核合同。", 409)
     return True
 

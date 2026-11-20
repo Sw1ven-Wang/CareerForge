@@ -549,11 +549,14 @@ class ActionExecutor:
                 workflow = self.workflows.create_in(db, conv, parent=workflow)
             workflow.target = {"entry": name, "target": action.target}
             self._set_wait(workflow, "confirm_scope", "awaiting_goal_confirmation")
-            return workflow, {"reply": (
-                "已保存指定项目地址，尚未完成知识入库。请明确学习范围（也可从项目架构和核心流程开始），"
-                "并确认来源与构建额度；之后会固定源码版本、提取知识、独立审核，通过后发布。"
-                if name == "set_repository" else "已保存学习方向，请确认来源与构建额度。"
-            )}
+            return workflow, {
+                "reply": (
+                    "已保存指定项目地址，尚未完成知识入库。请明确学习范围（也可从项目架构和核心流程开始），"
+                    "并确认来源与构建额度；之后会固定源码版本、提取知识、独立审核，通过后发布。"
+                    if name == "set_repository"
+                    else "已保存学习方向，请确认来源与构建额度。"
+                )
+            }
         if name == "add_learning_objective" or (
             name == "add_learning_topic"
             and workflow is not None

@@ -682,9 +682,11 @@ async def test_audit_worst_case_rounds_reserve_independent_review_and_final_suff
     reserved = (a + 1) + (r + 2) + manifest["sufficiency_call_reserve"]
     assert reserved + 2 <= cap and manifest["sufficiency_call_reserve"] == 1
     assert manifest["execution_plan"]["quote_correction_calls_per_source"] == 2
-    assert 1 <= a <= 4 and 1 <= r <= 3
+    assert manifest["reviewer_round_policy"] == "budgeted-six-rounds-v1"
+    assert 1 <= a <= 4 and 1 <= r <= 6
     if cap >= 13:
-        assert (a, r) == (4, 3)
+        assert a == 4
+        assert r == min(6, manifest["execution_plan"]["call_capacity"] - 10)
     await app.drain()
     result = app.runtime.stage(run, "result")
     assert result["publication_ids"] and result["task_coverage"]["complete"], result

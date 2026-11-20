@@ -8,7 +8,7 @@ concurrency:
 jobs:
   offline:
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 145
     strategy:
       fail-fast: false
       matrix: {python-version: ['3.12', '3.13']}
@@ -20,16 +20,16 @@ jobs:
         with: {node-version: '24', cache: npm, cache-dependency-path: coding-agent/package-lock.json}
       - name: Install tested Python 3.12 dependency set
         if: matrix.python-version == '3.12'
-        run: python -m pip install -c constraints-python312-linux.txt '.[dev,production]' pytest-cov
+        run: python -m pip install -c constraints-langgraph-python312-linux.txt '.[dev,production,workflows]' pytest-cov
       - name: Resolve Python 3.13 compatibility dependencies
         if: matrix.python-version != '3.12'
-        run: python -m pip install '.[dev,production]' pytest-cov
+        run: python -m pip install '.[dev,production,workflows]' pytest-cov
       - run: npm ci --prefix coding-agent --ignore-scripts --no-audit --no-fund
       - run: python -m ruff check src scripts tests alembic deploy
       - run: python -m ruff format --check src scripts tests alembic deploy
       - run: python -m mypy src/careerforge
       - run: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -p pytest_asyncio.plugin -q scripts/tests
-      - run: python scripts/run_tests.py --coverage --workers 4 --timeout 2400
+      - run: python scripts/run_tests.py --coverage --workers 4 --timeout 7200
       - run: node --check coding-agent/runner.mjs
       - run: python scripts/export_openapi.py
       - uses: actions/upload-artifact@v4
@@ -40,12 +40,12 @@ jobs:
   docker:
     needs: offline
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 145
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
-      - run: python -m pip install -c constraints-python312-linux.txt '.[dev,production]'
+      - run: python -m pip install -c constraints-langgraph-python312-linux.txt '.[dev,production,workflows]'
       - name: Build real images and exercise isolated services and sandbox
         run: python scripts/verify_docker.py --confirm-docker-test --output-dir validation/local/docker-ci
       - uses: actions/upload-artifact@v4

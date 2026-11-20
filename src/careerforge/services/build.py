@@ -12,10 +12,6 @@ from typing import Any, Literal
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from .coverage_issues import (
-    COVERAGE_ISSUES_CONTRACT, COVERAGE_ISSUES_INSTRUCTIONS,
-    coverage_issue_catalog, validate_local_issue_indices,
-)
 
 from ..adapters.github import GitHubProvider
 from ..contracts import (
@@ -40,13 +36,12 @@ from ..contracts_scope_binding_v166 import (
     REVIEW_SCOPE_BINDING_FIELD,
     BoundScopedResearchReviewOutput,
     BoundScopedReviewOutput,
-    RetryableScopedResearchReviewOutput,
     RangeRetryableScopedResearchReviewOutput,
+    RetryableScopedResearchReviewOutput,
     evidence_request_windows,
 )
 from ..contracts_scoped_review_v166 import (
     MECHANISM_PUBLICATION_CONTRACT,
-    REVIEW_READ_COMPLETION,
     REVIEW_READ_COMPLETION_V2,
     SCOPED_REVIEW_VERSION,
     TARGETED_REVIEW_CONTRACT,
@@ -98,6 +93,12 @@ from .build_execution import (
     validate_execution_manifest,
 )
 from .candidate_selection import CANDIDATE_SELECTION_VERSION, select_candidates
+from .coverage_issues import (
+    COVERAGE_ISSUES_CONTRACT,
+    COVERAGE_ISSUES_INSTRUCTIONS,
+    coverage_issue_catalog,
+    validate_local_issue_indices,
+)
 from .dependencies import assert_source_scope, check_closure, require_object
 from .investigation import Investigation
 from .jd import (
@@ -132,8 +133,8 @@ from .research_query import PUBLIC_CHANNELS, RESEARCH_QUERY_CONTRACT
 from .runtime import TERMINAL, leased
 from .scope_binding import (
     SCOPE_BINDING_INSTRUCTIONS,
-    reviewer_identity_schema,
     coverage_identity_schema,
+    reviewer_identity_schema,
     scope_binding_enabled,
     validate_reviewer_bindings,
 )
@@ -174,11 +175,13 @@ REVIEW_SYSTEM = """你是独立知识审核 Agent，不是批准率优化器。
 你已先按待核验命题独立取证，现在才查看分析证据。逐 Claim 审核；接受必须引用 independent_bundle
 实际读到的原文，不可引用 Analysis 的 read_id 冒充独立阅读。检查条件、否定、适用范围、架构边、
 Topic关联及Facet值；源码中的测试不证明运行成功。存在未解决关键反证则不能接受。
-Topic 是分类体系的机制标签，不要求其键名字符串（如 rag.chunking）字面出现在源码中。
-应核验关联所声称的具体机制是否由独立读取支持；不能仅因原文没有标签字符串而拒绝，
-也不能仅凭函数名、文件名或主题相近而接受。拒绝时写明缺少的机制或语义证据。
 独立证据与分析证据不重叠不自动表示错误，也不自动表示支持。所有断言、关联和维度都必须有决议。
 输出严格 JSON，不发布，不修改原文。"""
+
+TOPIC_REVIEW_INSTRUCTIONS = """
+Topic 是分类体系的机制标签，不要求其键名字符串（如 rag.chunking）字面出现在源码中。
+应核验关联所声称的具体机制是否由独立读取支持；不能仅因原文没有标签字符串而拒绝，
+也不能仅凭函数名、文件名或主题相近而接受。拒绝时写明缺少的机制或语义证据。"""
 
 RESEARCH_ANALYSIS_SYSTEM = (
     ANALYSIS_SYSTEM
@@ -307,7 +310,9 @@ class BuildService:
             or (body.repository_url and body.max_projects != 1)
         ):
             raise DomainError(
-                "EVIDENCE_RETRY_SCOPE", "自动补证只接受一个固定来源或指定单仓库，以及一个候选单元。", 422
+                "EVIDENCE_RETRY_SCOPE",
+                "自动补证只接受一个固定来源或指定单仓库，以及一个候选单元。",
+                422,
             )
         if (body.mechanism_edge_targets or body.discover_mechanisms) and (
             not body.source_id or body.repository_url or body.max_units_per_project != 1
@@ -406,7 +411,14 @@ class BuildService:
         ):
             selection_version = CANDIDATE_SELECTION_VERSION
         execution_plan = plan_execution(
-            body.model_copy(update={"candidate_selection_version": selection_version, "reviewer_round_policy": "budgeted-six-rounds-v1" if body.max_units_per_project == 1 else None}),
+            body.model_copy(
+                update={
+                    "candidate_selection_version": selection_version,
+                    "reviewer_round_policy": "budgeted-six-rounds-v1"
+                    if body.max_units_per_project == 1
+                    else None,
+                }
+            ),
             self.retrieval._available()[0],
         )
         manifest = {
@@ -439,8 +451,8 @@ class BuildService:
         manifest["knowledge_review_contract_version"] = SCOPED_REVIEW_VERSION
         manifest["review_read_completion"] = dict(REVIEW_READ_COMPLETION_V2)
         manifest["coverage_scope_contract"] = "review-global-scope-v1"
-        manifest["targeted_review_contract"] = TARGETED_REVIEW_CONTRACT
         manifest[REVIEW_SCOPE_BINDING_FIELD] = REVIEW_SCOPE_BINDING_CONTRACT
+        manifest["topic_review_contract"] = "mechanism-evidence-v1"
         manifest["review_identity_schema"] = "candidate-identity-enum-v1"
         manifest["coverage_identity_schema"] = "candidate-elements-enum-v1"
         manifest["analysis_anchor_correction"] = "analysis-coverage-anchor-patch-v2"
@@ -458,6 +470,7 @@ class BuildService:
         manifest["analysis_facet_schema"] = "registered-facet-values-v2"
         manifest["analysis_topic_completion"] = "missing-facet-topics-v1"
         from .investigation import ANALYSIS_READ_COMPLETION
+
         manifest["analysis_read_completion"] = dict(ANALYSIS_READ_COMPLETION)
         manifest["investigation_contracts"]["analysis"].update(max_tools=36, max_reads=24)
         if body.mechanism_edge_targets:
@@ -521,9 +534,10 @@ class BuildService:
                 )
             previous = self._existing_request(db, actor, body, goal_build_scope=goal_build_scope)
             if previous is not None:
+                existing_run = db.get(AgentRun, previous)
                 if (
-                    db.get(AgentRun, previous).input_manifest.get("jd_research_batch")
-                    != jd_research_batch
+                    existing_run is None
+                    or existing_run.input_manifest.get("jd_research_batch") != jd_research_batch
                 ):
                     raise DomainError("IDEMPOTENCY_CONFLICT", "既有研究分批不能更改。", 409)
                 return previous
@@ -537,6 +551,8 @@ class BuildService:
             if jd_research_batch is not None:
                 from .jd_research_batch import validate_batch
 
+                if body.goal_version_id is None:
+                    raise DomainError("JD_RESEARCH_BATCH", "研究分批缺少目标版本。", 422)
                 snapshot = read_goal_version(db, actor, body.goal_version_id)
                 validate_batch(snapshot, jd_research_batch)
                 if body.topic_keys != jd_research_batch["topic_keys"]:
@@ -1751,10 +1767,13 @@ class BuildService:
                 output_schema=self._analysis_schema(
                     registered_topics,
                     output_type,
-                    registered_pairs=run.input_manifest.get("analysis_facet_schema") == "registered-facet-values-v2",
+                    registered_pairs=run.input_manifest.get("analysis_facet_schema")
+                    == "registered-facet-values-v2",
                     read_ids=[row["read_id"] for row in reads["reads"]],
                     max_units=run.input_manifest["max_units"],
-                    required_dimensions=run.input_manifest.get("research_task", {}).get("required_dimensions"),
+                    required_dimensions=run.input_manifest.get("research_task", {}).get(
+                        "required_dimensions"
+                    ),
                     source_paths=(
                         [item["path"] for item in info["files"]]
                         if run.input_manifest.get("analysis_topic_contract")
@@ -1847,7 +1866,8 @@ class BuildService:
         if retry_proposals:
             output_type = (
                 RangeRetryableScopedResearchReviewOutput
-                if run.input_manifest.get("review_read_range_contract") == "paged-evidence-proposal-v1"
+                if run.input_manifest.get("review_read_range_contract")
+                == "paged-evidence-proposal-v1"
                 else RetryableScopedResearchReviewOutput
             )
         edge_targets = run.input_manifest.get("mechanism_edge_targets", [])
@@ -1919,6 +1939,12 @@ class BuildService:
                 "review.final:" + version_id,
                 "reviewer",
                 (RESEARCH_REVIEW_SYSTEM if research else REVIEW_SYSTEM)
+                + (
+                    TOPIC_REVIEW_INSTRUCTIONS
+                    if binding
+                    and run.input_manifest.get("topic_review_contract") == "mechanism-evidence-v1"
+                    else ""
+                )
                 + (SCOPED_REVIEW_INSTRUCTIONS if scoped else "")
                 + (SCOPE_BINDING_INSTRUCTIONS if binding else "")
                 + (
@@ -1976,10 +2002,15 @@ class BuildService:
                 bundle=bundle,
                 unit_version_id=version_id,
                 output_schema=reviewer_identity_schema(
-                    output_type, expanded,
-                    bundle["reads"] if run.input_manifest.get("review_reference_schema") == "independent-read-enum-v1" else None,
+                    output_type,
+                    expanded,
+                    bundle["reads"]
+                    if run.input_manifest.get("review_reference_schema")
+                    == "independent-read-enum-v1"
+                    else None,
                 )
-                if binding and run.input_manifest.get("review_identity_schema") == "candidate-identity-enum-v1"
+                if binding
+                and run.input_manifest.get("review_identity_schema") == "candidate-identity-enum-v1"
                 else None,
                 data_classes=classes,
                 access_dependencies=self._model_dependencies(run, [version_id]),
@@ -1999,13 +2030,19 @@ class BuildService:
                 "检查正文元素是否遗漏事实绑定。精确渲染不等于标题无事实；检查标题、条件、量词。"
                 "覆盖审计不能把一个错误语义批准成正确，必须如实指出遗漏或条件变化。"
                 + (SCOPED_COVERAGE_INSTRUCTIONS if scoped else "")
-                + ("\n全局阻断必须是 Reviewer 已明确列出的全局/unit问题；新增全局反证必须影响全部事实，"
-                   "此时逐项 fact_bound=false。若仍存在独立获证事实，新的缺口必须落实到具体元素或关联，"
-                   "不能把未获支持的 topic_link/facet 或原标题过宽写作全局阻断。不得为了保留事实隐藏真正全局反证。"
-                   if run.input_manifest.get("coverage_scope_contract") == "review-global-scope-v1" else "")
-                + (COVERAGE_ISSUES_INSTRUCTIONS
-                   if targeted and run.input_manifest.get("coverage_issue_catalog") == COVERAGE_ISSUES_CONTRACT
-                   else "")
+                + (
+                    "\n全局阻断必须是 Reviewer 已明确列出的全局/unit问题；新增全局反证必须影响全部事实，"
+                    "此时逐项 fact_bound=false。若仍存在独立获证事实，新的缺口必须落实到具体元素或关联，"
+                    "不能把未获支持的 topic_link/facet 或原标题过宽写作全局阻断。不得为了保留事实隐藏真正全局反证。"
+                    if run.input_manifest.get("coverage_scope_contract") == "review-global-scope-v1"
+                    else ""
+                )
+                + (
+                    COVERAGE_ISSUES_INSTRUCTIONS
+                    if targeted
+                    and run.input_manifest.get("coverage_issue_catalog") == COVERAGE_ISSUES_CONTRACT
+                    else ""
+                )
                 + (
                     "\nrelation_audit 独立裁决只保留已审原子事实时的主题和维度。"
                     "已被 Reviewer 正向批准的 illustrates 或 Facet 才可提保留，"
@@ -2027,9 +2064,13 @@ class BuildService:
                 {
                     "subject": expanded,
                     "review": base_report.model_dump(mode="json"),
-                    **({"coverage_issue_catalog": coverage_issue_catalog(base_report)}
-                       if targeted and run.input_manifest.get("coverage_issue_catalog") == COVERAGE_ISSUES_CONTRACT
-                       else {}),
+                    **(
+                        {"coverage_issue_catalog": coverage_issue_catalog(base_report)}
+                        if targeted
+                        and run.input_manifest.get("coverage_issue_catalog")
+                        == COVERAGE_ISSUES_CONTRACT
+                        else {}
+                    ),
                     **({"independent_reads": bundle["reads"]} if targeted else {}),
                     **(
                         {
@@ -2046,12 +2087,20 @@ class BuildService:
                 },
                 coverage_type,
                 output_schema=coverage_identity_schema(
-                    coverage_type, expanded, fingerprint(base_report.model_dump(mode="json")),
-                    base_report if run.input_manifest.get("coverage_relation_schema") == "eligible-independent-annotations-v1" else None,
+                    coverage_type,
+                    expanded,
+                    fingerprint(base_report.model_dump(mode="json")),
+                    base_report
+                    if run.input_manifest.get("coverage_relation_schema")
+                    == "eligible-independent-annotations-v1"
+                    else None,
                     bundle["reads"],
-                    bounded_global_scope=run.input_manifest.get("coverage_scope_contract") == "review-global-scope-v1",
+                    bounded_global_scope=run.input_manifest.get("coverage_scope_contract")
+                    == "review-global-scope-v1",
                 )
-                if scoped and run.input_manifest.get("coverage_identity_schema") == "candidate-elements-enum-v1"
+                if scoped
+                and run.input_manifest.get("coverage_identity_schema")
+                == "candidate-elements-enum-v1"
                 else None,
                 data_classes=classes,
                 access_dependencies=self._model_dependencies(run, [version_id]),
@@ -2060,8 +2109,12 @@ class BuildService:
             parsed_coverage = coverage_type.model_validate(coverage_result.structured)
             if run.input_manifest.get("coverage_scope_contract") == "review-global-scope-v1":
                 from .coverage_issues import validate_global_scope
+
                 validate_global_scope(base_report, parsed_coverage)
-            if targeted and run.input_manifest.get("coverage_issue_catalog") == COVERAGE_ISSUES_CONTRACT:
+            if (
+                targeted
+                and run.input_manifest.get("coverage_issue_catalog") == COVERAGE_ISSUES_CONTRACT
+            ):
                 validate_local_issue_indices(
                     base_report, parsed_coverage.relation_audit.confirmed_local_issue_indices
                 )
@@ -2082,14 +2135,23 @@ class BuildService:
                 targets = bundle.get("mechanism_targets", [])
                 proposals = (
                     report.evidence_read_requests
-                    if isinstance(report, (RetryableScopedResearchReviewOutput, RangeRetryableScopedResearchReviewOutput))
+                    if isinstance(
+                        report,
+                        (
+                            RetryableScopedResearchReviewOutput,
+                            RangeRetryableScopedResearchReviewOutput,
+                        ),
+                    )
                     and report.scope_review
                     # Global incompleteness blocks publication, not investigation
                     # of separately scoped, concrete evidence requests.
                     and (
                         report.decision == "needs_evidence"
-                        or (report.decision == "accept_scoped" and
-                            run.input_manifest.get("review_gap_retry_contract") == "local-gaps-independent-of-summary-v1")
+                        or (
+                            report.decision == "accept_scoped"
+                            and run.input_manifest.get("review_gap_retry_contract")
+                            == "local-gaps-independent-of-summary-v1"
+                        )
                     )
                     else []
                 )
@@ -2175,7 +2237,9 @@ class BuildService:
     def _model_dependencies(self, run: AgentRun, roots: list[str] | None = None) -> list[str]:
         dependencies = set(roots or [])
         if run.input_manifest.get("answer_gap_investigation"):
-            dependencies.update(run.input_manifest["answer_gap_investigation"]["access_dependencies"])
+            dependencies.update(
+                run.input_manifest["answer_gap_investigation"]["access_dependencies"]
+            )
         retry = run.input_manifest.get("retry_lineage")
         if retry:
             dependencies.update(retry["prior_review_ids"])
@@ -2264,6 +2328,7 @@ class BuildService:
                 "review_read_completion",
                 REVIEW_SCOPE_BINDING_FIELD,
                 "review_identity_schema",
+                "topic_review_contract",
                 "coverage_identity_schema",
                 "analysis_anchor_correction",
                 "missing_quote_correction",
@@ -2513,10 +2578,12 @@ class BuildService:
         snapshot = run.input_manifest.get("answer_gap_investigation")
         if snapshot:
             from .gap_research_context import validate
+
             with self.runtime.db.read() as db:
                 validate(db, run.principal_id, snapshot)
             result["answer_gap_investigation"] = {
-                "missing_aspects": snapshot["missing_aspects"], "facts_approved": False,
+                "missing_aspects": snapshot["missing_aspects"],
+                "facts_approved": False,
                 "instruction": "这是原问题尚未回答的方面，只作调查目标，不是源码事实。优先搜索并读取这些缺口涉及的实际函数体与跨模块调用点；不要再次用 README、工作区声明或文件头替代缺失实现。原问题仍决定任务范围。",
             }
         return result
@@ -3023,6 +3090,7 @@ class BuildService:
         result["$defs"]["JsonValue"] = {"anyOf": alternatives}
         if registered_pairs:
             from copy import deepcopy
+
             draft = result["$defs"]["FacetDraft"]
             choices = []
             for topic in topics:
@@ -3043,8 +3111,12 @@ class BuildService:
                             value["enum"] = spec["enum_values"]
                         elif kind == "object":
                             fields = spec["object_fields"]
-                            value = {"type": "object", "properties": {k: {"type": v} for k, v in fields.items()},
-                                     "required": sorted(fields), "additionalProperties": False}
+                            value = {
+                                "type": "object",
+                                "properties": {k: {"type": v} for k, v in fields.items()},
+                                "required": sorted(fields),
+                                "additionalProperties": False,
+                            }
                         props["value"] = value if status == "known" else {"type": "null"}
                         if status in {"known", "not_applicable", "conflicting"}:
                             props["claim_keys"]["minItems"] = 2 if status == "conflicting" else 1

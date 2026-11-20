@@ -67,9 +67,16 @@ async def test_default_fields_preserve_historical_hash_and_receipt_replay(env):
             text="当前进度", expected_focus_revision=revision, idempotency_key=key
         )
         # The historical wire predates both M2 and the later desk learning inputs.
-        legacy = body.model_dump(mode="json", exclude={
-            "research_question", "auto_evidence_retry", "submission", "module_ack", "publication_ids"
-        })
+        legacy = body.model_dump(
+            mode="json",
+            exclude={
+                "research_question",
+                "auto_evidence_retry",
+                "submission",
+                "module_ack",
+                "publication_ids",
+            },
+        )
         expected = fingerprint(
             {
                 "message": legacy,

@@ -1,6 +1,6 @@
 """Bounded action proposals. Caller authorization lives outside the plan."""
 
-from typing import Annotated, Literal
+from typing import Annotated, Generic, Literal, TypeVar
 
 from pydantic import Field, model_serializer, model_validator
 
@@ -130,13 +130,16 @@ class ActionStep(Contract):
     depends_on: list[str] = Field(default_factory=list, max_length=3)
 
 
-class ConversationActionPlan(Contract):
-    contract_version: Literal["conversation-action-plan-v1"] = "conversation-action-plan-v1"
+Step = TypeVar("Step")
+
+
+class ActionPlanBase(Contract, Generic[Step]):
+    contract_version: str
     conversation_id: str
     expected_focus_revision: int = Field(ge=1, strict=True)
     target_workflow_id: str | None = None
     idempotency_key: str = Field(min_length=1, max_length=120)
-    actions: list[ActionStep] = Field(min_length=1, max_length=4)
+    actions: list[Step] = Field(min_length=1, max_length=4)
 
     @model_validator(mode="after")
     def validate_order(self):
@@ -148,3 +151,7 @@ class ConversationActionPlan(Contract):
                 raise ValueError("Duplicate action dependency")
             seen.add(step.step_id)
         return self
+
+
+class ConversationActionPlan(ActionPlanBase[ActionStep]):
+    contract_version: Literal["conversation-action-plan-v1"] = "conversation-action-plan-v1"

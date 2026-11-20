@@ -15,9 +15,10 @@ def needs_coverage_selection(question):
     # punctuation: structure, responsibilities and connections. Repository names
     # alone must not win lexical ranking over those reviewed implementation facts.
     text = re.sub(r"https?://\S+", "", question)
-    return bool(re.search(r"架构|architecture|architectural|系统设计|整体设计", text, re.I)) or len(
-        [p for p in re.split(r"[?？;；]", question) if p.strip()]
-    ) > 1
+    return (
+        bool(re.search(r"架构|architecture|architectural|系统设计|整体设计", text, re.I))
+        or len([p for p in re.split(r"[?？;；]", question) if p.strip()]) > 1
+    )
 
 
 class FactCoverageGroup(Contract):

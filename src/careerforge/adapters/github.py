@@ -721,6 +721,7 @@ class GitHubProvider:
         *,
         metadata=None,
         sampling_mode="quality_evidence",
+        source_terms=(),
         pinned_commit=None,
     ) -> dict[str, Any]:
         """Pin bounded quality evidence; never describe this sample as the whole repo."""
@@ -739,9 +740,13 @@ class GitHubProvider:
         ):
             raise DomainError("SOURCE_POLICY", "仓库不符合公开来源准入策略。", 403)
         ref = quote(meta.get("default_branch", "main"), safe="")
-        commit = {"sha": pinned_commit} if pinned_commit else self._object(
-            await self._get(
-                f"https://api.github.com/repos/{name}/commits/{ref}", run_id, request_cap, "pin"
+        commit = (
+            {"sha": pinned_commit}
+            if pinned_commit
+            else self._object(
+                await self._get(
+                    f"https://api.github.com/repos/{name}/commits/{ref}", run_id, request_cap, "pin"
+                )
             )
         )
         sha = commit.get("sha", "")
@@ -762,7 +767,9 @@ class GitHubProvider:
             for r in tree.get("tree", [])
             if r.get("type") == "blob"
             and isinstance(r.get("size"), int)
-            and 0 < r["size"] <= (MAX_SOURCE_FILE_BYTES if sampling_mode == "architecture_fallback" else 96_000)
+            and 0
+            < r["size"]
+            <= (MAX_SOURCE_FILE_BYTES if sampling_mode == "architecture_fallback" else 96_000)
             and r.get("mode") in {"100644", "100755"}
             and not any(
                 part in {"vendor", "vendored", "third_party", "node_modules", "libs"}
@@ -780,7 +787,15 @@ class GitHubProvider:
             "Rust": (".rs",),
             "C": (".c", ".h"),
             "C++": (".cpp", ".cc", ".h"),
-        }.get(meta.get("language"), (".py", ".ts", ".go", ".java", ".cs", ".rs"))
+        }.get(meta.get("language") or "", (".py", ".ts", ".go", ".java", ".cs", ".rs"))
+        if sampling_mode == "learning_content" and source_terms:
+
+            def relevance(row):
+                path = row["path"].lower()
+                name = path.rsplit("/", 1)[-1]
+                return sum(3 * (term in name) + (term in path) for term in source_terms)
+
+            rows.sort(key=relevance, reverse=True)
         groups = [
             [
                 r
@@ -867,23 +882,40 @@ class GitHubProvider:
         if sampling_mode == "learning_content":
             groups = [groups[0], groups[1], groups[4]]
         elif sampling_mode == "architecture_fallback":
-            code = [r for r in rows if r["path"].endswith(suffixes) and not re.search(
-                r"(?:^|/)(?:tests?|docs|examples|scripts)(?:/|$)|\.test\.|\.spec\.", r["path"], re.I
-            )]
-            code.sort(key=lambda r: (
-                not bool(re.search(r"(?:^|/)(?:agent|agent-loop|loop|runtime|session|index|main|types)\.", r["path"], re.I)),
-                r["path"].count("/"), r["path"],
-            ))
+            code = [
+                r
+                for r in rows
+                if r["path"].endswith(suffixes)
+                and not re.search(
+                    r"(?:^|/)(?:tests?|docs|examples|scripts)(?:/|$)|\.test\.|\.spec\.",
+                    r["path"],
+                    re.I,
+                )
+            ]
+            code.sort(
+                key=lambda r: (
+                    not bool(
+                        re.search(
+                            r"(?:^|/)(?:agent|agent-loop|loop|runtime|session|index|main|types)\.",
+                            r["path"],
+                            re.I,
+                        )
+                    ),
+                    r["path"].count("/"),
+                    r["path"],
+                )
+            )
             # Keep entry points, then follow their local imports at the same
             # pinned commit instead of sampling only shallow index files.
             groups = [groups[0], groups[1], code[:12]]
         elif sampling_mode != "quality_evidence":
             raise DomainError("PROJECT_SAMPLING_MODE", "未知项目采样方式。", 422)
         selected = {r["path"]: r for group in groups for r in group}
-        files, gaps = {}, []
+        files: dict[str, str] = {}
+        gaps: list[str] = []
         pending = list(selected.items())
         inventory = {row["path"]: row for row in rows}
-        import_candidates = set()
+        import_candidates: set[str] = set()
         for path, row in pending:
             blob = self._object(
                 await self._get(
@@ -900,7 +932,10 @@ class GitHubProvider:
                 data = base64.b64decode(blob["content"])
                 if len(data) != row["size"]:
                     raise ValueError("Blob size changed")
-                if sum(len(value.encode("utf-8")) for value in files.values()) + len(data) > MAX_SOURCE_TOTAL_BYTES:
+                if (
+                    sum(len(value.encode("utf-8")) for value in files.values()) + len(data)
+                    > MAX_SOURCE_TOTAL_BYTES
+                ):
                     gaps.append(path)
                     continue
                 if (
@@ -911,17 +946,41 @@ class GitHubProvider:
                 files[path] = data.decode("utf-8", errors="strict")
                 if sampling_mode == "architecture_fallback":
                     import posixpath
-                    for spec in re.findall(r"(?:from\s+|import\s*)[\"'](\.[^\"']+)[\"']", files[path]):
+
+                    for spec in re.findall(
+                        r"(?:from\s+|import\s*)[\"'](\.[^\"']+)[\"']", files[path]
+                    ):
                         base = posixpath.normpath(posixpath.join(posixpath.dirname(path), spec))
-                        choices = [base, re.sub(r"\.js$", ".ts", base), base + ".ts", base + "/index.ts", base + ".py"]
-                        import_candidates.update(candidate for candidate in choices if candidate in inventory and candidate not in selected)
+                        choices = [
+                            base,
+                            re.sub(r"\.js$", ".ts", base),
+                            base + ".ts",
+                            base + "/index.ts",
+                            base + ".py",
+                        ]
+                        import_candidates.update(
+                            candidate
+                            for candidate in choices
+                            if candidate in inventory and candidate not in selected
+                        )
                     # Finish seed entries before choosing dependency leads so one
                     # early package cannot consume the whole bounded snapshot.
                     if path == pending[-1][0]:
                         cap = min(26, max(14, request_cap - 6))
-                        leads = sorted(import_candidates - selected.keys(), key=lambda item: (
-                            not bool(re.search(r"(?:^|/)(?:sdk|[\w-]*session|agent|agent-loop|runtime)\.[\w]+$", item, re.I)),
-                            item.count("/"), item))[:max(0, cap - len(selected))]
+                        leads = sorted(
+                            import_candidates - selected.keys(),
+                            key=lambda item: (
+                                not bool(
+                                    re.search(
+                                        r"(?:^|/)(?:sdk|[\w-]*session|agent|agent-loop|runtime)\.[\w]+$",
+                                        item,
+                                        re.I,
+                                    )
+                                ),
+                                item.count("/"),
+                                item,
+                            ),
+                        )[: max(0, cap - len(selected))]
                         for candidate in leads:
                             selected[candidate] = inventory[candidate]
                             pending.append((candidate, inventory[candidate]))
@@ -939,7 +998,9 @@ class GitHubProvider:
                 "source_kind": "github",
                 "synthetic": False,
                 "partial_snapshot": True,
-                "snapshot_purpose": "architecture_learning" if sampling_mode == "architecture_fallback" else "project_quality_evidence",
+                "snapshot_purpose": "architecture_learning"
+                if sampling_mode == "architecture_fallback"
+                else "project_quality_evidence",
                 "source_scope": "selected_fixed_files_not_full_repository",
                 "tree_truncated": bool(tree.get("truncated")),
                 "selected_paths": list(selected),
@@ -982,8 +1043,12 @@ class GitHubProvider:
             raise DomainError("SOURCE_POLICY", "仓库不符合自动下载与分析准入策略。", 403)
         if isinstance(meta.get("size"), int) and meta["size"] > 50_000:
             return await self.quality_snapshot(
-                url, run_id, request_cap, metadata=meta,
-                sampling_mode="architecture_fallback", pinned_commit=sha,
+                url,
+                run_id,
+                request_cap,
+                metadata=meta,
+                sampling_mode="architecture_fallback",
+                pinned_commit=sha,
             )
         try:
             data = await self._get(
@@ -999,8 +1064,12 @@ class GitHubProvider:
             # Do not replay an uncertain archive request or widen the pinned
             # version. Read a bounded, explicitly partial tree/blob sample.
             return await self.quality_snapshot(
-                url, run_id, request_cap, metadata=meta,
-                sampling_mode="architecture_fallback", pinned_commit=sha,
+                url,
+                run_id,
+                request_cap,
+                metadata=meta,
+                sampling_mode="architecture_fallback",
+                pinned_commit=sha,
             )
         files, skipped = self.unpack(data)
         return {

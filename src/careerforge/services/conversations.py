@@ -545,7 +545,9 @@ class ConversationService:
                         **(
                             {
                                 "gap_reanswer": gap_reanswer,
-                                "access_dependencies": gap_reanswer.get("evidence_publication_ids", gap_reanswer["publication_ids"]),
+                                "access_dependencies": gap_reanswer.get(
+                                    "evidence_publication_ids", gap_reanswer["publication_ids"]
+                                ),
                             }
                             if gap_reanswer
                             else {}
@@ -566,7 +568,9 @@ class ConversationService:
                             else {}
                         ),
                     },
-                    call_cap=session_value.model_call_cap if session_value else (24 if gap_reanswer or turn.focus.get("project_source_ids") else 8),
+                    call_cap=session_value.model_call_cap
+                    if session_value
+                    else (24 if gap_reanswer or turn.focus.get("project_source_ids") else 8),
                     key="chat:" + turn.id,
                 )
                 turn.run_id = run.id
@@ -1029,7 +1033,9 @@ class ConversationService:
                     selected_routing_policy_version=policies["routing_policy"]["policy_id"],
                     **(
                         {
-                            "pinned_publication_ids": gap_reanswer.get("evidence_publication_ids", gap_reanswer["publication_ids"]),
+                            "pinned_publication_ids": gap_reanswer.get(
+                                "evidence_publication_ids", gap_reanswer["publication_ids"]
+                            ),
                             "freshness_policy": "explicit_pinned",
                         }
                         if gap_reanswer

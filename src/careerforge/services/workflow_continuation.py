@@ -257,6 +257,33 @@ class WorkflowContinuation:
                 project_priority_count=result.get("priority_count", 0),
                 project_pool_gaps=result.get("gaps", []),
             )
+            if (
+                workflow.target.get("build_after_discovery") == run.id
+                and workflow.control_state == "active"
+                and conv.focus.get("active_workflow_id") == workflow.id
+            ):
+                from ..contracts_conversation_actions_v1 import DialogueMessage
+
+                primary = set(result.get("primary_entry_ids", []))
+                chosen = [
+                    entry["source_id"]
+                    for entry in result.get("project_entries", [])
+                    if entry["entry_id"] in primary
+                ][:2]
+                if chosen:
+                    self.start_build(
+                        db,
+                        actor,
+                        conv,
+                        workflow,
+                        DialogueMessage(
+                            text="根据已筛选项目构建学习知识",
+                            expected_focus_revision=conv.revision,
+                            source_ids=chosen,
+                            authorization_ref=run.funding_id,
+                            idempotency_key="discovery-build:" + run.id,
+                        ),
+                    )
             return
         if milestone == "extract":
             goal_id = result.get("goal_version_id")
@@ -491,9 +518,9 @@ class WorkflowContinuation:
         from .learning_language import require_language_in
         from .project_pool import ProjectPoolService
 
-        require_language_in(db, actor, workflow)
         if not workflow.goal_version_id:
             raise DomainError("GOAL_REQUIRED", "请先确认岗位目标。", 409)
+        require_language_in(db, actor, workflow)
         old = _runs_for(db, workflow, "project_discovery")
         if old:
             return {"run_refs": [r.id for r in old], "reply": "已绑定本轮项目检索与入库任务。"}
@@ -504,14 +531,27 @@ class WorkflowContinuation:
             funding.allowed_data_classes
         ):
             raise DomainError("GITHUB_EGRESS", "项目检索需要目标、学习状态与来源的访问授权。", 403)
-        identifier = ProjectPoolService(self.app).start_in(
-            db, actor, workflow, funding.id, "dialogue.projects:" + workflow.id
+        preference = re.search(
+            r"[，,]优先\s*([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)(?=[，,。]|$)", message.text
         )
+        options = (
+            {"repository_urls": ["https://github.com/" + preference.group(1)], "target_count": 1}
+            if preference
+            else {}
+        )
+        identifier = ProjectPoolService(self.app).start_in(
+            db, actor, workflow, funding.id, "dialogue.projects:" + workflow.id, **options
+        )
+        build_requested = bool(re.search(r"[，,]并构建经过审核的学习知识[。]?$", message.text))
+        if build_requested:
+            workflow.target = {**workflow.target, "build_after_discovery": identifier}
         self.workflows.link_in(db, workflow, db.get(AgentRun, identifier), "project_discovery")
         _wait(workflow, "discovering_projects", None)
         return {
             "run_refs": [identifier],
-            "reply": "已启动多项目检索与质量初审入库；优先工程质量和学习价值，不要求完全匹配技术栈。本轮不启动源码分析或知识发布。",
+            "reply": "已启动项目调研，通过初审的源码将进入知识构建。"
+            if build_requested
+            else "已启动多项目检索与质量初审入库；优先工程质量和学习价值，不要求完全匹配技术栈。本轮不启动源码分析或知识发布。",
         }
 
     def start_build(self, db, actor, conv, workflow, message):
@@ -626,8 +666,26 @@ class WorkflowContinuation:
         else:
             topics = self._topics(db, actor, workflow)
         research_batch = None
+        goal_question = None
         if not amended and workflow.goal_version_id and language_profile:
             snapshot = read_goal_version(db, actor, workflow.goal_version_id)
+            from .jd_topics import requires_rank_fusion
+
+            rank_fusion = requires_rank_fusion(snapshot)
+            if rank_fusion or workflow.target.get("build_after_discovery"):
+                goal_question = "依据固定源码解释岗位要求中的具体机制：" + "；".join(
+                    dict.fromkeys(
+                        row["quote"]
+                        for row in snapshot["requirements"]
+                        if row.get("modality") != "not_required"
+                    )
+                )
+                if rank_fusion:
+                    goal_question = (
+                        "优先解释排名融合的输入、合并规则及输出，给出实现引用和边界。"
+                        + goal_question
+                    )
+                    workflow.target = {**workflow.target, "requires_rank_fusion": True}
             if len(snapshot["requirements"]) > 30 or len(topics) > 15:
                 from .jd_research_batch import first_batch
 
@@ -667,6 +725,7 @@ class WorkflowContinuation:
         q = (
             message.research_question
             or workflow.target.get("target")
+            or (goal_question or "")[:6000]
             or "按已确认岗位要求，研究可核验的项目机制"
         )
         if message.research_question is None and workflow.target.get("user_topics"):
@@ -685,6 +744,8 @@ class WorkflowContinuation:
                     )
                 )
                 valid = self.publications(db, actor, published, topic_keys=topics)
+                if workflow.target.get("requires_rank_fusion"):
+                    valid = self.rank_fusion_publications(db, actor, valid)
                 if valid:
                     if goal_scope:
                         reuse_selection.extend(
@@ -778,6 +839,18 @@ class WorkflowContinuation:
             return {**plan, "reply": "已复用固定来源的审核知识。 " + plan["reply"]}
         return {"run_refs": runs, "reply": "已开始固定范围的分析和独立审核。"}
 
+    def rank_fusion_publications(self, db, actor, ids):
+        from .jd_topics import explains_rank_fusion
+
+        selected = []
+        for pid in ids:
+            pack = self.app.knowledge.publication_pack(
+                db, actor, pid, consumer_context_contract=CONSUMER_CONTEXT_CONTRACT
+            )
+            if explains_rank_fusion(pack, standalone_fact_ids(pack)):
+                selected.append(pid)
+        return selected
+
     def propose_plan(self, db, actor, conv, workflow, explicit_funding=None):
         previous = _runs_for(db, workflow, "plan")
         if workflow.target.get("proposal"):
@@ -786,13 +859,25 @@ class WorkflowContinuation:
                 "reply": "请先明确接受当前学习计划。",
                 "confirmation_id": workflow.target["proposal"]["version_id"],
             }
-        retry_failed = bool(previous and explicit_funding and all(r.status in {"failed", "budget_stopped", "cancelled"} for r in previous))
+        retry_failed = bool(
+            previous
+            and explicit_funding
+            and all(r.status in {"failed", "budget_stopped", "cancelled"} for r in previous)
+        )
         if previous and not retry_failed:
             return {
                 "run_refs": [run.id for run in previous],
                 "reply": "学习计划已在队列中或已结束，可查询进度。",
             }
         valid = self.publications(db, actor, workflow.target.get("publication_ids", []))
+        if workflow.target.get("requires_rank_fusion"):
+            valid = self.rank_fusion_publications(db, actor, valid)
+            if not valid:
+                _wait(workflow, "building", "reviewed_evidence_required")
+                return {
+                    "status": "waiting_confirmation",
+                    "reply": "当前已审核事实未覆盖排名融合，请补充对应源码后重试。",
+                }
         from .knowledge_implementations import material_matches
         from .learning_language import domain_for, read_profile_in
 
@@ -832,7 +917,16 @@ class WorkflowContinuation:
             "goal_version_id": workflow.goal_version_id,
             "goal_addendum_id": item.id if item else None,
             "addendum": item.manifest if item else None,
-            **({"desk_reading_plan": "desk-reading-v1"} if workflow.target.get("desk_reading_plan") == "desk-reading-v1" else {}),
+            **(
+                {"requires_rank_fusion": True}
+                if workflow.target.get("requires_rank_fusion")
+                else {}
+            ),
+            **(
+                {"desk_reading_plan": "desk-reading-v1"}
+                if workflow.target.get("desk_reading_plan") == "desk-reading-v1"
+                else {}
+            ),
         }
         version = (
             db.get(GoalVersion, workflow.goal_version_id) if workflow.goal_version_id else None
@@ -857,7 +951,9 @@ class WorkflowContinuation:
                 total_minutes=25,
                 preferences=SessionPreferences(practice=False, requested_style="code_first"),
                 expected_profile_revision=profile.revision,
-                idempotency_key="dialogue.plan:" + workflow.id + (":" + str(len(previous)) if retry_failed else ""),
+                idempotency_key="dialogue.plan:"
+                + workflow.id
+                + (":" + str(len(previous)) if retry_failed else ""),
             ),
             db=db,
             dialogue_scope=scope,
@@ -919,6 +1015,8 @@ class WorkflowContinuation:
             _wait(workflow, "tutoring", "authorize_tutor")
             return {"status": "waiting_confirmation", "reply": "计划已接受，请确认讲解授权。"}
         parts = re.split(r"[，,]", message.text, maxsplit=1)
+        if message.text.startswith(("请根据已发布知识解释", "根据已发布知识解释")):
+            question = question or message.text
         question = question or (
             parts[1].strip()
             if len(parts) == 2

@@ -480,6 +480,16 @@ def test_candidate_overflow_refuses_whole_feedback_instead_of_truncating(env):
 
 
 def install_quote_model(env, monkeypatch, *, mutation=None):
+    # These v1.6.4 controls exercise replay of full-response corrections.
+    prepare = env["app"].build.prepare_in
+
+    def historical_manifest(*args, **kwargs):
+        manifest = prepare(*args, **kwargs)
+        for key in ("review_quote_patch", "analysis_quote_patch", "quote_edit_scope"):
+            manifest.pop(key, None)
+        return manifest
+
+    monkeypatch.setattr(env["app"].build, "prepare_in", historical_manifest)
     original = env["model"].complete
 
     async def complete(request):

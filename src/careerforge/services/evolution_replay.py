@@ -944,11 +944,17 @@ class EvolutionReplay:
         check_closure(db, actor, [frozen["selection_manifest_id"]])
         if is_r3(frozen.get("typed_execution_contract")):
             check_r3_admission(db, actor, frozen)
+        # Recheck live evidence on each validation. Cases sharing a publication
+        # still validate their individual frozen copy against this transaction.
+        publication_hashes: dict[str, str] = {}
         for case in frozen["cases"]:
             for pack in case.get("frozen_units", []):
-                if fingerprint(
-                    self.app.knowledge.publication_pack(db, actor, pack["publication_id"])
-                ) != fingerprint(pack):
+                publication_id = pack["publication_id"]
+                if publication_id not in publication_hashes:
+                    publication_hashes[publication_id] = fingerprint(
+                        self.app.knowledge.publication_pack(db, actor, publication_id)
+                    )
+                if publication_hashes[publication_id] != fingerprint(pack):
                     raise DomainError("REPLAY_EVIDENCE_CHANGED", "回放证据已失效或变化。")
             if frozen["target"] == "research_heuristic":
                 self._check_research_corpus(db, actor, candidate.namespace_id, case)

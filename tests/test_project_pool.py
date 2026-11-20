@@ -188,6 +188,56 @@ async def test_quality_snapshot_is_bounded_pinned_and_does_not_download_archives
         assert snapshot["files"]["src/main.go"] == files["src/main.go"]
 
 
+@pytest.mark.asyncio
+async def test_learning_snapshot_prioritizes_requested_implementation():
+    provider = object.__new__(GitHubProvider)
+    files = {
+        name: f"# {name}\n"
+        for name in (
+            "catalog/loader.py",
+            "catalog/entry.py",
+            "core/hybrid/ranking.py",
+            "core/hybrid/retrieval.py",
+            "tests/test_ranking.py",
+        )
+    }
+    blobs = {
+        hashlib.sha1(
+            b"blob " + str(len(text.encode())).encode() + b"\0" + text.encode()
+        ).hexdigest(): (name, text.encode())
+        for name, text in files.items()
+    }
+
+    async def get(url, run_id, cap, operation, **kwargs):
+        if operation == "quality:tree":
+            payload = {
+                "tree": [
+                    {"path": name, "type": "blob", "mode": "100644", "size": len(data), "sha": sha}
+                    for sha, (name, data) in blobs.items()
+                ]
+            }
+        else:
+            sha = url.rsplit("/", 1)[-1]
+            payload = {
+                "encoding": "base64",
+                "sha": sha,
+                "content": base64.b64encode(blobs[sha][1]).decode(),
+            }
+        return json.dumps(payload).encode()
+
+    provider._get = get
+    result = await provider.quality_snapshot(
+        "https://github.com/example/project",
+        "run",
+        30,
+        pinned_commit="a" * 40,
+        metadata={"id": 1, "private": False, "license": {"spdx_id": "MIT"}, "language": "Python"},
+        sampling_mode="learning_content",
+        source_terms=("ranking", "hybrid", "retrieval"),
+    )
+    assert set(result["files"]) == {"core/hybrid/ranking.py", "core/hybrid/retrieval.py"}
+
+
 class Projects:
     synthetic = True
 
@@ -422,3 +472,30 @@ async def test_project_nomination_rejects_foreign_hosts_and_duplicate_aliases(en
                 max_snapshots=2,
                 repository_urls=urls,
             )
+
+
+@pytest.mark.asyncio
+async def test_requested_build_uses_screened_source(env):
+    from test_session_plans_v166 import planner
+
+    planner(env)
+    app, actor = env["app"], env["actor"]
+    cid, _ = await imported(env)
+    choose(env, cid, "/language Python")
+    app.repositories = Projects()
+    reply = app.dialogue.dispatch(
+        actor,
+        cid,
+        DialogueMessage(
+            text="请为这个学习目标搜索和调研合适的开源项目，优先 fixtures/c-python，并构建经过审核的学习知识。",
+            expected_focus_revision=app.conversations.detail(actor, cid)["revision"],
+            idempotency_key="research-and-build",
+            authorization_ref=env["funding"],
+        ),
+    )
+    await app.drain()
+    result = app.runtime.stage(reply["run_refs"][0], "result")
+    source = result["project_entries"][0]["source_id"]
+    with app.db.read() as db:
+        builds = list(db.scalars(select(AgentRun).where(AgentRun.workflow == "knowledge_build")))
+        assert any(run.input_manifest.get("source_id") == source for run in builds)

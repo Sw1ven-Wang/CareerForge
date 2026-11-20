@@ -10,7 +10,17 @@ from careerforge.models import AgentRun, Publication, ReviewDecision
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("mode", ["success", "scoped_with_gaps", "global_with_local_gap", "invalid_path", "cancel", "invalid_read"])
+@pytest.mark.parametrize(
+    "mode",
+    [
+        "success",
+        "scoped_with_gaps",
+        "global_with_local_gap",
+        "invalid_path",
+        "cancel",
+        "invalid_read",
+    ],
+)
 async def test_same_run_repairs_only_new_frozen_windows(env, monkeypatch, mode):
     app, actor = env["app"], env["actor"]
     entry = "src/caller.py"
@@ -174,8 +184,19 @@ async def test_same_run_repairs_only_new_frozen_windows(env, monkeypatch, mode):
         ]
         assert first.decision == "needs_evidence"
         assert db.get(AgentRun, run).calls_consumed <= body.call_cap
-        assert len(published) == (1 if mode in {"success", "scoped_with_gaps", "global_with_local_gap"} else 0)
-        assert len(children) == {"success": 4, "scoped_with_gaps": 4, "global_with_local_gap": 4, "invalid_path": 2, "cancel": 3}[mode]
+        assert len(published) == (
+            1 if mode in {"success", "scoped_with_gaps", "global_with_local_gap"} else 0
+        )
+        assert (
+            len(children)
+            == {
+                "success": 4,
+                "scoped_with_gaps": 4,
+                "global_with_local_gap": 4,
+                "invalid_path": 2,
+                "cancel": 3,
+            }[mode]
+        )
         if mode == "cancel":
             assert db.get(AgentRun, run).status == "cancelled"
             assert (

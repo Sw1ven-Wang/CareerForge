@@ -6,7 +6,11 @@ from typing import Any
 from sqlalchemy import select
 
 from ..adapters.model import ModelGateway
-from ..contracts_scoped_review_v166 import REVIEW_READ_COMPLETION, REVIEW_READ_COMPLETION_V2, SCOPED_REVIEW_VERSION
+from ..contracts_scoped_review_v166 import (
+    REVIEW_READ_COMPLETION,
+    REVIEW_READ_COMPLETION_V2,
+    SCOPED_REVIEW_VERSION,
+)
 from ..errors import DomainError
 from ..models import StageArtifact
 from ..services.runtime import Runtime
@@ -176,11 +180,18 @@ class Investigation:
             "access_dependencies": self.access_dependencies,
         }
         if self.read_completion_contract is not None:
-            analysis_completion = self.role == "analysis" and self.read_completion_contract == ANALYSIS_READ_COMPLETION
+            analysis_completion = (
+                self.role == "analysis"
+                and self.read_completion_contract == ANALYSIS_READ_COMPLETION
+            )
             if (
                 (self.role != "reviewer" and not analysis_completion)
                 or self.contract is None
-                or (not analysis_completion and self.read_completion_contract not in (REVIEW_READ_COMPLETION, REVIEW_READ_COMPLETION_V2))
+                or (
+                    not analysis_completion
+                    and self.read_completion_contract
+                    not in (REVIEW_READ_COMPLETION, REVIEW_READ_COMPLETION_V2)
+                )
             ):
                 raise DomainError(
                     "READ_COMPLETION_CONTRACT", "补读只适用于冻结的独立审核范围。", 422
@@ -192,8 +203,17 @@ class Investigation:
                 if (
                     run is None
                     or fingerprint(run.input_manifest) != run.input_hash
-                    or (not analysis_completion and run.input_manifest.get("knowledge_review_contract_version") != SCOPED_REVIEW_VERSION)
-                    or run.input_manifest.get("analysis_read_completion" if analysis_completion else "review_read_completion") != self.read_completion_contract
+                    or (
+                        not analysis_completion
+                        and run.input_manifest.get("knowledge_review_contract_version")
+                        != SCOPED_REVIEW_VERSION
+                    )
+                    or run.input_manifest.get(
+                        "analysis_read_completion"
+                        if analysis_completion
+                        else "review_read_completion"
+                    )
+                    != self.read_completion_contract
                 ):
                     raise DomainError("READ_COMPLETION_CONTRACT", "补读缺少原执行合同授权。", 422)
             expected["read_completion_contract"] = dict(self.read_completion_contract)
@@ -608,10 +628,20 @@ class Investigation:
                 or args["reason"] not in {"evidence_sufficient", "unsupported"}
             ):
                 raise DomainError("TOOL_ARGS", "停止理由无效。", 422)
-            if (self.read_completion_contract in (REVIEW_READ_COMPLETION_V2, ANALYSIS_READ_COMPLETION)
-                    and args["reason"] == "evidence_sufficient"
-                    and (self._pending_ranges() or (self.role == "reviewer" and self._unread_claim_paths()))):
-                return {"stop_reason": "requested_evidence_incomplete", "pending_ranges": self._pending_ranges(), "unread_claim_paths": self._unread_claim_paths()}
+            if (
+                self.read_completion_contract
+                in (REVIEW_READ_COMPLETION_V2, ANALYSIS_READ_COMPLETION)
+                and args["reason"] == "evidence_sufficient"
+                and (
+                    self._pending_ranges()
+                    or (self.role == "reviewer" and self._unread_claim_paths())
+                )
+            ):
+                return {
+                    "stop_reason": "requested_evidence_incomplete",
+                    "pending_ranges": self._pending_ranges(),
+                    "unread_claim_paths": self._unread_claim_paths(),
+                }
             return {"stop_reason": args["reason"]}
         raise DomainError("TOOL_DENIED", "该角色未注册此工具。", 403)
 
@@ -889,10 +919,14 @@ class Investigation:
         self.required_claim_paths = []
         if self.read_completion_contract == REVIEW_READ_COMPLETION_V2:
             # Candidate statements are untrusted investigation leads, never evidence.
-            statements = "\n".join(c.get("statement", "") for c in context.get("review_subject", {}).get("claims", []))
+            statements = "\n".join(
+                c.get("statement", "") for c in context.get("review_subject", {}).get("claims", [])
+            )
             with self.runtime.db.read() as db:
                 source = self.sources.get(db, self.actor, self.source_id)
-                self.required_claim_paths = sorted(path for path in source.files if path in statements)
+                self.required_claim_paths = sorted(
+                    path for path in source.files if path in statements
+                )
         targets = read_targets or []
         target_reads = []
         for index, target in enumerate(targets):
@@ -937,14 +971,20 @@ class Investigation:
                 "检查tool_contract与remaining预算。依据每次工具观察继续调查；可纠正明确可恢复的参数错误。"
                 "每批不得超过max_batch；continuation是未读后续范围，不可引用。单行超限须如实保留缺口。"
                 "有足够证据或无法支持时调用finish_investigation。"
-                + ("这是针对回答缺口的分析：优先读取缺失连接的实际函数体，最后一轮必须读取已命中的关键实现，不能用搜索命中或文件头替代。未读完的 continuation 不表示证据足够。"
-                   if self.read_completion_contract == ANALYSIS_READ_COMPLETION else "")
-                + ("逐条核验 review_subject.claims；先覆盖每个断言涉及的文件，再深化已读文件。"
-                   "未完成 continuation 或未独立核查的断言不是证据足够。分类缺证只阻断对应关联。"
-                   "不要用连续上百行的文件头耗尽读取预算：先搜索命题中的符号，再读取命中附近的完整函数。"
-                   "README 的定位及所有涉及包的入口也必须实际 read_span。"
-                   "最后一轮优先 read_span 补齐前轮搜索命中的实现，不能以搜索结果代替原文或提前 finish。"
-                   if self.read_completion_contract == REVIEW_READ_COMPLETION_V2 else ""),
+                + (
+                    "这是针对回答缺口的分析：优先读取缺失连接的实际函数体，最后一轮必须读取已命中的关键实现，不能用搜索命中或文件头替代。未读完的 continuation 不表示证据足够。"
+                    if self.read_completion_contract == ANALYSIS_READ_COMPLETION
+                    else ""
+                )
+                + (
+                    "逐条核验 review_subject.claims；先覆盖每个断言涉及的文件，再深化已读文件。"
+                    "未完成 continuation 或未独立核查的断言不是证据足够。分类缺证只阻断对应关联。"
+                    "不要用连续上百行的文件头耗尽读取预算：先搜索命题中的符号，再读取命中附近的完整函数。"
+                    "README 的定位及所有涉及包的入口也必须实际 read_span。"
+                    "最后一轮优先 read_span 补齐前轮搜索命中的实现，不能以搜索结果代替原文或提前 finish。"
+                    if self.read_completion_contract == REVIEW_READ_COMPLETION_V2
+                    else ""
+                ),
                 {
                     **context,
                     "question": question,
@@ -954,8 +994,14 @@ class Investigation:
                     "remaining_rounds": self.contract["max_rounds"] - index - 1,
                     "remaining_tools": self.contract["max_tools"] - self.count,
                     "remaining_reads": self.contract["max_reads"] - self.read_attempts,
-                    **({"pending_requested_ranges": self._pending_ranges(), "unread_claim_paths": self._unread_claim_paths()}
-                       if self.read_completion_contract == REVIEW_READ_COMPLETION_V2 else {}),
+                    **(
+                        {
+                            "pending_requested_ranges": self._pending_ranges(),
+                            "unread_claim_paths": self._unread_claim_paths(),
+                        }
+                        if self.read_completion_contract == REVIEW_READ_COMPLETION_V2
+                        else {}
+                    ),
                 },
                 tools=tool_specs(self.contract),
                 data_classes=[
@@ -996,10 +1042,16 @@ class Investigation:
             **({"mechanism_targets": target_reads} if targets else {}),
             "contract": self.contract,
             "runtime_observed": False,
-            **({"pending_requested_ranges": self._pending_ranges(),
-                "unread_claim_paths": self._unread_claim_paths(),
-                "read_coverage_complete": not self._pending_ranges() and not self._unread_claim_paths()}
-               if self.read_completion_contract == REVIEW_READ_COMPLETION_V2 else {}),
+            **(
+                {
+                    "pending_requested_ranges": self._pending_ranges(),
+                    "unread_claim_paths": self._unread_claim_paths(),
+                    "read_coverage_complete": not self._pending_ranges()
+                    and not self._unread_claim_paths(),
+                }
+                if self.read_completion_contract == REVIEW_READ_COMPLETION_V2
+                else {}
+            ),
             **(
                 {
                     "read_completion": {

@@ -111,6 +111,42 @@ async def test_conversation_jd_is_imported_extracted_and_resumable(env):
 
 
 @pytest.mark.asyncio
+async def test_natural_jd_and_scoped_project_practice(env):
+    _, pid, _ = await publish_fixture(env)
+    planner(env)
+    setup_model(env)
+    configure_grouped_extraction(env)
+    configured(env)
+    with env["app"].db.read() as db:
+        pack = env["app"].knowledge.publication_pack(db, env["actor"], pid)
+    async with desk(env) as client:
+        job, detail = await send(
+            client,
+            "请导入这个岗位 JD 并提取技术要求：熟悉 Python 或 Java，Redis 优先，不要求模型微调",
+        )
+        cid = job["conversation_id"]
+        assert detail["flow"]["goal"]["requirements"]
+        _, detail = await send(
+            client, f"请基于已有的 {pack['repository']} 检索知识，为我创建一份学习计划", cid
+        )
+        assert detail["flow"]["plan"]["versions"]
+        _, detail = await send(
+            client, "我确认采用刚才的学习计划，请启用它并开始第一个学习模块。", cid
+        )
+        assert detail["flow"]["plan"]["active_version_id"]
+        _, detail = await send(
+            client, "请为函数返回值生成一道练习题，并记录为当前学习模块的练习。", cid
+        )
+        assert detail["flow"]["attempt"]["attempt_id"]
+        _, detail = await send(
+            client,
+            "这是我的练习答案：函数返回传入的 value。请评估答案、记录练习反馈并更新学习进度。",
+            cid,
+        )
+        assert detail["flow"]["assessment"]["result"]["rubric_item_decisions"]
+
+
+@pytest.mark.asyncio
 async def test_scoped_worker_never_executes_other_funding_or_historical_jobs(env):
     from careerforge.contracts import TurnInput
     from careerforge.desk_workflow import execute_desk_job

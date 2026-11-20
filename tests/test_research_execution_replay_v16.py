@@ -215,10 +215,13 @@ async def execute(env, c, dataset, key="research-replay"):
 
 
 @pytest.mark.asyncio
-async def test_actual_query_generation_replays_audited_corpus_without_fresh_network(env):
+async def test_actual_query_generation_replays_audited_corpus_without_fresh_network(
+    env, monkeypatch
+):
     app, actor = env["app"], env["actor"]
     c, dataset, _, calls, _ = await setup_research(env)
     before = list(calls)
+    isolate_replay_clock(monkeypatch, [0.02] * 8)
     started, result = await execute(env, c, dataset)
     assert result["decision"] == "passed", result
     assert result["target"] == "research_heuristic" and result["model_calls"] == 8
@@ -303,9 +306,13 @@ async def test_research_dataset_only_captures_authorized_persisted_observations(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("target", ["observation", "receipt"])
-async def test_changed_research_corpus_or_cost_receipt_blocks_exact_promotion(env, target):
+async def test_changed_research_corpus_or_cost_receipt_blocks_exact_promotion(
+    env, target, monkeypatch
+):
     app = env["app"]
     c, dataset, runs, _, _ = await setup_research(env)
+    # Receipt tampering must be checked after an otherwise promotable replay.
+    isolate_replay_clock(monkeypatch, [0.02] * 8)
     _, result = await execute(env, c, dataset)
     assert result["decision"] == "passed"
     with app.db.transaction() as db:

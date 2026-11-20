@@ -15,12 +15,15 @@ claim/title/unit 问题永远不能填入此列表；它们仍按原审核与事
 
 def coverage_issue_catalog(review):
     scopes = review.scope_review.issue_scopes if review.scope_review else []
-    rows = [{
-        "original_issue_index": issue.issue_index,
-        "scope": issue.scope,
-        "target_ids": list(issue.target_ids),
-        "reason": review.blocking_issues[issue.issue_index],
-    } for issue in scopes]
+    rows = [
+        {
+            "original_issue_index": issue.issue_index,
+            "scope": issue.scope,
+            "target_ids": list(issue.target_ids),
+            "reason": review.blocking_issues[issue.issue_index],
+        }
+        for issue in scopes
+    ]
     return {
         "contract": COVERAGE_ISSUES_CONTRACT,
         "eligible_local_issues": [r for r in rows if r["scope"] in {"topic_link", "facet"}],
@@ -45,10 +48,18 @@ def validate_local_issue_indices(review, confirmed):
 
 def declared_global_issues(review):
     scope = review.scope_review
-    return list(dict.fromkeys([
-        *(scope.global_blocking_issues if scope else []),
-        *(review.blocking_issues[i.issue_index] for i in (scope.issue_scopes if scope else []) if i.scope == "unit"),
-    ]))
+    return list(
+        dict.fromkeys(
+            [
+                *(scope.global_blocking_issues if scope else []),
+                *(
+                    review.blocking_issues[i.issue_index]
+                    for i in (scope.issue_scopes if scope else [])
+                    if i.scope == "unit"
+                ),
+            ]
+        )
+    )
 
 
 def validate_global_scope(review, coverage):
@@ -57,4 +68,8 @@ def validate_global_scope(review, coverage):
         return
     new = set(audit.global_blocking_issues) - set(declared_global_issues(review))
     if new and any(e.fact_bound for e in audit.elements):
-        raise DomainError("COVERAGE_SCOPE_ESCALATION", "新增全局反证与独立获证事实矛盾；局部问题必须指向对应元素或关联。", 422)
+        raise DomainError(
+            "COVERAGE_SCOPE_ESCALATION",
+            "新增全局反证与独立获证事实矛盾；局部问题必须指向对应元素或关联。",
+            422,
+        )

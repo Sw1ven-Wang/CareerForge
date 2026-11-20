@@ -123,9 +123,15 @@ def analysis_candidates(knowledge, db, actor, reviewer, version):
         raise DomainError("MECHANISM_EDGE_SCOPE", "机制候选缺少分析权限见证。", 409)
     check_closure(db, actor, witness.payload["access_dependencies"])
     structured = receipt.response["structured"]
-    if receipt.stage_key.endswith(":quote-correction:1") and analysis.input_manifest.get("analysis_quote_patch") == "read-line-selection-v2":
+    if (
+        receipt.stage_key.endswith(":quote-correction:1")
+        and analysis.input_manifest.get("analysis_quote_patch") == "read-line-selection-v2"
+    ):
         from .quote_correction import replay_review_quote_patches
-        structured = replay_review_quote_patches(db, analysis, "analysis.final:" + version.source_id, structured)
+
+        structured = replay_review_quote_patches(
+            db, analysis, "analysis.final:" + version.source_id, structured
+        )
     original = MechanismAnalysisOutput.model_validate(structured)
     draft = require_object(db, actor, version.id, "knowledge_unit_version").payload["draft"]
     claims = {

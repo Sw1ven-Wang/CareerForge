@@ -334,7 +334,9 @@ class AgentRun(Row, Base):
     funding_id: Mapped[str] = mapped_column(ForeignKey("funding_agreements.id"))
     parent_id: Mapped[str | None] = mapped_column(ForeignKey("agent_runs.id"), index=True)
     workflow: Mapped[str] = mapped_column(String(40))
-    workflow_engine: Mapped[str] = mapped_column(String(16), default="legacy", server_default="legacy")
+    workflow_engine: Mapped[str] = mapped_column(
+        String(16), default="legacy", server_default="legacy"
+    )
     graph_version: Mapped[str | None] = mapped_column(String(40))
     state_schema_version: Mapped[int | None] = mapped_column(Integer)
     contract_version: Mapped[str] = mapped_column(String(40), default="careerforge-1.5")

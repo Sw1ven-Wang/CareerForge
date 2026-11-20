@@ -205,10 +205,18 @@ def _planner_contract(
             PLAN_RULES_V162
             + (PLAN_REFERENCE_RULES if reference_version is not None else "")
             + (SESSION_PLAN_RULES if session else "")
-            + ("\n这是桌面对话的分步阅读计划：每份材料最多一个模块；task 必须为 null。"
-               "steps 只选择 read_reviewed、explain_conditions；练习在用户明确请求后单独创建。"
-               "保持未覆盖岗位要求，不声称一份材料覆盖整个目标。"
-               if frozen.get("dialogue_scope", {}).get("desk_reading_plan") == "desk-reading-v1" else "")
+            + (
+                "\n首个模块必须选择能直接解释排名融合的已审核事实作为 focus_fact_ids。"
+                if frozen.get("dialogue_scope", {}).get("requires_rank_fusion")
+                else ""
+            )
+            + (
+                "\n这是桌面对话的分步阅读计划：每份材料最多一个模块；task 必须为 null。"
+                "steps 只选择 read_reviewed、explain_conditions；练习在用户明确请求后单独创建。"
+                "保持未覆盖岗位要求，不声称一份材料覆盖整个目标。"
+                if frozen.get("dialogue_scope", {}).get("desk_reading_plan") == "desk-reading-v1"
+                else ""
+            )
             + (
                 "\n本请求的user_learning_objective是用户新增学习目标，不是岗位要求或已审证据。"
                 "该类型可用于task.title及uncovered_goal_requirements.requirement，绝不可作为evidence。"
@@ -495,7 +503,7 @@ class LearningLoop(LearningEventsMixin, SessionPlanMixin):
                 "source_ids": [u["source_id"] for u in units],
             }
             amended_goal = bool(goal and goal.get("origin_contract") == "command-goal-v1")
-            if amended_goal:
+            if amended_goal and goal is not None:
                 scope = (dialogue_scope or {}).get("goal_build_scope")
                 selection_payload["goal_amendment"] = {
                     "goal_version_id": goal["goal_version_id"],
@@ -547,7 +555,7 @@ class LearningLoop(LearningEventsMixin, SessionPlanMixin):
                 frozen["planner_reference_prompt_version"] = PLANNER_REFERENCE_PROMPT_VERSION
             if dialogue_scope is not None:
                 frozen["dialogue_scope"] = dialogue_scope
-            if amended_goal:
+            if amended_goal and goal is not None:
                 from .goal_plan_v1 import GOAL_CATALOG_VERSION, objective_coverage, plan_marker
 
                 frozen["text_catalog_version"] = GOAL_CATALOG_VERSION
@@ -612,7 +620,7 @@ class LearningLoop(LearningEventsMixin, SessionPlanMixin):
             )
             for pid in ids:
                 depend(db, actor, selection.id, pid, "selects_source")
-            if amended_goal:
+            if amended_goal and goal is not None:
                 depend(db, actor, selection.id, goal["goal_version_id"], "binds_goal_version")
             result = {"run_id": run.id, "accepted": False, "selection_manifest_id": selection.id}
             db.add(
@@ -699,6 +707,13 @@ class LearningLoop(LearningEventsMixin, SessionPlanMixin):
                 if not pack or not set(module.focus_fact_ids) <= facts:
                     raise DomainError("PLAN_EVIDENCE", "计划引用未授权知识或事实。", 422)
                 require_frozen_standalone(m, pack, set(module.focus_fact_ids))
+                if position == 0 and m.get("dialogue_scope", {}).get("requires_rank_fusion"):
+                    from .jd_topics import explains_rank_fusion
+
+                    if not explains_rank_fusion(pack, set(module.focus_fact_ids)):
+                        raise DomainError(
+                            "PLAN_GOAL_EVIDENCE", "首个模块缺少排名融合的已审核事实。", 422
+                        )
                 if module.estimated_minutes > m["preferences"]["minutes_per_session"]:
                     raise DomainError("PLAN_SESSION_LIMIT", "模块超出用户的单次学习时间。", 422)
                 if not m["preferences"]["exercises_enabled"] and "transfer_variant" in module.steps:
@@ -1159,7 +1174,8 @@ class LearningLoop(LearningEventsMixin, SessionPlanMixin):
             plans = db.scalars(select(LearningPlan).where(LearningPlan.principal_id == actor)).all()
             if not any(
                 p.active_version_id
-                and value.module_id in db.get(PlanVersion, p.active_version_id).module_ids
+                and (version := db.get(PlanVersion, p.active_version_id)) is not None
+                and value.module_id in version.module_ids
                 for p in plans
             ):
                 raise DomainError("PLAN_NOT_ACCEPTED", "学习活动需要用户已采纳的模块。", 422)

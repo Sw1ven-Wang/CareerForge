@@ -113,7 +113,9 @@ async def test_network_disconnect_does_not_accept_partial_or_retry():
         return httpx.Response(200, stream=Broken(), headers={"content-type": "text/event-stream"})
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
-        provider = OpenAICompatibleProvider(replace(provider_settings(), model_streaming=True), client)
+        provider = OpenAICompatibleProvider(
+            replace(provider_settings(), model_streaming=True), client
+        )
         with pytest.raises(DomainError) as error:
             await provider.complete({"role": "reviewer", "messages": [], "max_output_tokens": 128})
     assert error.value.code == "MODEL_RESULT_UNCERTAIN"
@@ -125,8 +127,11 @@ async def test_network_disconnect_does_not_accept_partial_or_retry():
 async def test_connect_failure_is_distinct_from_uncertain_response():
     def fail(request):
         raise httpx.ConnectError("private endpoint details")
+
     async with httpx.AsyncClient(transport=httpx.MockTransport(fail)) as client:
-        provider = OpenAICompatibleProvider(replace(provider_settings(), model_streaming=True), client)
+        provider = OpenAICompatibleProvider(
+            replace(provider_settings(), model_streaming=True), client
+        )
         with pytest.raises(DomainError) as error:
             await provider.complete({"role": "reviewer", "messages": [], "max_output_tokens": 128})
     assert error.value.code == "MODEL_CONNECT_ERROR"

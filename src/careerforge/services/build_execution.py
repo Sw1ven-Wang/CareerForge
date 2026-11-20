@@ -51,7 +51,9 @@ def plan_execution(body: Any, embeddings: bool) -> dict[str, Any]:
     attempts = 2 if auto_retry else 1
     index_calls = attempts * units if embeddings else 0
     # Reserve one quote correction per analysis final/source and review final/unit.
-    review_limit = 6 if getattr(body, "reviewer_round_policy", None) == "budgeted-six-rounds-v1" else 3
+    review_limit = (
+        6 if getattr(body, "reviewer_round_policy", None) == "budgeted-six-rounds-v1" else 3
+    )
     options = [
         (a, r)
         for a in range(1, 5)
@@ -98,9 +100,15 @@ def plan_execution(body: Any, embeddings: bool) -> dict[str, Any]:
     planned_calls = sources * per_source + fixed
     return {
         "version": UNLIMITED_BUILD_EXECUTION if unlimited else BUILD_EXECUTION_CONTRACT,
-        **({"build_wall_time_contract": UNLIMITED_BUILD_WALL_TIME,
-            "build_duration_limit_seconds": None, "deadline_basis": "funding_expires_at"}
-           if unlimited else {}),
+        **(
+            {
+                "build_wall_time_contract": UNLIMITED_BUILD_WALL_TIME,
+                "build_duration_limit_seconds": None,
+                "deadline_basis": "funding_expires_at",
+            }
+            if unlimited
+            else {}
+        ),
         "duration_minutes": body.duration_minutes,
         "planning_call_seconds": body.planning_call_seconds,
         "time_assumption": "configurable_per_call_estimate_not_a_guarantee",
@@ -139,9 +147,11 @@ def validate_execution_manifest(manifest: dict[str, Any], call_cap: int) -> dict
         return None
     unlimited = marker == UNLIMITED_BUILD_EXECUTION
     wall_time = manifest.get("build_wall_time_contract")
-    if (marker not in {BUILD_EXECUTION_CONTRACT, UNLIMITED_BUILD_EXECUTION}
+    if (
+        marker not in {BUILD_EXECUTION_CONTRACT, UNLIMITED_BUILD_EXECUTION}
         or (wall_time == UNLIMITED_BUILD_WALL_TIME) != unlimited
-        or wall_time not in {None, UNLIMITED_BUILD_WALL_TIME}):
+        or wall_time not in {None, UNLIMITED_BUILD_WALL_TIME}
+    ):
         raise DomainError("BUILD_EXECUTION_CONTRACT", "未知构建执行合同，不自动升级或重放。", 409)
     plan = manifest.get("execution_plan")
     correction = manifest.get("quote_correction_contract")
@@ -213,11 +223,14 @@ def validate_execution_manifest(manifest: dict[str, Any], call_cap: int) -> dict
         if not (
             plan["version"] == marker
             and plan.get("build_wall_time_contract") == wall_time
-            and (not unlimited or (
-                "build_duration_limit_seconds" in plan
-                and plan["build_duration_limit_seconds"] is None
-                and plan.get("deadline_basis") == "funding_expires_at"
-            ))
+            and (
+                not unlimited
+                or (
+                    "build_duration_limit_seconds" in plan
+                    and plan["build_duration_limit_seconds"] is None
+                    and plan.get("deadline_basis") == "funding_expires_at"
+                )
+            )
             and plan["time_assumption"] == "configurable_per_call_estimate_not_a_guarantee"
             and 1 <= plan["duration_minutes"] <= 10080
             and 1 <= plan["planning_call_seconds"] <= 3600
@@ -232,7 +245,9 @@ def validate_execution_manifest(manifest: dict[str, Any], call_cap: int) -> dict
                 )
             )
             and 1 <= a <= 4
-            and 1 <= r <= (6 if manifest.get("reviewer_round_policy") == "budgeted-six-rounds-v1" else 3)
+            and 1
+            <= r
+            <= (6 if manifest.get("reviewer_round_policy") == "budgeted-six-rounds-v1" else 3)
             and 1 <= units <= 5
             and 1 <= plan["source_limit"] <= 5
             and plan["embedding_calls_per_source"] in {0, attempts * units}
@@ -258,11 +273,15 @@ def validate_execution_manifest(manifest: dict[str, Any], call_cap: int) -> dict
             and total <= plan["call_capacity"] <= 100
             and 1 <= plan["authorized_call_cap"] <= 100
             and plan["call_capacity"]
-            == (plan["authorized_call_cap"] if unlimited else min(
-                plan["authorized_call_cap"],
-                (plan["duration_minutes"] * 60 - COMMIT_RESERVE_SECONDS)
-                // plan["planning_call_seconds"],
-            ))
+            == (
+                plan["authorized_call_cap"]
+                if unlimited
+                else min(
+                    plan["authorized_call_cap"],
+                    (plan["duration_minutes"] * 60 - COMMIT_RESERVE_SECONDS)
+                    // plan["planning_call_seconds"],
+                )
+            )
             and manifest["investigation_contracts"]["analysis"]["max_rounds"] == a
             and manifest["investigation_contracts"]["reviewer"]["max_rounds"] == r
         ):
@@ -275,12 +294,17 @@ def validate_execution_manifest(manifest: dict[str, Any], call_cap: int) -> dict
             and plan["authorized_call_cap"] == call_cap
             and manifest.get("auto_evidence_retry", False) is auto_retry
             and manifest.get("discover_mechanisms", False) is bool(discovery_calls)
-            and (not auto_retry or bool(manifest.get("source_id")) or (
-                manifest.get("repository_retry_contract") == "single-repository-fixed-snapshot-retry-v1"
-                and bool(manifest.get("repository_url"))
-                and manifest.get("max_projects") == 1
-                and plan["source_limit"] == 1
-            ))
+            and (
+                not auto_retry
+                or bool(manifest.get("source_id"))
+                or (
+                    manifest.get("repository_retry_contract")
+                    == "single-repository-fixed-snapshot-retry-v1"
+                    and bool(manifest.get("repository_url"))
+                    and manifest.get("max_projects") == 1
+                    and plan["source_limit"] == 1
+                )
+            )
             and manifest["max_units_per_project"] == units
             and plan["source_limit"] <= manifest["max_projects"]
         ):

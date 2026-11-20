@@ -105,3 +105,29 @@ def test_plan_links_only_a_selected_fact_that_supports_the_requested_facet():
     assert projected(["unrelated", "selected"])["anchors"] == [
         {"module_key": "learn", "publication_id": "pub", "fact_atom_ids": ["selected"]},
     ]
+
+
+def test_rank_fusion_is_anchored_and_requires_reviewed_evidence():
+    from careerforge.services.jd_topics import explains_rank_fusion, requires_rank_fusion
+
+    req = item("r1", "排名融合", "能结合源码解释排名融合")
+    links = topic_links([req], {"rag.hybrid": 1}, {"rag.hybrid": ["RRF"]}, {})
+    assert links[0]["topics"] == [{"topic_key": "rag.hybrid", "version": 1, "role": "primary"}]
+    assert requires_rank_fusion({"requirements": [req]})
+    assert not requires_rank_fusion({"requirements": [{**req, "modality": "not_required"}]})
+    assert not requires_rank_fusion(
+        {
+            "requirements": [
+                item("r2", "Python", "要求 Python，不要求排名融合"),
+                item("r3", "排名融合", "不要求排名融合", modality="not_required"),
+            ]
+        }
+    )
+    pack = {
+        "facts": [
+            {"fact_atom_id": "loader", "text": "YAML 文件按顺序加载"},
+            {"fact_atom_id": "fusion", "text": "RRF merges ranks using reciprocal scores"},
+        ]
+    }
+    assert not explains_rank_fusion(pack, {"loader"})
+    assert explains_rank_fusion(pack, {"fusion"})

@@ -140,15 +140,19 @@ class OpenAICompatibleProvider:
         async def send(client: httpx.AsyncClient) -> ModelOutput:
             try:
                 headers = {
-                        "Authorization": "Bearer " + s.model_api_key,
-                        **({"Content-Type": "application/json"} if wire is not None else {}),
+                    "Authorization": "Bearer " + s.model_api_key,
+                    **({"Content-Type": "application/json"} if wire is not None else {}),
                 }
                 payload = {"content": wire} if wire is not None else {"json": body}
                 url = s.model_base_url.rstrip("/") + "/chat/completions"
 
                 def check_status(response):
                     if response.status_code != 200:
-                        error = DomainError("MODEL_HTTP_ERROR", f"模型请求失败（HTTP {response.status_code}），未自动重试。", 502)
+                        error = DomainError(
+                            "MODEL_HTTP_ERROR",
+                            f"模型请求失败（HTTP {response.status_code}），未自动重试。",
+                            502,
+                        )
                         error.provider_http_status = response.status_code
                         raise error
 
@@ -158,13 +162,24 @@ class OpenAICompatibleProvider:
                     from .chat_stream import collect_chat_stream
 
                     async with asyncio.timeout(s.model_timeout):
-                        async with client.stream("POST", url, headers=headers, **payload, timeout=s.model_timeout) as response:
+                        async with client.stream(
+                            "POST", url, headers=headers, **payload, timeout=s.model_timeout
+                        ) as response:
                             check_status(response)
-                            if "text/event-stream" not in response.headers.get("content-type", "").lower():
-                                raise DomainError("MODEL_RESULT_UNCERTAIN", "中转站未返回约定的模型流，未自动重试。", 502)
+                            if (
+                                "text/event-stream"
+                                not in response.headers.get("content-type", "").lower()
+                            ):
+                                raise DomainError(
+                                    "MODEL_RESULT_UNCERTAIN",
+                                    "中转站未返回约定的模型流，未自动重试。",
+                                    502,
+                                )
                             raw = await collect_chat_stream(response)
                 else:
-                    response = await client.post(url, headers=headers, **payload, timeout=s.model_timeout)
+                    response = await client.post(
+                        url, headers=headers, **payload, timeout=s.model_timeout
+                    )
                     check_status(response)
                     raw = response.json()
                 choice = raw["choices"][0]
@@ -195,8 +210,19 @@ class OpenAICompatibleProvider:
             except DomainError:
                 raise
             except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
-                raise DomainError("MODEL_CONNECT_ERROR", "无法建立模型连接；连接阶段重试已结束，未取得模型结果。", 502) from exc
-            except (httpx.HTTPError, TimeoutError, ValueError, KeyError, IndexError, TypeError) as exc:
+                raise DomainError(
+                    "MODEL_CONNECT_ERROR",
+                    "无法建立模型连接；连接阶段重试已结束，未取得模型结果。",
+                    502,
+                ) from exc
+            except (
+                httpx.HTTPError,
+                TimeoutError,
+                ValueError,
+                KeyError,
+                IndexError,
+                TypeError,
+            ) as exc:
                 raise DomainError(
                     "MODEL_RESULT_UNCERTAIN", "未取得有效的完整模型结果，停止重复付费调用。", 502
                 ) from exc
@@ -206,7 +232,9 @@ class OpenAICompatibleProvider:
         # HTTPX retries only connection establishment (ConnectError/ConnectTimeout),
         # never a written request, HTTP response error or interrupted response stream.
         transport = httpx.AsyncHTTPTransport(retries=2)
-        async with httpx.AsyncClient(transport=transport, trust_env=False, follow_redirects=False) as client:
+        async with httpx.AsyncClient(
+            transport=transport, trust_env=False, follow_redirects=False
+        ) as client:
             return await send(client)
 
     def _chat_body(self, request: dict[str, Any]) -> dict[str, Any]:
@@ -406,6 +434,7 @@ def strict_schema(value: dict[str, Any]) -> dict[str, Any]:
 class ModelGateway:
     def __init__(self, runtime: Runtime, provider: ModelProvider, settings: Settings):
         self.runtime, self.provider, self.settings = runtime, provider, settings
+        self.provider_validator = getattr(provider, "validate_request", None)
         self.request_contract = settings.model_request_contract
         if (
             self.request_contract not in {LEGACY_REQUEST_CONTRACT, CONTEXT_ONCE_CONTRACT}
@@ -413,7 +442,7 @@ class ModelGateway:
             != self.request_contract
             or (
                 self.request_contract == CONTEXT_ONCE_CONTRACT
-                and not callable(getattr(provider, "validate_request", None))
+                and not callable(self.provider_validator)
             )
         ):
             raise contract_error()
@@ -593,7 +622,8 @@ class ModelGateway:
             request["privacy_generations"] = privacy_generations
             if self.request_contract == CONTEXT_ONCE_CONTRACT:
                 validate_request(request, authority=True)
-                self.provider.validate_request(request)
+                assert self.provider_validator is not None
+                self.provider_validator(request)
             request_hash = fingerprint(request)
             if role not in funding.allowed_roles or not set(declared_data_classes) <= set(
                 funding.allowed_data_classes
@@ -742,7 +772,8 @@ class ModelGateway:
             heartbeat.check()
             if self.request_contract == CONTEXT_ONCE_CONTRACT:
                 validate_request(request, authority=True)
-                self.provider.validate_request(request)
+                assert self.provider_validator is not None
+                self.provider_validator(request)
             dispatched = True
             result = await self.provider.complete(request)
             privacy_error: DomainError | None = None
@@ -809,9 +840,9 @@ class ModelGateway:
         except PauseBoundary:
             if not dispatched:
                 with self.runtime.db.transaction() as db:
-                    run = lock_run(db, run_id)
-                    if run is not None:
-                        retract_undispatched_model(db, run, receipt_id, epoch)
+                    locked_run = lock_run(db, run_id)
+                    if locked_run is not None:
+                        retract_undispatched_model(db, locked_run, receipt_id, epoch)
             raise
         except BaseException as exc:
             with self.runtime.db.transaction() as db:
@@ -820,12 +851,18 @@ class ModelGateway:
                     saved.status = "unknown"
                     http_status = getattr(exc, "provider_http_status", None)
                     if type(http_status) is int and 100 <= http_status <= 599:
-                        run = lock_run(db, run_id)
-                        if run is not None:
-                            event(db, run, "model.http_error", {
-                                "receipt_id": receipt_id, "role": role,
-                                "http_status": http_status,
-                            })
+                        locked_run = lock_run(db, run_id)
+                        if locked_run is not None:
+                            event(
+                                db,
+                                locked_run,
+                                "model.http_error",
+                                {
+                                    "receipt_id": receipt_id,
+                                    "role": role,
+                                    "http_status": http_status,
+                                },
+                            )
             raise
         finally:
             MODEL_CALLS.labels(role, outcome).inc()
@@ -909,7 +946,8 @@ class ModelGateway:
         if (deadline - clock(db)).total_seconds() < required:
             raise DomainError(
                 "FUNDING_TIME_BUDGET"
-                if plan["version"] == UNLIMITED_BUILD_EXECUTION else "BUILD_TIME_BUDGET",
+                if plan["version"] == UNLIMITED_BUILD_EXECUTION
+                else "BUILD_TIME_BUDGET",
                 "剩余期限不足以容纳下一次调用的冻结规划假设和提交预留；未发起或计费新调用。"
                 "既有任务不会延长，可用新的请求键调整 duration_minutes 或规划参数。",
             )

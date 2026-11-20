@@ -353,7 +353,10 @@ async def test_replay_no_progress_stops_at_derived_bound_without_paid_retry(env,
         assert not list(db.scalars(select(ModelReceipt).where(ModelReceipt.run_id == run.id)))
         events = list(db.scalars(select(RunEvent).where(RunEvent.run_id == run.id)))
         assert any("GRAPH_STEP_LIMIT" in str(e.payload) for e in events)
-        assert len(list(db.scalars(select(AgentRun).where(AgentRun.workflow == "evolution_replay")))) == 1
+        assert (
+            len(list(db.scalars(select(AgentRun).where(AgentRun.workflow == "evolution_replay"))))
+            == 1
+        )
     await app.drain()
     with app.db.read() as db:
         assert db.get(AgentRun, run.id).calls_consumed == 0
@@ -362,7 +365,9 @@ async def test_replay_no_progress_stops_at_derived_bound_without_paid_retry(env,
 @pytest.mark.asyncio
 @pytest.mark.parametrize("workflow", ["candidate", "replay"])
 @pytest.mark.parametrize("fault", ["missing", "request_hash", "rehashed_result", "false_as_zero"])
-async def test_result_requires_original_atomic_effect_without_repair(env, monkeypatch, workflow, fault):
+async def test_result_requires_original_atomic_effect_without_repair(
+    env, monkeypatch, workflow, fault
+):
     from copy import deepcopy
 
     from careerforge.errors import DomainError
@@ -383,9 +388,11 @@ async def test_result_requires_original_atomic_effect_without_repair(env, monkey
     assert stages.reconcile(app, run, terminal=True)
     calls = len(env["model"].calls)
     with app.db.transaction() as db:
-        receipt = db.scalar(select(Idempotency).where(
-            Idempotency.operation == "evolution.paid.effect.v1", Idempotency.key == run.id
-        ))
+        receipt = db.scalar(
+            select(Idempotency).where(
+                Idempotency.operation == "evolution.paid.effect.v1", Idempotency.key == run.id
+            )
+        )
         if fault == "missing":
             db.delete(receipt)
         elif fault == "request_hash":
@@ -409,6 +416,12 @@ async def test_result_requires_original_atomic_effect_without_repair(env, monkey
     with app.db.read() as db:
         assert db.get(AgentRun, run.id).status == "succeeded"
         if fault == "missing":
-            assert db.scalar(select(Idempotency).where(
-                Idempotency.operation == "evolution.paid.effect.v1", Idempotency.key == run.id
-            )) is None
+            assert (
+                db.scalar(
+                    select(Idempotency).where(
+                        Idempotency.operation == "evolution.paid.effect.v1",
+                        Idempotency.key == run.id,
+                    )
+                )
+                is None
+            )

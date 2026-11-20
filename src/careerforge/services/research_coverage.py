@@ -491,6 +491,8 @@ def validate_research_run(db: Session, actor: str, run: AgentRun) -> None:
             if scoped:
                 from .goal_build_scope import scope_requirements
 
+                if goal_scope is None:
+                    raise DomainError("GOAL_HASH", "研究要求缺少固定目标范围。")
                 expected_requirements = scope_requirements(snapshot, goal_scope)
                 expected_unresolved = goal_scope["unresolved_requirement_ids"]
             else:

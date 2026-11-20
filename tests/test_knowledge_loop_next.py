@@ -60,6 +60,8 @@ async def test_independent_read_targets_and_subset_topic(env, monkeypatch, relat
         if role == "reviewer":
             data["decision"] = "needs_evidence"
             data["accepted_facet_ids"] = []
+            if global_issue:
+                data["scope_review"]["global_blocking_issues"] = ["Real global blocker"]
             data["blocking_issues"] = ["No evidence for facet"]
             data["scope_review"]["issue_scopes"] = [
                 {

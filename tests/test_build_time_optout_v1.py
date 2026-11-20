@@ -58,8 +58,12 @@ def test_only_exact_version_is_accepted(env, value):
     with pytest.raises(ValidationError):
         body_for(env, build_wall_time_contract=value)
     with pytest.raises(ValidationError):
-        DialogueMessage(text="/build", expected_focus_revision=1, idempotency_key="k",
-                        build_wall_time_contract=value)
+        DialogueMessage(
+            text="/build",
+            expected_focus_revision=1,
+            idempotency_key="k",
+            build_wall_time_contract=value,
+        )
 
 
 def test_capacity_is_only_call_bounded_but_retry_and_rounds_still_bounded(env):
@@ -73,12 +77,31 @@ def test_capacity_is_only_call_bounded_but_retry_and_rounds_still_bounded(env):
     identifier = env["app"].build.start(env["actor"], body)
     with env["app"].db.read() as db:
         run = db.get(AgentRun, identifier)
-        assert validate_execution_manifest(run.input_manifest, 32) == plan
+        assert run.input_manifest["reviewer_round_policy"] == "budgeted-six-rounds-v1"
+        admitted = plan_execution(
+            body.model_copy(
+                update={"reviewer_round_policy": run.input_manifest["reviewer_round_policy"]}
+            ),
+            False,
+        )
+        assert validate_execution_manifest(run.input_manifest, 32) == admitted
+        assert admitted["reviewer_rounds"] == 6
+        assert admitted["planned_call_ceiling"] <= 32
         assert quote_correction_enabled(run.input_manifest)
         assert aware(run.deadline_at) == aware(db.get(FundingAgreement, body.funding_id).expires_at)
 
 
-@pytest.mark.parametrize("change", ["missing_wall", "missing_execution", "old_execution", "old_plan", "missing_plan_wall", "reduced_capacity"])
+@pytest.mark.parametrize(
+    "change",
+    [
+        "missing_wall",
+        "missing_execution",
+        "old_execution",
+        "old_plan",
+        "missing_plan_wall",
+        "reduced_capacity",
+    ],
+)
 def test_contract_pair_and_plan_cannot_be_forged(env, change):
     app = env["app"]
     identifier = app.build.start(env["actor"], new_body(env))
@@ -118,7 +141,9 @@ async def test_dispatch_after_30_minutes_keeps_original_funding_deadline(env, mo
     advance_test_clock(monkeypatch, instant)
     epoch = app.runtime.claim(identifier, "worker")
     assert epoch is not None
-    await app.gateway.call(identifier, epoch, "worker", "after-30m", "planner", "plan", {}, QueryPlan)
+    await app.gateway.call(
+        identifier, epoch, "worker", "after-30m", "planner", "plan", {}, QueryPlan
+    )
     with app.db.read() as db:
         row = db.get(AgentRun, identifier)
         funding = db.get(FundingAgreement, body.funding_id)
@@ -138,7 +163,9 @@ async def test_near_funding_expiry_refuses_before_dispatch_without_renewal(env, 
     advance_test_clock(monkeypatch, expiry - timedelta(seconds=100))
     epoch = app.runtime.claim(identifier, "worker")
     with pytest.raises(DomainError) as exc:
-        await app.gateway.call(identifier, epoch, "worker", "near-expiry", "planner", "plan", {}, QueryPlan)
+        await app.gateway.call(
+            identifier, epoch, "worker", "near-expiry", "planner", "plan", {}, QueryPlan
+        )
     assert exc.value.code == "FUNDING_TIME_BUDGET"
     assert not env["model"].calls
     with app.db.read() as db:
@@ -171,7 +198,10 @@ def test_optin_cannot_change_existing_run_or_reserve_more_calls(env):
         original = deepcopy(db.get(AgentRun, identifier).input_manifest)
         deadline = db.get(AgentRun, identifier).deadline_at
     with pytest.raises(DomainError) as exc:
-        app.build.start(env["actor"], body.model_copy(update={"build_wall_time_contract": UNLIMITED_BUILD_WALL_TIME}))
+        app.build.start(
+            env["actor"],
+            body.model_copy(update={"build_wall_time_contract": UNLIMITED_BUILD_WALL_TIME}),
+        )
     assert exc.value.code == "IDEMPOTENCY_CONFLICT"
     with app.db.read() as db:
         assert db.get(AgentRun, identifier).input_manifest == original
@@ -201,22 +231,45 @@ async def test_dialogue_optin_is_caller_only_and_frozen_in_binding(env):
     env["app"].db.settings = env["app"].settings
     source = fixed_source(env)
     with pytest.raises(ValidationError):
-        ConversationActionPlan.model_validate({"conversation_id": "c", "expected_focus_revision": 1,
-            "idempotency_key": "k", "actions": [{"step_id": "1", "action": {
-                "type": "start_build", "build_wall_time_contract": UNLIMITED_BUILD_WALL_TIME}}]})
+        ConversationActionPlan.model_validate(
+            {
+                "conversation_id": "c",
+                "expected_focus_revision": 1,
+                "idempotency_key": "k",
+                "actions": [
+                    {
+                        "step_id": "1",
+                        "action": {
+                            "type": "start_build",
+                            "build_wall_time_contract": UNLIMITED_BUILD_WALL_TIME,
+                        },
+                    }
+                ],
+            }
+        )
     async with api_client(env) as api:
         path = await open_dialogue(api)
         await send(api, path, "我想学习 agent.tool_calling")
-        response = await send(api, path, "/build", source_id=source,
-            auto_evidence_retry=True, build_call_cap=32, authorization_ref=env["funding"],
-            build_wall_time_contract=UNLIMITED_BUILD_WALL_TIME)
+        response = await send(
+            api,
+            path,
+            "/build",
+            source_id=source,
+            auto_evidence_retry=True,
+            build_call_cap=32,
+            authorization_ref=env["funding"],
+            build_wall_time_contract=UNLIMITED_BUILD_WALL_TIME,
+        )
         assert response.status_code == 202, response.text
         identifier = response.json()["run_refs"][0]
     with env["app"].db.read() as db:
         row = db.get(AgentRun, identifier)
         assert row.input_manifest["build_wall_time_contract"] == UNLIMITED_BUILD_WALL_TIME
         execution = db.scalar(select(WorkflowExecution))
-        assert execution.binding_payload["admitted_scope"]["build_wall_time_contract"] == UNLIMITED_BUILD_WALL_TIME
+        assert (
+            execution.binding_payload["admitted_scope"]["build_wall_time_contract"]
+            == UNLIMITED_BUILD_WALL_TIME
+        )
 
 
 async def test_unknown_attempt_never_retried_under_unlimited_contract(env):
@@ -225,9 +278,13 @@ async def test_unknown_attempt_never_retried_under_unlimited_contract(env):
     epoch = app.runtime.claim(identifier, "worker")
     env["model"].overrides["planner"] = lambda request: TimeoutError("synthetic transport loss")
     with pytest.raises(TimeoutError):
-        await app.gateway.call(identifier, epoch, "worker", "uncertain", "planner", "plan", {}, QueryPlan)
+        await app.gateway.call(
+            identifier, epoch, "worker", "uncertain", "planner", "plan", {}, QueryPlan
+        )
     with pytest.raises(DomainError):
-        await app.gateway.call(identifier, epoch, "worker", "uncertain", "planner", "plan", {}, QueryPlan)
+        await app.gateway.call(
+            identifier, epoch, "worker", "uncertain", "planner", "plan", {}, QueryPlan
+        )
     with app.db.read() as db:
         assert db.scalar(select(ModelReceipt)).status == "unknown"
         assert db.get(AgentRun, identifier).calls_consumed == 1
@@ -240,9 +297,13 @@ async def test_32_call_cap_is_not_removed_with_build_clock(env):
     identifier = app.build.start(env["actor"], body)
     epoch = app.runtime.claim(identifier, "worker")
     for index in range(32):
-        await app.gateway.call(identifier, epoch, "worker", f"call-{index}", "planner", "plan", {}, QueryPlan)
+        await app.gateway.call(
+            identifier, epoch, "worker", f"call-{index}", "planner", "plan", {}, QueryPlan
+        )
     with pytest.raises(DomainError) as exc:
-        await app.gateway.call(identifier, epoch, "worker", "call-33", "planner", "plan", {}, QueryPlan)
+        await app.gateway.call(
+            identifier, epoch, "worker", "call-33", "planner", "plan", {}, QueryPlan
+        )
     assert exc.value.code in {"BUILD_BUDGET", "MODEL_BUDGET"}
     with app.db.read() as db:
         funding = db.get(FundingAgreement, body.funding_id)

@@ -7,7 +7,7 @@ COPY --from=node /usr/local/bin/node /usr/local/bin/node
 COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
 RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm
 WORKDIR /app
-COPY pyproject.toml LICENSE constraints-python312-linux.txt ./
+COPY pyproject.toml LICENSE constraints-python312-linux.txt constraints-langgraph-python312-linux.txt ./
 COPY src ./src
 COPY alembic.ini ./
 COPY alembic ./alembic
@@ -25,14 +25,14 @@ CMD ["careerforge", "serve", "--host", "0.0.0.0"]
 
 FROM backend AS validation
 USER 0:0
-RUN python -m pip install --no-cache-dir -c constraints-python312-linux.txt '.[dev]' pytest-cov
+RUN python -m pip install --no-cache-dir -c constraints-langgraph-python312-linux.txt '.[dev,production,workflows]' pytest-cov
 COPY tests ./tests
 COPY scripts ./scripts
 COPY deploy ./deploy
 COPY compose.yaml compose.test.yaml .env.example ./
 ENV PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
 USER 65534:65534
-CMD ["python", "-m", "pytest", "-p", "pytest_asyncio.plugin", "-p", "no:cacheprovider", "-m", "not production and not live and not sandbox", "-q"]
+CMD ["python", "-m", "pytest", "-p", "xdist.plugin", "-n", "auto", "--maxprocesses=8", "--basetemp=/data/pytest-offline", "-p", "pytest_asyncio.plugin", "-p", "no:cacheprovider", "-m", "not production and not live and not sandbox", "-q"]
 
 # A plain docker build yields production, not the test image.
 FROM backend AS runtime

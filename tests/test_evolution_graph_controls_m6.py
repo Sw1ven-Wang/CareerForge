@@ -48,13 +48,18 @@ async def test_admission_flag_rollback_does_not_disable_frozen_execution_or_rece
     detail = app.evolution_workflows.detail(env["actor"], conv, admission["workflow_id"])
     assert detail["wait_kind"] == "replay_authorization"
     rejected = EvolutionSessionInput(
-        contract="evolution-dialogue-v1", idempotency_key="reject-frozen",
-        workflow_id=detail["workflow_id"], expected_workflow_revision=detail["workflow_revision"],
+        contract="evolution-dialogue-v1",
+        idempotency_key="reject-frozen",
+        workflow_id=detail["workflow_id"],
+        expected_workflow_revision=detail["workflow_revision"],
         intent={"type": "reject", "reason": "Explicit caller rejection"},
     )
     app.evolution_workflows.submit(env["actor"], conv, rejected)
     await app.drain()
-    assert app.evolution_workflows.detail(env["actor"], conv, admission["workflow_id"])["status"] == "completed"
+    assert (
+        app.evolution_workflows.detail(env["actor"], conv, admission["workflow_id"])["status"]
+        == "completed"
+    )
 
 
 @pytest.mark.asyncio
@@ -88,7 +93,9 @@ async def test_unfunded_pause_resume_cancel_preserves_zero_run_and_focus(env):
         assert db.get(Conversation, conv).focus == focus
         assert set(db.scalars(select(AgentRun.id))) == runs
         assert set(db.scalars(select(ModelReceipt.id))) == calls
-    assert (await control(env, wid, "resume", "evo-late-resume"))["failure_code"] == "TERMINAL_WORKFLOW"
+    assert (await control(env, wid, "resume", "evo-late-resume"))[
+        "failure_code"
+    ] == "TERMINAL_WORKFLOW"
 
 
 @pytest.mark.asyncio
@@ -109,11 +116,15 @@ async def test_withdrawal_fences_paused_unfunded_session_without_resume(env):
         assert (execution.status, execution.last_error_code) == ("failed", "EXPERIENCE_CONSENT")
         assert (request.status, request.run_id) == ("cancelled", None)
     assert len(env["model"].calls) == before
-    assert (await control(env, admission["workflow_id"], "resume", "withdraw-resume"))["failure_code"] == "TERMINAL_WORKFLOW"
+    assert (await control(env, admission["workflow_id"], "resume", "withdraw-resume"))[
+        "failure_code"
+    ] == "TERMINAL_WORKFLOW"
 
 
 @pytest.mark.asyncio
-async def test_paid_candidate_pause_after_receipt_resumes_original_budget_and_deadline(env, monkeypatch):
+async def test_paid_candidate_pause_after_receipt_resumes_original_budget_and_deadline(
+    env, monkeypatch
+):
     app = env["app"]
     conv, _, _, admission = await candidate_session(env)
     original = app.evolution.invoke_reflection
@@ -162,7 +173,12 @@ async def test_session_projection_never_dumps_or_retargets_cached_results(env, c
             receipt = db.get(Idempotency, request.command_receipt_id)
             receipt.result = {**receipt.result, "private_body": "not-a-reference"}
         else:
-            request.result = {**request.result, ("private_body" if corruption == "cached_body" else "candidate_id"): "not-a-reference"}
+            request.result = {
+                **request.result,
+                (
+                    "private_body" if corruption == "cached_body" else "candidate_id"
+                ): "not-a-reference",
+            }
     with pytest.raises(DomainError) as err:
         if corruption == "admission_body":
             app.evolution_workflows.submit(env["actor"], conv, value)

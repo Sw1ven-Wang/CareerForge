@@ -13,13 +13,14 @@ _ADD = re.compile(
     r"(?:我)?(?:需要|想|请)?\s*(?:补充|增补|加上)\s*([\w.+# /-]+?)(?:技术栈|学习目标)?$", re.I
 )
 _REPO = re.compile(
-    r"(?:请|帮我)?(?:把)?(?:学习|导入|分析)?\s*(https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)(?:\s*(?:入库|导入知识库))?", re.I
+    r"(?:请|帮我)?(?:把)?(?:学习|导入|分析)?\s*(https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)(?:\s*(?:入库|导入知识库))?",
+    re.I,
 )
 _TOPIC = re.compile(r"(?:我想学习|我想学|学习|开始学习)\s*([^？?。！!，,]{1,120})")
 # Only caller-marked imports bypass semantic recognition. Merely mentioning a
 # job description (including quoted or negated text) must not save a new JD.
 _JD = re.compile(
-    r"^(?:(?:请|帮我)?\s*导入\s*(?:以下|这份)?\s*)?JD\s*[:：]\s*(?P<text>\S[\s\S]*)$|"
+    r"^(?:(?:请|帮我)?\s*导入\s*(?:以下|这份|这个)?\s*(?:岗位\s*)?)?JD\s*(?:并提取(?:技术|岗位)?要求)?\s*[:：]\s*(?P<text>\S[\s\S]*)$|"
     r"^(?:请|帮我)?\s*导入\s*(?:以下|这份)?\s*(?:岗位要求|岗位职责|任职资格|职位描述)\s*[:：]\s*(?P<description>\S[\s\S]*)$",
     re.I,
 )
@@ -29,12 +30,24 @@ _JD_REQUIREMENT = re.compile(
 )
 
 
+_MATERIAL_PLAN = re.compile(
+    r"(?:请)?基于已有的\s*(?P<repo>[\w.-]+/[\w.-]+)\s*[^，,。？！?]{0,40}知识[，,]?"
+    r"(?:为我)?(?:创建|生成|制定)(?:一份)?学习计划(?:[，,]先学习[^。？！?]+)?[。]?"
+)
+_ASSESS_SUFFIX = re.compile(
+    r"(?<=[。；;])\s*请评估答案(?:、记录练习反馈)?(?:并更新学习进度)?[。]?$"
+)
+
+
 def explicit_actions(message):
     original = message.text
     phrase = original.strip().rstrip("。？?！!；;")
     # Anchored caller commands; quoted lesson/JD content is never parsed as a submission.
     if message.submission is not None:
-        return [("submit_practice_answer", {})]
+        actions = [("submit_practice_answer", {})]
+        if _ASSESS_SUFFIX.search(original):
+            actions.append(("assess_practice", {}))
+        return actions
     if message.module_ack is not None:
         return [("advance_learning_module", {})]
     if message.publication_ids:
@@ -56,6 +69,19 @@ def explicit_actions(message):
         return [("set_repository", {"target": repo.group(1) if repo else phrase})]
     if message.kind == "topic":
         return [("set_learning_topic", {"target": phrase})]
+    if _MATERIAL_PLAN.fullmatch(phrase):
+        return [("propose_plan", {})]
+    if re.fullmatch(
+        r"(?:请)?为[^，,。？！?]{1,80}生成一道练习题(?:[，,]并记录为当前学习模块的练习)?", phrase
+    ):
+        return [("start_practice", {})]
+    if re.fullmatch(r"(?:请)?根据已发布知识解释[^，,。？！?]+(?:[，,]并引用具体项目代码)?", phrase):
+        return [("start_tutor", {})]
+    if re.fullmatch(
+        r"(?:请)?为这个学习目标(?:搜索和调研|调研|搜索)合适的开源项目(?:[，,]优先\s*[\w.-]+/[\w.-]+)?(?:[，,]并构建经过审核的学习知识)?",
+        phrase,
+    ):
+        return [("start_project_discovery", {})]
     if phrase in {"搜项目并入库", "搜索项目并入库", "搜集项目并入库", "/projects"}:
         return [("start_project_discovery", {})]
     if re.fullmatch(r"/language(?:\s.*)?", original.strip(), re.I) or re.fullmatch(

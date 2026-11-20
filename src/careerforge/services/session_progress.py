@@ -434,10 +434,13 @@ def acknowledge_module_in(app, db, actor, value: SessionModuleAckInput, *, pract
     # Acknowledging an already delivered lesson does not spend model funds.
     # Validate immutable delivery even after its per-request grant expired/revoked;
     # active plan/profile, evidence closure and exact delivery hashes are checked below.
-    if db.scalar(select(Workspace.id).where(
-        Workspace.principal_id == actor, Workspace.assistance_mode == "independent",
-        Workspace.sealed.is_(False),
-    )):
+    if db.scalar(
+        select(Workspace.id).where(
+            Workspace.principal_id == actor,
+            Workspace.assistance_mode == "independent",
+            Workspace.sealed.is_(False),
+        )
+    ):
         raise DomainError("INDEPENDENT_ATTEMPT", "独立练习期间不能推进导师模块。")
     session, turn, snapshot = _session_in(db, actor, value.learning_session_id, history=True)
     turn = locked(db, Turn, turn.id)

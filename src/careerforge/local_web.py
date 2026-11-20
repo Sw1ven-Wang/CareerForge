@@ -117,24 +117,36 @@ def create_local_web(service: Application | None = None) -> FastAPI:
 
             if job.get("agent") == "intent":
                 phase = dict(job)
-                await asyncio.to_thread(lambda phase=phase: asyncio.run(execute_desk_job(service, phase)))
+                await asyncio.to_thread(
+                    lambda phase=phase: asyncio.run(execute_desk_job(service, phase))
+                )
                 job["run_refs"] = phase.get("run_refs", [])
                 await execute_intent(job, phase["status"])
                 if job["status"] == "running":
                     job["status"] = "completed"
             else:
-                await asyncio.to_thread(lambda: asyncio.run(execute_desk_job(service, job, status_key="execution_status")))
+                await asyncio.to_thread(
+                    lambda: asyncio.run(
+                        execute_desk_job(service, job, status_key="execution_status")
+                    )
+                )
                 job["status"] = job.pop("execution_status")
             if job["status"] == "completed" and job.get("agent") != "dialogue":
                 from .desk_gaps import supplement_desk_question
 
                 job["status"] = "running"
-                await asyncio.to_thread(lambda: asyncio.run(supplement_desk_question(service, job, persist)))
+                await asyncio.to_thread(
+                    lambda: asyncio.run(supplement_desk_question(service, job, persist))
+                )
                 if job["status"] == "running":
                     job["status"] = "completed"
             if job.get("agent") == "dialogue" and job.get("run_id") and not job.get("routing"):
                 result = service.runtime.stage(job["run_id"], "result")
-                job["reply"] = result["reply"] if result else "对话协调 agent 本次回复未完成，请查看任务状态后重试；不会重复启动教学任务。"
+                job["reply"] = (
+                    result["reply"]
+                    if result
+                    else "对话协调 agent 本次回复未完成，请查看任务状态后重试；不会重复启动教学任务。"
+                )
         except Exception as exc:
             job["status"] = "interrupted"
             job["error"] = getattr(exc, "code", type(exc).__name__)
@@ -147,7 +159,10 @@ def create_local_web(service: Application | None = None) -> FastAPI:
 
     def intent_context(user, cid, text):
         detail = conversation(cid, user)
-        history = [{"question": a["question"], "answer": a.get("reply", "")[:1500]} for a in detail["actions"]][-6:]
+        history = [
+            {"question": a["question"], "answer": a.get("reply", "")[:1500]}
+            for a in detail["actions"]
+        ][-6:]
         # Include actual teaching turns, not only the coordination journal.
         teaching = []
         for turn in detail["turns"][-3:]:
@@ -156,10 +171,17 @@ def create_local_web(service: Application | None = None) -> FastAPI:
             teaching.append({"question": turn["question"][:2000], "status": turn["status"]})
         flow = detail.get("flow", {})
         plan = flow.get("plan") or {}
-        return {"question": text, "history": history, "teaching_history": teaching,
-                "status_snapshot": flow.get("status", {}),
-                "plan": {"plan_id": plan.get("plan_id"), "active_version_id": plan.get("active_version_id")},
-                "snapshot_at": datetime.now(UTC).isoformat()}
+        return {
+            "question": text,
+            "history": history,
+            "teaching_history": teaching,
+            "status_snapshot": flow.get("status", {}),
+            "plan": {
+                "plan_id": plan.get("plan_id"),
+                "active_version_id": plan.get("active_version_id"),
+            },
+            "snapshot_at": datetime.now(UTC).isoformat(),
+        }
 
     async def execute_intent(job, classification_status):
         from .contracts_conversation_actions_v1 import DialogueMessage
@@ -178,38 +200,77 @@ def create_local_web(service: Application | None = None) -> FastAPI:
             context = route_run.input_manifest["context"]
         intents = decision["intents"]
         job["agent"] = "dialogue"
-        from .desk_projects import repository_question, prepare_project_question, complete_project_question
+        from .desk_projects import (
+            complete_project_question,
+            prepare_project_question,
+            repository_question,
+        )
+
         repository = repository_question(job["question"], context)
-        if repository and intents in (["explain"], ["reexplain"], ["unknown"], ["start"], ["discover"]):
+        if repository and intents in (
+            ["explain"],
+            ["reexplain"],
+            ["unknown"],
+            ["start"],
+            ["discover"],
+        ):
             try:
                 async with admission:
-                    if any(j is not job and j["actor"] == user["id"] and j["status"] == "running" and j.get("agent") not in {"dialogue", "intent"} for j in jobs.values()):
+                    if any(
+                        j is not job
+                        and j["actor"] == user["id"]
+                        and j["status"] == "running"
+                        and j.get("agent") not in {"dialogue", "intent"}
+                        for j in jobs.values()
+                    ):
                         job["reply"] = "项目学习任务仍在运行，未重复启动。你可以查询进度。"
                         return
                     prepared = prepare_project_question(service, job, context, repository)
                 if prepared:
-                    await asyncio.to_thread(lambda: asyncio.run(complete_project_question(service, job, persist)))
+                    await asyncio.to_thread(
+                        lambda: asyncio.run(complete_project_question(service, job, persist))
+                    )
                     return
                 if intents in (["unknown"], ["start"], ["discover"]):
                     intents = ["explain"]
-                    job["routing"] = {**decision, "intents": intents, "context_resolution": "bound_project_question"}
+                    job["routing"] = {
+                        **decision,
+                        "intents": intents,
+                        "context_resolution": "bound_project_question",
+                    }
             except DomainError as exc:
                 job.update(status="completed", reply=exc.message, error=exc.code)
                 return
         if intents == ["progress"]:
             from .desk_dialogue import progress_reply
+
             view = dialogue_status(user, cid)
             job["reply"] = progress_reply(view, bool(view["active_stages"]))
             return
         if intents == ["chat"]:
             job["status"] = "running"
             job["reply"] = "已识别为一般交流，交给对话协调 Agent。"
-            manifest = {"conversation_id": cid, "model_profile": service.provider.profile_version,
-                        "data_classes": ["learning_state", "private_jd"], "access_dependencies": [], "context": context}
-            rid = service.runtime.create(user["id"], user["namespace_id"], job["funding_id"], "desk_dialogue", manifest, 1, "intent-chat:" + job["run_id"])
+            manifest = {
+                "conversation_id": cid,
+                "model_profile": service.provider.profile_version,
+                "data_classes": ["learning_state", "private_jd"],
+                "access_dependencies": [],
+                "context": context,
+            }
+            rid = service.runtime.create(
+                user["id"],
+                user["namespace_id"],
+                job["funding_id"],
+                "desk_dialogue",
+                manifest,
+                1,
+                "intent-chat:" + job["run_id"],
+            )
             job["dialogue_run_id"] = rid
             phase = dict(job)
-            await asyncio.to_thread(lambda phase=phase: asyncio.run(execute_desk_job(service, phase)))
+            await asyncio.to_thread(
+                lambda phase=phase: asyncio.run(execute_desk_job(service, phase))
+            )
             job["run_refs"] = phase.get("run_refs", [])
             job["status"] = phase["status"]
             result = service.runtime.stage(rid, "result")
@@ -221,7 +282,8 @@ def create_local_web(service: Application | None = None) -> FastAPI:
             "advance": "请点击当前模块的阅读完成确认按钮。",
             "discover": "请发送「搜项目并入库」，以明确授权项目调研。",
             "change_goal": "请发送新的「JD：岗位要求」或「我想学习 具体主题」。",
-            "pause": "请发送「暂停当前任务」。", "resume": "请发送「/resume」。",
+            "pause": "请发送「暂停当前任务」。",
+            "resume": "请发送「/resume」。",
             "cancel": "请发送「取消当前任务」。",
             "unknown": "暂无法确定你希望执行的操作。请说明想学习的项目或模块，以及希望讲解、练习还是查询进度，我会帮你匹配下一步；尚未启动新的学习动作。",
         }
@@ -238,11 +300,20 @@ def create_local_web(service: Application | None = None) -> FastAPI:
                 if view["focus_revision"] != expected or view.get("workflow_id") != frozen_workflow:
                     replies.append("识别期间会话焦点已改变，未继续操作；请重新提出请求。")
                     break
-                if any(j is not job and j["actor"] == user["id"] and j["status"] == "running" and j.get("agent") not in {"dialogue", "intent"} for j in jobs.values()):
-                    replies.append("教学任务仍在执行，未重复启动。你可以继续询问进度或与协调 Agent 交谈。")
+                if any(
+                    j is not job
+                    and j["actor"] == user["id"]
+                    and j["status"] == "running"
+                    and j.get("agent") not in {"dialogue", "intent"}
+                    for j in jobs.values()
+                ):
+                    replies.append(
+                        "教学任务仍在执行，未重复启动。你可以继续询问进度或与协调 Agent 交谈。"
+                    )
                     break
                 flow = flow_detail(user, cid)
                 from .desk_dialogue import start_reply
+
                 if intent == "start":
                     guidance = start_reply(flow, False)
                     if guidance:
@@ -250,7 +321,11 @@ def create_local_web(service: Application | None = None) -> FastAPI:
                         break
                     intent = "reexplain"
                 text = job["question"]
-                actions = {"practice": "start_practice", "assessment": "assess_practice", "plan": "propose_plan"}
+                actions = {
+                    "practice": "start_practice",
+                    "assessment": "assess_practice",
+                    "plan": "propose_plan",
+                }
                 forced = [(actions[intent], {})] if intent in actions else None
                 if intent in {"explain", "reexplain"}:
                     if (flow.get("plan") or {}).get("active_version_id"):
@@ -259,25 +334,48 @@ def create_local_web(service: Application | None = None) -> FastAPI:
                         text = "开始讲解，" + text
                         forced = [("start_tutor", {})]
                     elif intent == "reexplain" and context.get("teaching_history"):
-                        text = "请基于已审核知识回答。原问题：" + context["teaching_history"][-1]["question"] + "\n用户追问：" + text
+                        text = (
+                            "请基于已审核知识回答。原问题："
+                            + context["teaching_history"][-1]["question"]
+                            + "\n用户追问："
+                            + text
+                        )
                 elif intent not in actions:
                     replies.append("此意图尚未支持自动执行，请使用页面操作。")
                     break
                 try:
-                    outcome = service.dialogue.dispatch(user["id"], cid, DialogueMessage(
-                        text=text, expected_focus_revision=expected, authorization_ref=job["funding_id"],
-                        idempotency_key=f"intent:{route_run.id}:{index}"), forced_actions=forced,
+                    outcome = service.dialogue.dispatch(
+                        user["id"],
+                        cid,
+                        DialogueMessage(
+                            text=text,
+                            expected_focus_revision=expected,
+                            authorization_ref=job["funding_id"],
+                            idempotency_key=f"intent:{route_run.id}:{index}",
+                        ),
+                        forced_actions=forced,
                         workflow_id=frozen_workflow,
-                        expected_workflow_revision=(context["status_snapshot"].get("workflow_revision") if index == 0 else view.get("workflow_revision")))
+                        expected_workflow_revision=(
+                            context["status_snapshot"].get("workflow_revision")
+                            if index == 0
+                            else view.get("workflow_revision")
+                        ),
+                    )
                 except DomainError as exc:
                     from .desk_capabilities import blocked_reply
+
                     replies.append(blocked_reply(exc.code, exc.message))
                     job["steps"].append({"intent": intent, "status": "blocked", "code": exc.code})
                     break
                 replies.append(outcome.get("reply", "已交给教学工作流。"))
                 job["steps"].append({"intent": intent, "status": "running", "result": outcome})
-                job["run_refs"] = list(dict.fromkeys([*job.get("run_refs", []), *outcome.get("run_refs", [])]))
-                if outcome.get("status") in {"waiting_confirmation", "failed"} or any(r.get("status") in {"failed", "rejected", "waiting_confirmation"} for r in outcome.get("action_receipts", [])):
+                job["run_refs"] = list(
+                    dict.fromkeys([*job.get("run_refs", []), *outcome.get("run_refs", [])])
+                )
+                if outcome.get("status") in {"waiting_confirmation", "failed"} or any(
+                    r.get("status") in {"failed", "rejected", "waiting_confirmation"}
+                    for r in outcome.get("action_receipts", [])
+                ):
                     job["steps"][-1]["status"] = "blocked"
                     break
                 job["agent"] = "workflow"
@@ -285,18 +383,26 @@ def create_local_web(service: Application | None = None) -> FastAPI:
                 job["reply"] = "\n".join(replies)
                 persist()
             phase = dict(job)
-            await asyncio.to_thread(lambda phase=phase: asyncio.run(execute_desk_job(service, phase)))
+            await asyncio.to_thread(
+                lambda phase=phase: asyncio.run(execute_desk_job(service, phase))
+            )
             job["run_refs"] = phase.get("run_refs", [])
             job["steps"][-1]["status"] = phase["status"]
             if phase["status"] != "completed":
                 job["status"] = phase["status"]
                 replies.append("前一步未完成，后续动作未执行。")
                 break
-            if intent in {"explain", "reexplain"} and index + 1 < len(intents) and outcome.get("turn_id"):
+            if (
+                intent in {"explain", "reexplain"}
+                and index + 1 < len(intents)
+                and outcome.get("turn_id")
+            ):
                 events = service.answers.events(user["id"], outcome["turn_id"])
                 if '"repository_fact"' not in json.dumps(events):
                     job["steps"][-1]["status"] = "blocked"
-                    replies.append("本次讲解未返回已审核源码事实，暂不自动出题。请先明确学习材料或补充证据。")
+                    replies.append(
+                        "本次讲解未返回已审核源码事实，暂不自动出题。请先明确学习材料或补充证据。"
+                    )
                     break
             expected = service.workflows.status(user["id"], cid)["focus_revision"]
         job["reply"] = "\n".join(replies)
@@ -450,18 +556,37 @@ def create_local_web(service: Application | None = None) -> FastAPI:
         view = service.workflows.status(user["id"], cid)
         stages = list(view.get("active_stages", []))
         linked = set(view.get("run_refs", []))
-        labels = {"chat": "教学 Agent：检索、讲解与证据核验", "desk_dialogue": "对话协调 Agent：组织回复", "desk_intent": "识别学习意图与上下文", "learning_plan": "生成学习计划"}
-        labels.update(knowledge_build="按知识缺口补充固定源码", analysis="定向提取源码知识", review="独立审核新增知识")
+        labels = {
+            "chat": "教学 Agent：检索、讲解与证据核验",
+            "desk_dialogue": "对话协调 Agent：组织回复",
+            "desk_intent": "识别学习意图与上下文",
+            "learning_plan": "生成学习计划",
+        }
+        labels.update(
+            knowledge_build="按知识缺口补充固定源码",
+            analysis="定向提取源码知识",
+            review="独立审核新增知识",
+        )
         with service.db.read() as db:
             for job in jobs.values():
-                if job["actor"] != user["id"] or job.get("conversation_id") != cid or job["status"] != "running":
+                if (
+                    job["actor"] != user["id"]
+                    or job.get("conversation_id") != cid
+                    or job["status"] != "running"
+                ):
                     continue
                 for rid in job.get("run_refs", []) or [job.get("run_id")]:
                     if not rid or rid in linked:
                         continue
                     run = db.get(AgentRun, rid)
                     if run and run.principal_id == user["id"] and run.status not in TERMINAL:
-                        stages.append({"run_id": rid, "label": labels.get(run.workflow, run.workflow), "status": run.status})
+                        stages.append(
+                            {
+                                "run_id": rid,
+                                "label": labels.get(run.workflow, run.workflow),
+                                "status": run.status,
+                            }
+                        )
                         linked.add(rid)
         return {**view, "active_stages": stages}
 
@@ -484,8 +609,11 @@ def create_local_web(service: Application | None = None) -> FastAPI:
                 data["goal"] = read_goal_version(db, user["id"], view["goal_version_id"])
         if view.get("goal_version_id"):
             from .services.project_pool import ProjectPoolService
+
             with service.db.read() as db:
-                data["projects"] = ProjectPoolService(service).list_in(db, user["id"], view["goal_version_id"], include_pending=False)
+                data["projects"] = ProjectPoolService(service).list_in(
+                    db, user["id"], view["goal_version_id"], include_pending=False
+                )
         proposal = target.get("proposal")
         if proposal:
             data["plan"] = service.learning.detail(user["id"], proposal["plan_id"])
@@ -508,7 +636,10 @@ def create_local_web(service: Application | None = None) -> FastAPI:
             with service.db.read() as db:
                 assessment_run_id = db.scalar(
                     select(WorkflowRunLink.run_id)
-                    .where(WorkflowRunLink.workflow_id == w.id, WorkflowRunLink.milestone == "assessment")
+                    .where(
+                        WorkflowRunLink.workflow_id == w.id,
+                        WorkflowRunLink.milestone == "assessment",
+                    )
                     .order_by(WorkflowRunLink.ordinal.desc())
                     .limit(1)
                 )
@@ -516,7 +647,11 @@ def create_local_web(service: Application | None = None) -> FastAPI:
             with service.db.read() as db:
                 run = db.get(AgentRun, assessment_run_id)
                 result = service.runtime.stage(run.id, "result")
-                data["assessment"] = {"status": run.status, "run_id": run.id, "historical": not bool(target.get("assessment_run_id"))}
+                data["assessment"] = {
+                    "status": run.status,
+                    "run_id": run.id,
+                    "historical": not bool(target.get("assessment_run_id")),
+                }
                 if result:
                     data["assessment"]["result"] = service.assessments.validate_result(
                         db, user["id"], run, result
@@ -589,7 +724,12 @@ def create_local_web(service: Application | None = None) -> FastAPI:
             if jobs[key].get("request_hash") != request_hash:
                 raise HTTPException(409, "相同请求编号不能用于不同内容。")
             return public_job(jobs[key])
-        if not read_only and any(j["actor"] == user["id"] and j["status"] == "running" and j.get("agent") not in {"dialogue", "intent"} for j in jobs.values()):
+        if not read_only and any(
+            j["actor"] == user["id"]
+            and j["status"] == "running"
+            and j.get("agent") not in {"dialogue", "intent"}
+            for j in jobs.values()
+        ):
             raise HTTPException(409, "当前任务正在执行，请等待完成后再提交。")
         if use_model and not (
             service.settings.model_name
@@ -641,7 +781,9 @@ def create_local_web(service: Application | None = None) -> FastAPI:
             detail = service.conversations.detail(user["id"], result["conversation_id"])
             if detail["preferences"].get("renewal_notice"):
                 result["renewal_notice"] = detail["preferences"]["renewal_notice"]
-                result["predecessor_conversation_id"] = detail["preferences"]["predecessor_conversation_id"]
+                result["predecessor_conversation_id"] = detail["preferences"][
+                    "predecessor_conversation_id"
+                ]
         job = {
             **result,
             "actor": user["id"],
@@ -672,29 +814,66 @@ def create_local_web(service: Application | None = None) -> FastAPI:
             key = "message:" + body.request_id
             request_hash = fingerprint(body.model_dump())
             if key in jobs:
-                if jobs[key]["actor"] != user["id"] or jobs[key].get("request_hash") != request_hash:
+                if (
+                    jobs[key]["actor"] != user["id"]
+                    or jobs[key].get("request_hash") != request_hash
+                ):
                     raise HTTPException(409, "相同请求编号不能用于不同内容。")
                 return public_job(jobs[key])
             cid = body.conversation_id
             if cid is None:
-                cid = (await call(user, "POST", "/api/v1/conversations", {"auto_build": False}))["conversation_id"]
+                cid = (await call(user, "POST", "/api/v1/conversations", {"auto_build": False}))[
+                    "conversation_id"
+                ]
             from .desk_continuation import renew_if_stale
-            cid = renew_if_stale(service, user["id"], cid, busy=any(
-                j["actor"] == user["id"] and j.get("conversation_id") == cid and j["status"] == "running"
-                for j in jobs.values()
-            ))
+
+            cid = renew_if_stale(
+                service,
+                user["id"],
+                cid,
+                busy=any(
+                    j["actor"] == user["id"]
+                    and j.get("conversation_id") == cid
+                    and j["status"] == "running"
+                    for j in jobs.values()
+                ),
+            )
             conv = await call(user, "GET", "/api/v1/conversations/" + cid)
             text = body.question.strip()
-            typed = bool(body.publication_ids or body.source_ids or body.confirm_version or re.match(r"(?:提交答案|这是我的练习答案|我的答案)[：:]|(?:接受材料缺口并)?确认阅读完成", text))
-            known = explicit_actions(DialogueMessage(text=text, expected_focus_revision=conv["revision"], idempotency_key="route"))
-            if not typed and not (known and known[0][0] == "import_jd") and re.search(r"不要|不想|别给|然后|并且|同时", text):
+            typed = bool(
+                body.publication_ids
+                or body.source_ids
+                or body.confirm_version
+                or re.match(
+                    r"(?:提交答案|这是我的练习答案|我的答案)[：:]|(?:接受材料缺口并)?确认阅读完成",
+                    text,
+                )
+            )
+            known = explicit_actions(
+                DialogueMessage(
+                    text=text, expected_focus_revision=conv["revision"], idempotency_key="route"
+                )
+            )
+            if (
+                not typed
+                and not (known and known[0][0] == "import_jd")
+                and re.search(r"不要|不想|别给|然后|并且|同时", text)
+            ):
                 known = None
-            running = any(j["actor"] == user["id"] and j.get("conversation_id") == cid and j["status"] == "running" for j in jobs.values())
+            running = any(
+                j["actor"] == user["id"]
+                and j.get("conversation_id") == cid
+                and j["status"] == "running"
+                for j in jobs.values()
+            )
             reply = None
             override = None
             coordinator = False
             from .desk_capabilities import HELP_REPLY, intake_reply
-            guidance = intake_reply(text, dialogue_status(user, cid)) if not typed and not known else None
+
+            guidance = (
+                intake_reply(text, dialogue_status(user, cid)) if not typed and not known else None
+            )
             if not typed and body.agent != "tutor":
                 if guidance:
                     reply = guidance
@@ -702,46 +881,105 @@ def create_local_web(service: Application | None = None) -> FastAPI:
                     reply = desk_dialogue.start_reply(flow_detail(user, cid), running)
                     if reply is None:
                         override = "开始讲解"
-                elif (known == [("query_progress", {})]) or re.fullmatch(r"(?:现在|当前)?(?:在做什么|还在运行吗|还需要多久)[？?]?", text):
+                elif (known == [("query_progress", {})]) or re.fullmatch(
+                    r"(?:现在|当前)?(?:在做什么|还在运行吗|还需要多久)[？?]?", text
+                ):
                     reply = desk_dialogue.progress_reply(dialogue_status(user, cid), running)
                 elif desk_dialogue.HELP.fullmatch(text):
                     reply = HELP_REPLY
                 elif not known and body.agent == "dialogue":
                     coordinator = True
                 elif not known and body.use_model:
+
                     async def recognize(funding_id):
                         from .services.learning_ext import _no_independent_assistance
+
                         with service.db.read() as db:
                             _no_independent_assistance(db, user["id"])
                         context = intent_context(user, cid, text)
-                        rid = service.runtime.create(user["id"], user["namespace_id"], funding_id, "desk_intent", {
-                            "conversation_id": cid, "model_profile": service.provider.profile_version,
-                            "data_classes": ["learning_state", "private_jd"], "access_dependencies": [],
-                            "context": context,
-                        }, 1, "desk-intent:" + body.request_id)
-                        return {"conversation_id": cid, "namespace_id": user["namespace_id"],
-                                "question": body.question, "agent": "intent", "run_id": rid,
-                                "reply": "正在结合对话历史与学习状态识别意图…"}
-                    return await start_job(user, key, recognize, True, request_hash, call_cap=80, read_only=True)
+                        rid = service.runtime.create(
+                            user["id"],
+                            user["namespace_id"],
+                            funding_id,
+                            "desk_intent",
+                            {
+                                "conversation_id": cid,
+                                "model_profile": service.provider.profile_version,
+                                "data_classes": ["learning_state", "private_jd"],
+                                "access_dependencies": [],
+                                "context": context,
+                            },
+                            1,
+                            "desk-intent:" + body.request_id,
+                        )
+                        return {
+                            "conversation_id": cid,
+                            "namespace_id": user["namespace_id"],
+                            "question": body.question,
+                            "agent": "intent",
+                            "run_id": rid,
+                            "reply": "正在结合对话历史与学习状态识别意图…",
+                        }
+
+                    return await start_job(
+                        user, key, recognize, True, request_hash, call_cap=80, read_only=True
+                    )
                 elif not known and not desk_dialogue.TEACH.search(text):
                     reply = "暂无法在关闭 AI 时理解这条自由表达。请开启 AI 并说明项目与学习目标，我会帮你识别下一步；你也可以直接发送「开始学习」「查询进度」「开始练习」。"
             if reply is not None or coordinator:
+
                 async def coordinate(funding_id):
-                    result = {"conversation_id": cid, "question": body.question, "agent": "dialogue", "reply": reply or "对话协调 agent 正在回复；后台教学任务独立执行。"}
+                    result = {
+                        "conversation_id": cid,
+                        "question": body.question,
+                        "agent": "dialogue",
+                        "reply": reply or "对话协调 agent 正在回复；后台教学任务独立执行。",
+                    }
                     if coordinator and funding_id:
                         from .services.learning_ext import _no_independent_assistance
+
                         with service.db.read() as db:
                             _no_independent_assistance(db, user["id"])
-                        history = [{"question": j["question"], "reply": j.get("reply", "")[:2000]} for j in jobs.values() if j["actor"] == user["id"] and j.get("conversation_id") == cid][-8:]
-                        result["run_id"] = service.runtime.create(user["id"], user["namespace_id"], funding_id, "desk_dialogue", {
-                            "conversation_id": cid, "model_profile": service.provider.profile_version,
-                            "data_classes": ["learning_state", "private_jd"], "access_dependencies": [],
-                            "context": {"question": text, "history": history, "status_snapshot": dialogue_status(user, cid), "snapshot_at": datetime.now(UTC).isoformat()},
-                        }, 1, "desk-dialogue:" + body.request_id)
+                        history = [
+                            {"question": j["question"], "reply": j.get("reply", "")[:2000]}
+                            for j in jobs.values()
+                            if j["actor"] == user["id"] and j.get("conversation_id") == cid
+                        ][-8:]
+                        result["run_id"] = service.runtime.create(
+                            user["id"],
+                            user["namespace_id"],
+                            funding_id,
+                            "desk_dialogue",
+                            {
+                                "conversation_id": cid,
+                                "model_profile": service.provider.profile_version,
+                                "data_classes": ["learning_state", "private_jd"],
+                                "access_dependencies": [],
+                                "context": {
+                                    "question": text,
+                                    "history": history,
+                                    "status_snapshot": dialogue_status(user, cid),
+                                    "snapshot_at": datetime.now(UTC).isoformat(),
+                                },
+                            },
+                            1,
+                            "desk-dialogue:" + body.request_id,
+                        )
                     elif coordinator:
-                        result["reply"] = "自由对话需要开启 AI。你仍可询问「当前进度」或发送「开始学习」，这些由协调层直接读取后台状态回答。"
+                        result["reply"] = (
+                            "自由对话需要开启 AI。你仍可询问「当前进度」或发送「开始学习」，这些由协调层直接读取后台状态回答。"
+                        )
                     return result
-                return await start_job(user, key, coordinate, coordinator and body.use_model, request_hash, call_cap=1, read_only=True)
+
+                return await start_job(
+                    user,
+                    key,
+                    coordinate,
+                    coordinator and body.use_model,
+                    request_hash,
+                    call_cap=1,
+                    read_only=True,
+                )
 
             async def operation(funding_id):
                 conv = await call(user, "GET", "/api/v1/conversations/" + cid)
@@ -754,6 +992,36 @@ def create_local_web(service: Application | None = None) -> FastAPI:
                     "publication_ids": body.publication_ids,
                     "source_ids": body.source_ids,
                 }
+                from .services.dialogue_routing import _ASSESS_SUFFIX, _MATERIAL_PLAN
+
+                selection = _MATERIAL_PLAN.fullmatch(text)
+                if selection and not body.publication_ids:
+                    repository = selection.group("repo").casefold()
+                    focus = re.search(r"先学习(.+?)(?:[，,]|再学习|[。]|$)", text)
+                    keywords = re.findall(r"[A-Za-z0-9_]+", focus.group(1)) if focus else []
+                    materials = []
+                    with service.db.read() as db:
+                        ids = db.scalars(
+                            select(Publication.id).where(
+                                Publication.namespace_id == user["namespace_id"]
+                            )
+                        )
+                        for pid in ids:
+                            try:
+                                pack = service.knowledge.publication_pack(db, user["id"], pid)
+                            except DomainError:
+                                continue
+                            if (pack.get("repository") or "").casefold() != repository:
+                                continue
+                            content = json.dumps(
+                                [pack["title"], pack["facts"], pack["citations"], pack["facets"]],
+                                ensure_ascii=False,
+                            ).casefold()
+                            if all(word.casefold() in content for word in keywords):
+                                materials.append(pid)
+                    if not materials or len(materials) > 20:
+                        raise HTTPException(409, "请从该项目选择 1 至 20 份已审核材料。")
+                    payload["publication_ids"] = materials
                 if body.confirm_version:
                     current = flow_detail(user, cid).get("plan")
                     if not current or current["versions"][-1]["version_id"] != body.confirm_version:
@@ -761,7 +1029,7 @@ def create_local_web(service: Application | None = None) -> FastAPI:
                 answer = re.fullmatch(r"(?:提交答案|这是我的练习答案|我的答案)[：:]([\s\S]+)", text)
                 if answer:
                     payload["submission"] = {
-                        "response": answer.group(1).strip(),
+                        "response": _ASSESS_SUFFIX.sub("", answer.group(1)).strip(),
                         "external_help": "unknown",
                     }
                 if text in {

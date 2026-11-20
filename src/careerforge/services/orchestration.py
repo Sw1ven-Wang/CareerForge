@@ -282,7 +282,7 @@ def rule_intent(
         question, policy
     ):
         tasks = {task for task, _ in _intent_matches(question, policy)}
-        task = (
+        explicit_task = (
             TaskType.ARCHITECTURE
             if TaskType.ARCHITECTURE in tasks
             else TaskType.CONCEPT
@@ -290,7 +290,7 @@ def rule_intent(
             else TaskType.IMPLEMENTATION
         )
         return IntentDecision(
-            interpreted_intent=task,
+            interpreted_intent=explicit_task,
             proposed_next_action="retrieve_and_tutor",
             confidence=0.95,
             rationale_codes=["explicit_readonly_explanation"],
@@ -687,9 +687,15 @@ class Coordinator:
         # A repository URL names a repository, not every stored snapshot of it.
         # Preserve an already selected version unless the user asks to switch,
         # compare versions or supplies an explicit version identifier.
-        if (len(focused) == 1 and focused[0] in explicit_sources
-                and not switch_target and decision.interpreted_intent != TaskType.COMPARE
-                and not re.search(r"版本|快照|切换|commit|snapshot|version|branch|tag|[0-9a-f]{7,40}", question, re.I)):
+        if (
+            len(focused) == 1
+            and focused[0] in explicit_sources
+            and not switch_target
+            and decision.interpreted_intent != TaskType.COMPARE
+            and not re.search(
+                r"版本|快照|切换|commit|snapshot|version|branch|tag|[0-9a-f]{7,40}", question, re.I
+            )
+        ):
             repositories = {s["name"].casefold() for s in names if s["id"] in explicit_sources}
             if len(repositories) == 1:
                 explicit_sources = list(focused)

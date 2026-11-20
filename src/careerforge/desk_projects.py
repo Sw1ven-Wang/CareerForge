@@ -173,7 +173,8 @@ async def complete_project_question(app, job, persist):
             relay_hint = (
                 "中转站模型请求失败，源码已保留。该次调用结果未知，系统没有自动重放。"
                 "请先核对中转站的失败记录；恢复后可重新提交同一问题，复用固定源码重新构建，可能产生新的模型费用。"
-                if "MODEL_HTTP_ERROR" in codes else ""
+                if "MODEL_HTTP_ERROR" in codes
+                else ""
             )
             job.update(
                 status=job.get("project_execution_status", "failed"),

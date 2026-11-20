@@ -43,9 +43,9 @@ def main():
         owner = owners[0]
         owner.token_hash = digest(token)
         owner.auth_revision += 1
-        private = session.scalar(select(Namespace).where(
-            Namespace.owner_id == owner.id, Namespace.kind == "private"
-        ))
+        private = session.scalar(
+            select(Namespace).where(Namespace.owner_id == owner.id, Namespace.kind == "private")
+        )
         public = session.scalar(select(Namespace).where(Namespace.kind == "shared_public"))
         config = {
             "principal_id": owner.id,

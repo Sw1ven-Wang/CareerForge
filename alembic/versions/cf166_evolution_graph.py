@@ -79,10 +79,18 @@ def upgrade():
 
 def downgrade():
     connection = op.get_bind()
-    if connection.scalar(sa.text("SELECT COUNT(*) FROM workflow_evolution_requests")) or connection.scalar(
-        sa.text("SELECT COUNT(*) FROM workflow_executions WHERE workflow_type = 'evolution_session'")
-    ) or connection.scalar(
-        sa.text("SELECT COUNT(*) FROM agent_runs WHERE graph_version IN ('evolution-candidate-v1','evolution-replay-v1')")
+    if (
+        connection.scalar(sa.text("SELECT COUNT(*) FROM workflow_evolution_requests"))
+        or connection.scalar(
+            sa.text(
+                "SELECT COUNT(*) FROM workflow_executions WHERE workflow_type = 'evolution_session'"
+            )
+        )
+        or connection.scalar(
+            sa.text(
+                "SELECT COUNT(*) FROM agent_runs WHERE graph_version IN ('evolution-candidate-v1','evolution-replay-v1')"
+            )
+        )
     ):
         raise RuntimeError("Retained evolution history requires its original schema and readers")
     # Exact downstream preflight before irreversible SQLite DDL. Legacy rows

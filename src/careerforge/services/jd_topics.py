@@ -15,10 +15,32 @@ _TOOL_FACETS = {
     "dispatch": ("工具分发", "执行分发", "tool dispatch"),
 }
 _LEXICAL_EQUIVALENTS = {
+    "rag.hybrid": ("排名融合", "排序融合", "倒数排名融合", "rank fusion", "reciprocal rank fusion"),
     "runtime.async": ("异步 I/O", "async I/O"),
     "code.testing": ("自动化测试", "automated testing"),
 }
 _TOOL_CONTEXT = ("工具调用", "tool calling", "function calling")
+
+
+_RANK_FUSION = re.compile(
+    r"排名融合|排序融合|倒数排名|倒数秩|rank[_ -]?fusion|\brrf\b|reciprocal[_ -]?rank", re.I
+)
+
+
+def requires_rank_fusion(goal):
+    return any(
+        row.get("modality") != "not_required"
+        and _RANK_FUSION.search(row.get("technology", ""))
+        and _RANK_FUSION.search(row.get("quote", ""))
+        for row in goal.get("requirements", [])
+    )
+
+
+def explains_rank_fusion(pack, approved):
+    return any(
+        fact.get("fact_atom_id") in approved and _RANK_FUSION.search(fact["text"])
+        for fact in pack["facts"]
+    )
 
 
 def _anchored(term, technology, quote):

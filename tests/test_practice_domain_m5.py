@@ -165,7 +165,8 @@ async def test_unpaid_pending_tutor_blocks_independent_attempt_account_wide(env)
         assert request.status == "pending_authorization"
         assert request.turn_id is None and request.run_id is None
     activity = app.learning.create_activity(
-        actor, ActivityInput(module_id=admitted.module_id, kind="exercise", explicitly_requested=True)
+        actor,
+        ActivityInput(module_id=admitted.module_id, kind="exercise", explicitly_requested=True),
     )
     # This legacy domain endpoint has no conversation identity: the fence must
     # scan the owner account rather than rely on a caller's current conversation.

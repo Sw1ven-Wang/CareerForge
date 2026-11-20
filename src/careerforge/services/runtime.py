@@ -233,7 +233,8 @@ def leased(db: Session, run_id: str, epoch: int, worker: str, allow_pause=False)
     validate_practice_run_in(db, run, allow_pause=allow_pause)
     funding = active_funding(db, run)
     if run.input_manifest.get("evolution_graph") or run.graph_version in {
-        "evolution-candidate-v1", "evolution-replay-v1"
+        "evolution-candidate-v1",
+        "evolution-replay-v1",
     }:
         from .evolution_privacy import validate_run_generations_in
 

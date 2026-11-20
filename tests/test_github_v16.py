@@ -34,18 +34,36 @@ async def test_archive_fallback_keeps_commit_and_reports_partial_scope(env, monk
     async def get(url, run_id, cap, operation, **kwargs):
         calls.append((url, operation))
         if operation == "metadata":
-            value = {"id": 1, "private": False, "license": {"spdx_id": "MIT"},
-                     "language": "TypeScript", "size": 100_000 if large else 10}
+            value = {
+                "id": 1,
+                "private": False,
+                "license": {"spdx_id": "MIT"},
+                "language": "TypeScript",
+                "size": 100_000 if large else 10,
+            }
         elif operation == "pin":
             value = {"sha": sha}
         elif operation == "archive":
             raise DomainError("GITHUB_NETWORK", "download interrupted", 502)
         elif operation == "quality:tree":
             assert sha in url
-            value = {"tree": [{"path": "packages/agent/src/agent.ts", "sha": blob,
-                               "type": "blob", "mode": "100644", "size": len(content)}]}
+            value = {
+                "tree": [
+                    {
+                        "path": "packages/agent/src/agent.ts",
+                        "sha": blob,
+                        "type": "blob",
+                        "mode": "100644",
+                        "size": len(content),
+                    }
+                ]
+            }
         else:
-            value = {"sha": blob, "encoding": "base64", "content": base64.b64encode(content).decode()}
+            value = {
+                "sha": blob,
+                "encoding": "base64",
+                "content": base64.b64encode(content).decode(),
+            }
         return json.dumps(value).encode()
 
     monkeypatch.setattr(provider, "_get", get)
@@ -409,25 +427,60 @@ async def test_private_dependency_http_response_cannot_outlive_scope_or_cache(
             "private cross-owner inputs disable persistent HTTP cache"
         )
 
+
 @pytest.mark.asyncio
 async def test_architecture_snapshot_follows_pinned_local_imports(env, monkeypatch):
-    import base64, hashlib, json
+    import base64
+    import hashlib
+    import json
+
     provider = GitHubProvider(env["app"].db, env["app"].settings)
     files = {f"packages/p{i}/index.ts": "export {};" for i in range(12)}
     files["packages/p0/index.ts"] = 'export { AgentSession } from "./core/agent-session.js";'
-    files["packages/p0/core/agent-session.ts"] = "export class AgentSession {}\n" + "// large session implementation\n" * 6000
-    blobs = {path: hashlib.sha1(b"blob " + str(len(text.encode())).encode() + b"\0" + text.encode()).hexdigest() for path, text in files.items()}
+    files["packages/p0/core/agent-session.ts"] = (
+        "export class AgentSession {}\n" + "// large session implementation\n" * 6000
+    )
+    blobs = {
+        path: hashlib.sha1(
+            b"blob " + str(len(text.encode())).encode() + b"\0" + text.encode()
+        ).hexdigest()
+        for path, text in files.items()
+    }
+
     async def get(url, run_id, cap, operation, **kwargs):
         if operation == "metadata":
-            value = {"id": 1, "private": False, "license": {"spdx_id": "MIT"}, "language": "TypeScript", "size": 100_000}
-        elif operation == "pin": value = {"sha": "a" * 40}
+            value = {
+                "id": 1,
+                "private": False,
+                "license": {"spdx_id": "MIT"},
+                "language": "TypeScript",
+                "size": 100_000,
+            }
+        elif operation == "pin":
+            value = {"sha": "a" * 40}
         elif operation == "quality:tree":
             assert "a" * 40 in url
-            value = {"tree": [{"path": p, "sha": blobs[p], "type": "blob", "mode": "100644", "size": len(t.encode())} for p, t in files.items()]}
+            value = {
+                "tree": [
+                    {
+                        "path": p,
+                        "sha": blobs[p],
+                        "type": "blob",
+                        "mode": "100644",
+                        "size": len(t.encode()),
+                    }
+                    for p, t in files.items()
+                ]
+            }
         else:
             p = next(p for p in files if url.endswith(blobs[p]))
-            value = {"sha": blobs[p], "encoding": "base64", "content": base64.b64encode(files[p].encode()).decode()}
+            value = {
+                "sha": blobs[p],
+                "encoding": "base64",
+                "content": base64.b64encode(files[p].encode()).decode(),
+            }
         return json.dumps(value).encode()
+
     monkeypatch.setattr(provider, "_get", get)
     result = await provider.snapshot("https://github.com/acme/project", "run", 30)
     assert "packages/p0/core/agent-session.ts" in result["files"]

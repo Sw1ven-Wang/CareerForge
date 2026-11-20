@@ -256,8 +256,16 @@ class KnowledgeService:
                         422,
                     )
                 detail = SourceService.inspect_quote_from_read(
-                    db, actor, source_id, ref.read_id, ref.quote, role, session_key, run.id,
-                    report_missing=run.input_manifest.get("missing_quote_correction") == "frozen-read-missing-quote-v1",
+                    db,
+                    actor,
+                    source_id,
+                    ref.read_id,
+                    ref.quote,
+                    role,
+                    session_key,
+                    run.id,
+                    report_missing=run.input_manifest.get("missing_quote_correction")
+                    == "frozen-read-missing-quote-v1",
                 )
                 if detail["match_count"] != 1:
                     candidate_count += detail["match_count"]
@@ -502,6 +510,7 @@ class KnowledgeService:
     ) -> dict[str, Any]:
         if run.input_manifest.get("coverage_scope_contract") == "review-global-scope-v1":
             from .coverage_issues import validate_global_scope
+
             validate_global_scope(review, coverage)
         partition = derive_scope(subject, review, coverage)
         if not isinstance(coverage, RelationScopedCoverageOutput):
@@ -683,10 +692,14 @@ class KnowledgeService:
                 )
             if output is not None:
                 receipt_structured = receipt.response.get("structured", {})
-                if (key == final_key + ":quote-correction:1"
-                        and run.input_manifest.get("review_quote_patch") in {"reference-patch-v1", "read-line-selection-v2"}):
+                if key == final_key + ":quote-correction:1" and run.input_manifest.get(
+                    "review_quote_patch"
+                ) in {"reference-patch-v1", "read-line-selection-v2"}:
                     from .quote_correction import replay_review_quote_patches
-                    receipt_structured = replay_review_quote_patches(db, run, final_key, receipt_structured)
+
+                    receipt_structured = replay_review_quote_patches(
+                        db, run, final_key, receipt_structured
+                    )
                 structured = {
                     k: v
                     for k, v in receipt_structured.items()

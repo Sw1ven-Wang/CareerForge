@@ -248,6 +248,10 @@ class ProjectPoolService:
                         and hasattr(self.app.repositories, "quality_snapshot")
                         else {}
                     )
+                    from .jd_topics import requires_rank_fusion
+
+                    if kwargs and requires_rank_fusion(m["goal_snapshot"]):
+                        kwargs["source_terms"] = ("ranking", "fusion", "rrf", "hybrid", "retrieval")
                     snapshot = await collect(
                         candidate["url"], run.id, m["github_request_cap"], **kwargs
                     )

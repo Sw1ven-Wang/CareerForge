@@ -236,6 +236,7 @@ def schedule_gap(
         # admission. No model request occurs in prepare_in or create_in.
         manifest = service.app.build.prepare_in(db, actor, body)
         from .gap_research_context import capture
+
         investigation_gap = capture(db, actor, origin["turn_id"])
         if investigation_gap:
             manifest["answer_gap_investigation"] = investigation_gap
@@ -253,7 +254,11 @@ def schedule_gap(
                 else {}
             ),
             **({"review_followup": followup} if followup else {}),
-            **({"review_retry_contract": "gap-bounded-review-retry-v1"} if auto_evidence_retry else {}),
+            **(
+                {"review_retry_contract": "gap-bounded-review-retry-v1"}
+                if auto_evidence_retry
+                else {}
+            ),
             "build_request_sha256": fingerprint(
                 {
                     key: value
@@ -337,7 +342,8 @@ def _validated_contract(service, db, actor, gap, run):
                 or followup.get("scope_hash") != source.scope_hash
             )
         )
-        or body.auto_evidence_retry != bool(contract.get("review_retry_contract") == "gap-bounded-review-retry-v1")
+        or body.auto_evidence_retry
+        != bool(contract.get("review_retry_contract") == "gap-bounded-review-retry-v1")
         or (bool(contract["request"].get("auto_evidence_retry")) != body.auto_evidence_retry)
         or body.coverage_guided_analysis
         or body.mechanism_edge_targets
@@ -500,9 +506,14 @@ def reanswer_gap(service, actor, gap_id, funding_id, *, automatic=False):
                 binding["evidence_publication_ids"] = previous_binding["evidence_publication_ids"]
         else:
             evidence_ids = set(publications)
-            for pub in service.app.knowledge.selected_publications(db, actor, [contract["selected_source_id"]]):
+            for pub in service.app.knowledge.selected_publications(
+                db, actor, [contract["selected_source_id"]]
+            ):
                 pack = service.app.knowledge.publication_pack(db, actor, pub.id)
-                if pack["source_id"] == contract["selected_source_id"] and pack.get("synthetic") is False:
+                if (
+                    pack["source_id"] == contract["selected_source_id"]
+                    and pack.get("synthetic") is False
+                ):
                     evidence_ids.add(pub.id)
             binding["evidence_publication_ids"] = sorted(evidence_ids)
         value = TurnInput(
@@ -619,11 +630,16 @@ def _answer_reasons(service, db, actor, contract, run, result, publications, ans
         ):
             raise DomainError("GAP_ANSWER_BINDING", "复答与本次补证发布不一致。", 409)
         evidence_ids = bound.get("evidence_publication_ids", bound["publication_ids"])
-        if len(evidence_ids) != len(set(evidence_ids)) or not set(publications) <= set(evidence_ids):
+        if len(evidence_ids) != len(set(evidence_ids)) or not set(publications) <= set(
+            evidence_ids
+        ):
             raise DomainError("GAP_ANSWER_BINDING", "复答未保留本次新增审核知识。", 409)
         for identifier in evidence_ids:
             pack = service.app.knowledge.publication_pack(db, actor, identifier)
-            if pack["source_id"] != contract["selected_source_id"] or pack.get("synthetic") is not False:
+            if (
+                pack["source_id"] != contract["selected_source_id"]
+                or pack.get("synthetic") is not False
+            ):
                 raise DomainError("GAP_ANSWER_BINDING", "复答证据不属于已授权固定源码。", 409)
         assessment = _stage(db, answer_run, ANSWER_COMPLETION_STAGE)
         if (
@@ -659,11 +675,9 @@ def _answer_reasons(service, db, actor, contract, run, result, publications, ans
             contract["selected_source_id"]
         ]:
             reasons.append("answer_retrieval_source_scope_changed")
-        if (
-            bound
-            and selection.payload.get("task_spec", {}).get("pinned_publication_ids")
-            != bound.get("evidence_publication_ids", bound["publication_ids"])
-        ):
+        if bound and selection.payload.get("task_spec", {}).get(
+            "pinned_publication_ids"
+        ) != bound.get("evidence_publication_ids", bound["publication_ids"]):
             reasons.append("answer_retrieval_publication_scope_changed")
     blocks = list(db.scalars(select(AnswerBlock).where(AnswerBlock.turn_id == turn.id)))
     fact_ids, cited_publications = set(), set()

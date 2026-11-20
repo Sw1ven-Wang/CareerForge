@@ -115,7 +115,12 @@ def validate_run_binding_in(app, db, actor, ns, manifest, *, run=None, admission
     validate_session_refs_in(db, workflow, execution)
     if (
         (request.principal_id, request.namespace_id, request.conversation_id, request.workflow_id)
-        != (execution.principal_id, execution.namespace_id, execution.conversation_id, execution.workflow_id)
+        != (
+            execution.principal_id,
+            execution.namespace_id,
+            execution.conversation_id,
+            execution.workflow_id,
+        )
         or workflow.current_execution_id != execution.id
         or execution.workflow_type != "evolution_session"
         or execution.graph_version != SESSION_VERSION
@@ -520,9 +525,16 @@ class EvolutionExecutions(SessionExecutions):
         else:
             if request.command_receipt_id != receipt.id:
                 fail()
-            funding = (intent.funding_id if intent.type == "candidate" else
-                       intent.replay.funding_id if intent.type == "replay" else None)
-            expected["status"] = "authorization" if intent.type == "candidate" and not funding else "queued"
+            funding = (
+                intent.funding_id
+                if intent.type == "candidate"
+                else intent.replay.funding_id
+                if intent.type == "replay"
+                else None
+            )
+            expected["status"] = (
+                "authorization" if intent.type == "candidate" and not funding else "queued"
+            )
         if funding:
             expected.update(authorized_request_id=request.id, authorized_funding_id=funding)
         if receipt.result != expected:
@@ -766,7 +778,11 @@ class EvolutionExecutions(SessionExecutions):
             result = dict(request.result)
             if request.status != "completed" and result:
                 fail("未完成命令不能投影任意结果。")
-            if request.status == "completed" and request.kind == "reject" and result != {"rejected": True}:
+            if (
+                request.status == "completed"
+                and request.kind == "reject"
+                and result != {"rejected": True}
+            ):
                 fail()
             if request.status == "completed" and request.kind in {"promote", "rollback"}:
                 from .evolution_commands import EvolutionCommands
@@ -807,7 +823,10 @@ class EvolutionExecutions(SessionExecutions):
                 expected = {key: history[key], "published": False}
                 if result != expected:
                     fail("会话结果与原事务效果引用不一致。")
-                result = {**expected, "current_evidence_available": history["current_evidence_available"]}
+                result = {
+                    **expected,
+                    "current_evidence_available": history["current_evidence_available"],
+                }
             return {
                 "workflow_id": workflow.id,
                 "workflow_revision": workflow.revision,

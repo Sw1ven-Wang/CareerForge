@@ -1,5 +1,7 @@
 from copy import deepcopy
+
 import pytest
+
 from careerforge.desk_continuation import renew_if_stale
 from careerforge.errors import DomainError
 from careerforge.models import Conversation
@@ -9,7 +11,11 @@ from careerforge.services import ordinary_checker
 def stale(env, monkeypatch):
     identity = ordinary_checker.ordinary_checker_identity()
     with monkeypatch.context() as patch:
-        patch.setattr(ordinary_checker, "ordinary_checker_identity", lambda: {**identity, "implementation_hash": "old-test-implementation"})
+        patch.setattr(
+            ordinary_checker,
+            "ordinary_checker_identity",
+            lambda: {**identity, "implementation_hash": "old-test-implementation"},
+        )
         return env["app"].conversations.create(env["actor"])
 
 
@@ -47,12 +53,15 @@ def test_busy_and_inaccessible_source_do_not_create_successor(env, monkeypatch):
 @pytest.mark.asyncio
 async def test_successor_carries_only_accessible_project(env, monkeypatch):
     from conftest import publish_fixture
+
     app, actor = env["app"], env["actor"]
     source, _, _ = await publish_fixture(env)
     cid = stale(env, monkeypatch)
     with app.db.transaction() as db:
         conv = db.get(Conversation, cid)
-        app.workflows.create_in(db, conv, target={"target": "https://github.com/example/repo", "source_ids": [source]})
+        app.workflows.create_in(
+            db, conv, target={"target": "https://github.com/example/repo", "source_ids": [source]}
+        )
         conv.focus = {**conv.focus, "evidence_answer_state": {"unsafe": True}}
     new = renew_if_stale(app, actor, cid)
     detail = app.conversations.detail(actor, new)

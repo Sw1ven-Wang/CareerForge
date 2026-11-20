@@ -70,7 +70,11 @@ def test_receipt_accepts_observed_nonzero_exit_and_deadline():
 
 def test_bounded_subprocess_drains_both_streams():
     result = sandbox._run_bounded(
-        [sys.executable, "-c", "import sys; print('ok'); print('err',file=sys.stderr)"],
+        [
+            sys.executable,
+            "-c",
+            "import sys; sys.stdout.buffer.write(b'ok\\n'); sys.stderr.buffer.write(b'err\\n')",
+        ],
         timeout=5,
         limit=128,
     )

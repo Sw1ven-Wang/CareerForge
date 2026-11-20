@@ -31,11 +31,14 @@ def test_subquestions_get_a_representative_before_background_additions():
     assert groups[-1].fact_ids == []
 
 
-@pytest.mark.parametrize("question", [
-    "https://github.com/earendil-works/pi   我要学这个的架构",
-    "Explain this project's architecture",
-    "讲解这个系统的整体设计",
-])
+@pytest.mark.parametrize(
+    "question",
+    [
+        "https://github.com/earendil-works/pi   我要学这个的架构",
+        "Explain this project's architecture",
+        "讲解这个系统的整体设计",
+    ],
+)
 def test_single_architecture_question_needs_semantic_coverage(question):
     assert needs_coverage_selection(question)
 

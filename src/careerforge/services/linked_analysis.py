@@ -27,7 +27,9 @@ async def analyze_preview(app, run, epoch, worker):
         m.get("require_python_pairs") and (m.get("architecture_only") or m["max_units"] < 2)
     ):
         raise DomainError("LINKED_ANALYSIS_SCOPE", "Python 配对要求与架构范围冲突。", 422)
-    output_type = FullyPairedAnalysisOutput if m.get("require_python_pairs") else LinkedAnalysisOutput
+    output_type = (
+        FullyPairedAnalysisOutput if m.get("require_python_pairs") else LinkedAnalysisOutput
+    )
     roots = m["access_dependencies"]
     with app.db.read() as db:
         check_closure(db, actor, roots)
@@ -124,9 +126,7 @@ dependency_paths 只能是 frozen_source_paths 中的完整路径；import 到�
         bundle=bundle,
         data_classes=["public_source", "private_source", "private_jd", "learning_state"],
         access_dependencies=roots,
-        output_schema=app.build._analysis_schema(
-            topics, output_type, source_paths=source_paths
-        ),
+        output_schema=app.build._analysis_schema(topics, output_type, source_paths=source_paths),
     )
     output = output_type.model_validate(result.structured)
     if len(output.units) > m["max_units"]:

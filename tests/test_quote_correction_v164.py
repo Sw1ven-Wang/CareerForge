@@ -51,7 +51,9 @@ REAL_FAILURES = json.loads(
 )
 
 
-def setup_analysis(env, *, body=BODY, path="src/tools.py", start=1, end=None, legacy=False, missing=False):
+def setup_analysis(
+    env, *, body=BODY, path="src/tools.py", start=1, end=None, legacy=False, missing=False
+):
     app, actor = env["app"], env["actor"]
     source = app.sources.import_source(
         actor,
@@ -957,10 +959,25 @@ async def test_full_build_uses_model_correction_before_coverage_and_keeps_raw_re
                 for issue in correction["diagnostics"]["issues"]:
                     current = result.structured
                     for component in issue["pointer"].split("/")[1:]:
-                        current = current[int(component)] if isinstance(current, list) else current[component]
+                        current = (
+                            current[int(component)]
+                            if isinstance(current, list)
+                            else current[component]
+                        )
                     if "numbered_reads" in request["context"]:
-                        read = next(r for r in request["context"]["numbered_reads"] if r["read_id"] == current["read_id"])
-                        patches.append({"pointer": issue["pointer"], "read_id":read["read_id"], "start_line":read["start_line"],"end_line":read["end_line"]})
+                        read = next(
+                            r
+                            for r in request["context"]["numbered_reads"]
+                            if r["read_id"] == current["read_id"]
+                        )
+                        patches.append(
+                            {
+                                "pointer": issue["pointer"],
+                                "read_id": read["read_id"],
+                                "start_line": read["start_line"],
+                                "end_line": read["end_line"],
+                            }
+                        )
                     else:
                         patches.append({"pointer": issue["pointer"], "reference": current})
                 result = result.model_copy(update={"structured": {"patches": patches}})

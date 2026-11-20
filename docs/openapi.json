@@ -7886,6 +7886,292 @@
         }
       }
     },
+    "/api/v1/workflows/{identifier}/projects": {
+      "get": {
+        "summary": "Project Pool",
+        "operationId": "project_pool_api_v1_workflows__identifier__projects_get",
+        "parameters": [
+          {
+            "name": "identifier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Identifier"
+            }
+          },
+          {
+            "name": "include_pending",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Pending"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{identifier}/quality": {
+      "get": {
+        "summary": "Project Quality",
+        "operationId": "project_quality_api_v1_projects__identifier__quality_get",
+        "parameters": [
+          {
+            "name": "identifier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Identifier"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/{identifier}/implementation-language": {
+      "post": {
+        "summary": "Implementation Language",
+        "operationId": "implementation_language_api_v1_workflows__identifier__implementation_language_post",
+        "parameters": [
+          {
+            "name": "identifier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Identifier"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImplementationLanguageInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/knowledge/implementation-links": {
+      "post": {
+        "summary": "Implementation Link",
+        "operationId": "implementation_link_api_v1_knowledge_implementation_links_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KnowledgeImplementationLinkInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/{identifier}/knowledge-materials": {
+      "get": {
+        "summary": "Language Materials",
+        "operationId": "language_materials_api_v1_workflows__identifier__knowledge_materials_get",
+        "parameters": [
+          {
+            "name": "identifier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Identifier"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/conversations/{identifier}/practices/{practice_id}": {
       "get": {
         "summary": "Practice Detail",
@@ -9848,6 +10134,34 @@
                 "type": "null"
               }
             ]
+          },
+          "submission": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AttemptSubmission"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "module_ack": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SessionModuleAckInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "publication_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Publication Ids"
           }
         },
         "additionalProperties": false,
@@ -10790,6 +11104,57 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "ImplementationLanguageInput": {
+        "properties": {
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Revision"
+          },
+          "idempotency_key": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Idempotency Key"
+          },
+          "authorization_ref": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Authorization Ref"
+          },
+          "expected_focus_revision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Focus Revision"
+          },
+          "languages": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "minItems": 1,
+            "title": "Languages"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected_revision",
+          "idempotency_key",
+          "expected_focus_revision",
+          "languages"
+        ],
+        "title": "ImplementationLanguageInput"
+      },
       "ImportSourceInput": {
         "properties": {
           "namespace_id": {
@@ -11457,6 +11822,64 @@
         ],
         "title": "KnowledgeBuildInput"
       },
+      "KnowledgeImplementationLinkInput": {
+        "properties": {
+          "namespace_id": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Namespace Id"
+          },
+          "architecture_publication_id": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Architecture Publication Id"
+          },
+          "implementation_publication_id": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Implementation Publication Id"
+          },
+          "language": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Language"
+          },
+          "domain": {
+            "type": "string",
+            "enum": [
+              "ai_agent",
+              "backend"
+            ],
+            "title": "Domain",
+            "default": "ai_agent"
+          },
+          "relation": {
+            "type": "string",
+            "const": "implementation_example_for",
+            "title": "Relation",
+            "default": "implementation_example_for"
+          },
+          "semantic_quality_verified": {
+            "type": "boolean",
+            "const": false,
+            "title": "Semantic Quality Verified",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "namespace_id",
+          "architecture_publication_id",
+          "implementation_publication_id",
+          "language"
+        ],
+        "title": "KnowledgeImplementationLinkInput"
+      },
       "LearningDialogueMessageV1": {
         "properties": {
           "text": {
@@ -11567,6 +11990,34 @@
                 "type": "null"
               }
             ]
+          },
+          "submission": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AttemptSubmission"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "module_ack": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SessionModuleAckInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "publication_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Publication Ids"
           },
           "contract": {
             "type": "string",
@@ -12609,6 +13060,34 @@
                 "type": "null"
               }
             ]
+          },
+          "submission": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AttemptSubmission"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "module_ack": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SessionModuleAckInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "publication_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Publication Ids"
           },
           "contract": {
             "type": "string",

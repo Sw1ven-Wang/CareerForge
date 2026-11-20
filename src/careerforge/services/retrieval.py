@@ -10,7 +10,9 @@ from contextlib import contextmanager
 from typing import Any, TypedDict
 
 from sqlalchemy import bindparam, or_, select, text, true
+from sqlalchemy.dialects.postgresql import Insert as PostgresInsert
 from sqlalchemy.dialects.postgresql import insert as postgres_insert
+from sqlalchemy.dialects.sqlite import Insert as SQLiteInsert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session
 
@@ -209,10 +211,13 @@ class RetrievalService:
             # The PK conflict must be resolved by the database, not an absence read
             # followed by an ORM insert. Keep all authority checks above this write.
             dialect = s.get_bind().dialect.name
-            insert = {"postgresql": postgres_insert, "sqlite": sqlite_insert}.get(dialect)
-            if insert is None:
+            if dialect == "postgresql":
+                base_insert: PostgresInsert | SQLiteInsert = postgres_insert(KnowledgeDocument)
+            elif dialect == "sqlite":
+                base_insert = sqlite_insert(KnowledgeDocument)
+            else:
                 raise RuntimeError("Lexical indexing requires PostgreSQL or SQLite")
-            statement = insert(KnowledgeDocument).values(
+            statement = base_insert.values(
                 publication_id=publication_id,
                 search_text=search_text,
                 content_hash=fingerprint(pack),
